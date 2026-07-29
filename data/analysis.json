@@ -1,0 +1,72 @@
+{
+  "artist": "SHINOBIWAN",
+  "system": {
+    "version": "v4.8.2-PROD",
+    "engine": "LMNotebook Neural DSP Core",
+    "confidenceScore": 98.7,
+    "timestamp": "2026-07-29T12:00:00Z"
+  },
+  "scores": {
+    "overallScore": 94,
+    "musicalIdentity": 96,
+    "productionQuality": 92,
+    "commercialPotential": 88,
+    "streamingCompatibility": 95,
+    "originality": 97,
+    "consistency": 91
+  },
+  "acoustics": {
+    "tempo": "128 BPM",
+    "key": "F# Minor",
+    "camelot": "11A",
+    "lufs": "-7.2 Integrated",
+    "dynamicRange": "6.8 dB",
+    "stereoWidth": "114%",
+    "peak": "-0.1 dBFS",
+    "rms": "-8.4 dB",
+    "spectralCentroid": "2840 Hz",
+    "spectralFlux": "0.042",
+    "mfccCoefficient": "13 Bands Vector",
+    "chromaEnergy": "0.89",
+    "energy": 0.91,
+    "danceability": 0.78,
+    "valence": 0.64,
+    "acousticness": 0.12,
+    "speechiness": 0.06,
+    "instrumentalness": 0.82,
+    "liveness": 0.15
+  },
+  "genres": [
+    { "name": "Future Bass", "weight": 42 },
+    { "name": "Synthwave", "weight": 28 },
+    { "name": "Cyberpunk", "weight": 15 },
+    { "name": "Electronic Pop", "weight": 10 },
+    { "name": "Melodic Bass", "weight": 5 }
+  ],
+  "emotionalTimeline": [
+    { "phase": "Intro", "emotion": "Hope", "intensity": 30 },
+    { "phase": "Build-up", "emotion": "Excitement", "intensity": 65 },
+    { "phase": "Drop", "emotion": "Euphoria", "intensity": 98 },
+    { "phase": "Bridge", "emotion": "Melancholy", "intensity": 45 },
+    { "phase": "Outro", "emotion": "Resolution", "intensity": 20 }
+  ],
+  "strengths": [
+    "Khái niệm âm thanh độc đáo (Unique Sonic Identity)",
+    "Chất lượng sản xuất và Mix/Master cao chuẩn Streaming",
+    "Sự kết hợp hoàn hảo giữa Synthwave và Cyberpunk",
+    "Cấu trúc Melody và Hook vô cùng bắt tai",
+    "Độ rộng âm hình Stereo (Stereo Imaging) xuất sắc",
+    "Tiềm năng xếp vào danh sách phát Editorial cao"
+  ],
+  "weaknesses": [
+    "Tần suất phát hành chưa đều đặn trên các nền tảng",
+    "Phân tán thể loại có thể làm phân mảnh thuật toán ban đầu",
+    "Mức độ hiện diện trên Playlist người dùng cần cải thiện",
+    "Cần tối ưu hóa hơn nữa độ phủ thương hiệu cá nhân"
+  ],
+  "aiReport": {
+    "summary": "Phân tích DSP chuyên sâu cho thấy dự án âm nhạc của SHINOBIWAN sở hữu mức độ hoàn thiện kỹ thuật và cá tính nghệ thuật vượt trội. Thuật toán phát hiện sự kết hợp tinh tế giữa âm hưởng Cyberpunk Synthwave và Future Bass hiện đại. Các chỉ số về độ rộng Stereo Image và Mức công suất LUFS đạt tiêu chuẩn thương mại toàn cầu.",
+    "technicalDiagnosis": "Đồ thị phổ tần (Spectral Envelope) phản ánh sự phân bổ năng lượng cực kỳ cân bằng ở dải trầm (Sub-bass 30-60Hz) mà không gây đục dải trung. Tỉ lệ Dynamic Range 6.8 dB đảm bảo độ nén thương mại hoàn hảo mà vẫn giữ được tính tự nhiên của âm thanh.",
+    "strategicRecommendation": "Tập trung đẩy mạnh phân phối vào các danh sách phát trọng điểm như Synthwave Chill, Cyberpunk Gaming, và Future Bass Essentials. Nên duy trì chu kỳ phát hành 3-4 tuần/đĩa đơn để tối ưu thuật toán Discovery Weekly của Spotify."
+  }
+}
