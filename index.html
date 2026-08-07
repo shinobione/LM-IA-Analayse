@@ -3,84 +3,74 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LMNotebook Neural Audio Analysis — SHINOBIWAN</title>
+  <meta name="description" content="LMNotebook Neural Audio Analyzer — analyse DSP locale de fichiers MP3 et WAV." />
+  <title>LMNotebook Neural Audio Analyzer</title>
 
-  <!-- Typography & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
 
-  <!-- CSS Core -->
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/animations.css" />
+  <link rel="stylesheet" href="css/analyzer.css" />
 
-  <!-- External JS Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tsparticles-engine@2.12.0/tsparticles.engine.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tsparticles-basic@2.12.0/tsparticles.basic.min.js"></script>
 </head>
 <body>
-
-  <!-- Background Particle Network -->
   <div id="tsparticles"></div>
   <div class="glow-overlay"></div>
 
-  <!-- Screen Loading Overlay -->
   <div id="loader-screen" class="loader-container">
     <div class="loader-content">
       <div class="loader-logo">
-        <i data-lucide="cpu" class="icon-pulse"></i>
-        <span>LMNOTEBOOK NEURAL CORE</span>
+        <i data-lucide="audio-waveform" class="icon-pulse"></i>
+        <span>LMNOTEBOOK AUDIO DSP</span>
       </div>
       <div class="status-box">
-        <p id="loader-status">Initializing Neural DSP Pipeline...</p>
+        <p id="loader-status">Initialisation du moteur d’analyse local…</p>
       </div>
       <div class="progress-bar-wrapper">
         <div id="loader-progress-bar" class="progress-bar-fill"></div>
       </div>
       <div class="loader-metrics">
         <span id="loader-percent">0%</span>
-        <span class="mono-dim">MODEL: AUDIO-TRANSFORMER-V4</span>
+        <span class="mono-dim">MODE: BROWSER DSP V1</span>
       </div>
     </div>
   </div>
 
-  <!-- Main Application Layout -->
   <div id="app" class="app-layout hidden">
-    
-    <!-- Top Bar Navigation -->
     <header class="top-header">
       <div class="brand-identity">
-        <div class="brand-badge">
-          <i data-lucide="activity"></i>
-        </div>
+        <div class="brand-badge"><i data-lucide="audio-lines"></i></div>
         <div>
-          <h1 class="brand-title">LMNotebook Neural Audio</h1>
-          <p class="brand-subtitle">Automated Catalog Telemetry & DSP Intelligence</p>
+          <h1 class="brand-title">LMNotebook Neural Audio Analyzer</h1>
+          <p class="brand-subtitle">Real local DSP telemetry • MP3 / WAV • No server upload in V1</p>
         </div>
       </div>
 
       <div class="profile-header-center">
         <div class="artist-pill">
           <span class="pulse-dot"></span>
-          <span class="artist-name">ARTIST: SHINOBIWAN</span>
+          <span class="artist-name">LOCAL ANALYSIS ENGINE READY</span>
         </div>
         <div class="platform-indicators">
-          <span class="platform-badge spotify"><i data-lucide="music"></i> Spotify Sync Active</span>
-          <span class="platform-badge soundcloud"><i data-lucide="radio"></i> SoundCloud API Sync</span>
+          <span class="platform-badge spotify"><i data-lucide="file-music"></i> MP3 / WAV</span>
+          <span class="platform-badge soundcloud"><i data-lucide="shield-check"></i> FILE STAYS LOCAL</span>
         </div>
       </div>
 
-      <!-- AI Confidence Radial Widget -->
       <div class="confidence-card">
         <div class="confidence-info">
-          <span class="label">AI Confidence</span>
+          <span class="label">DSP Confidence</span>
           <span class="value" id="confidence-val">0.0%</span>
         </div>
         <div class="gauge-container">
-          <svg class="gauge-svg" viewBox="0 0 36 36">
+          <svg class="gauge-svg" viewBox="0 0 36 36" aria-label="DSP confidence gauge">
             <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
             <path id="gauge-fill" class="gauge-fill" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
           </svg>
@@ -88,173 +78,160 @@
       </div>
     </header>
 
-    <!-- Dashboard Content Area -->
     <main class="dashboard-grid">
+      <section class="glass-card upload-lab">
+        <div class="upload-lab-inner">
+          <div class="upload-copy">
+            <div class="upload-eyebrow"><i data-lucide="scan-line"></i> AUDIO FORENSICS / DSP V1</div>
+            <h2 class="upload-title">Drop un morceau. Le dashboard remplace les données de démo par de vraies mesures du fichier.</h2>
+            <p class="upload-description">
+              BPM, tonalité + Camelot, RMS, peak, crest factor, clipping, stéréo, corrélation L/R, centroïde spectral,
+              roll-off, flatness, flux, spectre par bandes, waveform, spectrogramme et progression d’énergie.
+              Les genres neuraux, stems, lyrics, accords et LUFS BS.1770 arriveront avec le backend V2.
+            </p>
 
-      <!-- TOP METRICS ROW -->
-      <section class="metrics-row card-grid-7">
-        <div class="glass-card metric-card" id="card-overall">
-          <span class="metric-title">Overall Score</span>
-          <div class="metric-value-box"><span class="counter" data-target="94">0</span><span class="unit">/100</span></div>
-          <div class="mini-bar"><div class="fill" style="width: 94%"></div></div>
-        </div>
-        <div class="glass-card metric-card">
-          <span class="metric-title">Musical Identity</span>
-          <div class="metric-value-box"><span class="counter" data-target="96">0</span><span class="unit">%</span></div>
-          <div class="mini-bar"><div class="fill" style="width: 96%"></div></div>
-        </div>
-        <div class="glass-card metric-card">
-          <span class="metric-title">Production Quality</span>
-          <div class="metric-value-box"><span class="counter" data-target="92">0</span><span class="unit">%</span></div>
-          <div class="mini-bar"><div class="fill" style="width: 92%"></div></div>
-        </div>
-        <div class="glass-card metric-card">
-          <span class="metric-title">Commercial Potential</span>
-          <div class="metric-value-box"><span class="counter" data-target="88">0</span><span class="unit">%</span></div>
-          <div class="mini-bar"><div class="fill" style="width: 88%"></div></div>
-        </div>
-        <div class="glass-card metric-card">
-          <span class="metric-title">Streaming Compat.</span>
-          <div class="metric-value-box"><span class="counter" data-target="95">0</span><span class="unit">%</span></div>
-          <div class="mini-bar"><div class="fill" style="width: 95%"></div></div>
-        </div>
-        <div class="glass-card metric-card">
-          <span class="metric-title">Originality Index</span>
-          <div class="metric-value-box"><span class="counter" data-target="97">0</span><span class="unit">%</span></div>
-          <div class="mini-bar"><div class="fill" style="width: 97%"></div></div>
-        </div>
-        <div class="glass-card metric-card">
-          <span class="metric-title">Catalog Consistency</span>
-          <div class="metric-value-box"><span class="counter" data-target="91">0</span><span class="unit">%</span></div>
-          <div class="mini-bar"><div class="fill" style="width: 91%"></div></div>
+            <div id="drop-zone" class="drop-zone">
+              <input id="audio-file-input" type="file" accept="audio/mpeg,audio/wav,.mp3,.wav" />
+              <div class="drop-zone-title"><i data-lucide="upload-cloud"></i> Glisse un MP3/WAV ici ou sélectionne un fichier</div>
+              <div id="selected-file-name" class="selected-file">Aucun fichier sélectionné</div>
+              <div class="drop-zone-meta">Analyse locale dans ton navigateur. Le fichier audio n’est pas envoyé vers un serveur par cette V1.</div>
+              <div class="analysis-actions">
+                <button id="choose-audio-btn" class="secondary-btn" type="button"><i data-lucide="folder-open"></i> Choisir un fichier</button>
+                <button id="analyze-audio-btn" class="primary-btn" type="button" disabled><i data-lucide="activity"></i> Lancer le scan DSP</button>
+              </div>
+            </div>
+          </div>
+
+          <aside class="analysis-status" aria-live="polite">
+            <div class="analysis-status-head">
+              <span class="analysis-status-title">Analysis pipeline</span>
+              <span id="analysis-percent" class="analysis-percent">0%</span>
+            </div>
+            <div class="analysis-progress-track"><div id="analysis-progress-fill" class="analysis-progress-fill"></div></div>
+            <div id="analysis-step" class="analysis-step">En attente d’un fichier audio.</div>
+            <div id="file-tech-grid" class="file-tech-grid">
+              <div class="file-tech"><span>Source</span><strong>Demo payload</strong></div>
+              <div class="file-tech"><span>Mode</span><strong>Preview</strong></div>
+            </div>
+            <div class="export-row">
+              <button id="export-json-btn" class="secondary-btn" type="button" disabled><i data-lucide="download"></i> Export JSON</button>
+            </div>
+          </aside>
         </div>
       </section>
 
-      <!-- VISUALIZATIONS SECTION -->
+      <div class="data-origin-banner">
+        <span id="data-origin-text">Upload un MP3/WAV pour remplacer les données d’exemple.</span>
+        <strong id="data-origin-tag">DEMO DATA</strong>
+      </div>
+
+      <section class="metrics-row card-grid-7">
+        <div class="glass-card metric-card">
+          <span class="metric-title">Tempo</span>
+          <div class="metric-value-box compact" id="metric-tempo">—</div>
+          <div class="metric-sub">Autocorrélation de l’enveloppe d’onsets</div>
+        </div>
+        <div class="glass-card metric-card">
+          <span class="metric-title">Key</span>
+          <div class="metric-value-box compact" id="metric-key">—</div>
+          <div class="metric-sub">Chroma + profils tonals</div>
+        </div>
+        <div class="glass-card metric-card">
+          <span class="metric-title">RMS</span>
+          <div class="metric-value-box compact" id="metric-rms">—</div>
+          <div class="metric-sub">Niveau moyen dBFS</div>
+        </div>
+        <div class="glass-card metric-card">
+          <span class="metric-title">Peak</span>
+          <div class="metric-value-box compact" id="metric-peak">—</div>
+          <div class="metric-sub">Crête numérique</div>
+        </div>
+        <div class="glass-card metric-card">
+          <span class="metric-title">Crest Factor</span>
+          <div class="metric-value-box compact" id="metric-crest">—</div>
+          <div class="metric-sub">Peak − RMS</div>
+        </div>
+        <div class="glass-card metric-card">
+          <span class="metric-title">Stereo Width</span>
+          <div class="metric-value-box compact" id="metric-stereo">—</div>
+          <div class="metric-sub">Énergie Mid / Side</div>
+        </div>
+        <div class="glass-card metric-card">
+          <span class="metric-title">Clipping</span>
+          <div class="metric-value-box compact" id="metric-clipping">—</div>
+          <div class="metric-sub">Échantillons ≥ 0.999 FS</div>
+        </div>
+      </section>
+
       <section class="main-charts-row">
-        <!-- Radar & Genres -->
         <div class="glass-card col-span-4">
-          <h3 class="card-header"><i data-lucide="disc"></i> Sonic DNA Analysis</h3>
-          <div class="chart-container">
-            <canvas id="radarChart"></canvas>
-          </div>
+          <h3 class="card-header"><i data-lucide="radar"></i> Measured Sonic DNA</h3>
+          <div class="chart-container"><canvas id="radarChart"></canvas></div>
           <div class="genres-badges" id="genres-container"></div>
+          <p class="analysis-disclaimer">Les badges sont des descripteurs heuristiques issus du DSP. Ils ne sont pas encore des prédictions de genre par réseau neuronal.</p>
         </div>
 
-        <!-- Waveform & Live Spectrogram -->
         <div class="glass-card col-span-8">
           <div class="card-header-flex">
-            <h3><i data-lucide="waves"></i> Realtime Audio Waveform & DSP Spectrogram</h3>
-            <span class="tag-live">LIVE DSP ENGINE</span>
+            <h3><i data-lucide="waves"></i> Waveform & Spectrogram</h3>
+            <span class="tag-live">REAL FILE DATA</span>
           </div>
-          
-          <div class="waveform-box">
-            <svg id="svg-waveform" viewBox="0 0 1000 120" preserveAspectRatio="none"></svg>
-          </div>
-
-          <div class="spectrogram-box">
-            <canvas id="spectrogramCanvas" height="140"></canvas>
-          </div>
-
+          <div class="waveform-box"><svg id="svg-waveform" viewBox="0 0 1000 120" preserveAspectRatio="none"></svg></div>
+          <div class="spectrogram-box"><canvas id="spectrogramCanvas" height="140"></canvas></div>
           <div class="acoustics-grid" id="acoustics-grid"></div>
         </div>
       </section>
 
-      <!-- ADVANCED DATA ROW -->
       <section class="secondary-charts-row">
-        <!-- Similarity Clustering Map -->
         <div class="glass-card col-span-6">
-          <h3 class="card-header"><i data-lucide="share-2"></i> Vector Embedding & Latent Similarity Map</h3>
-          <div class="chart-container">
-            <canvas id="similarityChart"></canvas>
-          </div>
+          <h3 class="card-header"><i data-lucide="bar-chart-3"></i> Spectral Energy Distribution</h3>
+          <div class="chart-container"><canvas id="spectralChart"></canvas></div>
         </div>
 
-        <!-- Emotional Timeline -->
         <div class="glass-card col-span-6">
-          <h3 class="card-header"><i data-lucide="trending-up"></i> Dynamic Emotional Progression</h3>
-          <div class="chart-container">
-            <canvas id="timelineChart"></canvas>
-          </div>
+          <h3 class="card-header"><i data-lucide="trending-up"></i> Dynamic Energy Progression</h3>
+          <div class="chart-container"><canvas id="timelineChart"></canvas></div>
         </div>
       </section>
 
-      <!-- PLATFORM INTELLIGENCE ROW -->
-      <section class="platform-row">
-        <!-- Spotify Card -->
-        <div class="glass-card platform-card spotify-card col-span-6">
-          <div class="platform-title"><i data-lucide="music"></i> Spotify Algorithmic Vector</div>
-          <div class="metrics-list">
-            <div class="p-item"><span>Audience Stability</span><strong>94/100</strong></div>
-            <div class="p-item"><span>Playlist Potential</span><strong>98/100</strong></div>
-            <div class="p-item"><span>Editorial Compatibility</span><strong>91/100</strong></div>
-            <div class="p-item"><span>Algorithm Score</span><strong>96/100</strong></div>
-            <div class="p-item"><span>Discovery Weekly Match</span><strong>95%</strong></div>
-            <div class="p-item"><span>Release Radar Surge</span><strong>High Probability</strong></div>
-          </div>
-        </div>
-
-        <!-- SoundCloud Card -->
-        <div class="glass-card platform-card soundcloud-card col-span-6">
-          <div class="platform-title"><i data-lucide="cloud-lightning"></i> SoundCloud Community Index</div>
-          <div class="metrics-list">
-            <div class="p-item"><span>Creative Freedom Index</span><strong>99/100</strong></div>
-            <div class="p-item"><span>Community Engagement</span><strong>89/100</strong></div>
-            <div class="p-item"><span>Fan Loyalty Vector</span><strong>93/100</strong></div>
-            <div class="p-item"><span>Experimental Index</span><strong>95/100</strong></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- STRENGTHS / WEAKNESSES ROW -->
       <section class="swot-row">
         <div class="glass-card swot-card strengths col-span-6">
-          <h3 class="card-header text-green"><i data-lucide="check-circle"></i> Architectural Strengths</h3>
+          <h3 class="card-header text-green"><i data-lucide="check-circle"></i> DSP Strengths</h3>
           <ul id="strengths-list" class="swot-list"></ul>
         </div>
         <div class="glass-card swot-card weaknesses col-span-6">
-          <h3 class="card-header text-red"><i data-lucide="alert-triangle"></i> Identified Optimization Axes</h3>
+          <h3 class="card-header text-red"><i data-lucide="alert-triangle"></i> Technical Watchpoints</h3>
           <ul id="weaknesses-list" class="swot-list"></ul>
         </div>
       </section>
 
-      <!-- AI EXECUTIVE REPORT & TERMINAL -->
       <section class="report-row">
-        <!-- AI Report in Vietnamese -->
         <div class="glass-card col-span-7">
-          <h3 class="card-header"><i data-lucide="file-text"></i> Báo Cáo Chẩn Đoán AI (Neural Report)</h3>
+          <h3 class="card-header"><i data-lucide="file-text"></i> Automatic Technical Report</h3>
           <div class="report-content" id="ai-report-box"></div>
         </div>
 
-        <!-- Console Terminal -->
         <div class="glass-card col-span-5 terminal-card">
           <div class="terminal-header">
             <div class="terminal-dots">
-              <span class="dot red"></span>
-              <span class="dot yellow"></span>
-              <span class="dot green"></span>
+              <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
             </div>
-            <span class="terminal-title">LMNotebook Neural Console v4.8</span>
+            <span class="terminal-title">LMNotebook DSP Console v1.0</span>
           </div>
           <div class="terminal-body" id="terminal-output"></div>
         </div>
       </section>
-
     </main>
   </div>
 
-  <!-- Scripts Loading -->
   <script src="js/loader.js"></script>
   <script src="js/particles.js"></script>
+  <script src="js/audio-analyzer.js"></script>
   <script src="js/waveform.js"></script>
   <script src="js/charts.js"></script>
-  <script src="js/counters.js"></script>
   <script src="js/terminal.js"></script>
   <script src="js/app.js"></script>
 
-  <script>
-    // Initialize Lucide Icons
-    lucide.createIcons();
-  </script>
+  <script>lucide.createIcons();</script>
 </body>
 </html>
