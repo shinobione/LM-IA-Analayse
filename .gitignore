@@ -1,0 +1,18 @@
+# Python / backend
+backend/.venv/
+backend/.env
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local analysis artifacts
+backend/tmp/
+backend/models/
+backend/cache/
+*.log
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

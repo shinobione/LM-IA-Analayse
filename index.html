@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/animations.css" />
   <link rel="stylesheet" href="css/analyzer.css" />
+  <link rel="stylesheet" href="css/v2.css" />
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
@@ -43,7 +44,7 @@
       </div>
       <div class="loader-metrics">
         <span id="loader-percent">0%</span>
-        <span class="mono-dim">MODE: BROWSER DSP V1</span>
+        <span class="mono-dim">MODE: BROWSER DSP V1 + DEEP AUDIO V2</span>
       </div>
     </div>
   </div>
@@ -54,18 +55,18 @@
         <div class="brand-badge"><i data-lucide="audio-lines"></i></div>
         <div>
           <h1 class="brand-title">LMNotebook Neural Audio Analyzer</h1>
-          <p class="brand-subtitle">Real local DSP telemetry • MP3 / WAV • Deep Neural V2 architecture ready</p>
+          <p class="brand-subtitle">Real local DSP telemetry • Deep Mastering V2 • GPU cluster ready</p>
         </div>
       </div>
 
       <div class="profile-header-center">
         <div class="artist-pill">
           <span class="pulse-dot"></span>
-          <span class="artist-name">LOCAL ANALYSIS ENGINE READY</span>
+          <span class="artist-name">HYBRID ANALYSIS ENGINE</span>
         </div>
         <div class="platform-indicators">
-          <span class="platform-badge spotify"><i data-lucide="file-music"></i> MP3 / WAV</span>
-          <span class="platform-badge soundcloud"><i data-lucide="shield-check"></i> FILE STAYS LOCAL</span>
+          <span class="platform-badge spotify"><i data-lucide="cpu"></i> BROWSER DSP V1</span>
+          <span class="platform-badge soundcloud"><i data-lucide="gpu"></i> DEEP AUDIO V2</span>
         </div>
       </div>
 
@@ -87,29 +88,29 @@
       <section class="glass-card upload-lab">
         <div class="upload-lab-inner">
           <div class="upload-copy">
-            <div class="upload-eyebrow"><i data-lucide="scan-line"></i> AUDIO FORENSICS / DSP V1</div>
-            <h2 class="upload-title">Drop un morceau. Le dashboard remplace les données de démo par de vraies mesures du fichier.</h2>
+            <div class="upload-eyebrow"><i data-lucide="scan-line"></i> AUDIO FORENSICS / HYBRID DSP</div>
+            <h2 class="upload-title">Un seul morceau, deux couches d’analyse : V1 instantanée dans le navigateur + Deep Scan V2 sur le nœud Python.</h2>
             <p class="upload-description">
-              BPM, tonalité + Camelot, RMS, peak, crest factor, clipping, stéréo, corrélation L/R, centroïde spectral,
-              roll-off, flatness, flux, spectre par bandes, waveform, spectrogramme et progression d’énergie.
-              Les genres neuraux, stems, lyrics, accords et LUFS BS.1770 arriveront avec le backend V2.
+              La V1 garde BPM, tonalité, RMS, peak, stéréo, FFT, waveform et spectrogramme en local.
+              La V2 ajoute des mesures mastering de référence via FFmpeg / BS.1770 / EBU R128 et prépare les couches GPU pour genre, mood, embeddings, stems et transcription.
             </p>
 
             <div id="drop-zone" class="drop-zone">
               <input id="audio-file-input" type="file" accept="audio/mpeg,audio/wav,.mp3,.wav" />
               <div class="drop-zone-title"><i data-lucide="upload-cloud"></i> Glisse un MP3/WAV ici ou sélectionne un fichier</div>
               <div id="selected-file-name" class="selected-file">Aucun fichier sélectionné</div>
-              <div class="drop-zone-meta">Analyse locale dans ton navigateur. Le fichier audio n’est pas envoyé vers un serveur par cette V1.</div>
+              <div class="drop-zone-meta">V1 reste 100% locale. Le Deep Scan V2 envoie temporairement le fichier au nœud que tu as configuré, puis le supprime après analyse.</div>
               <div class="analysis-actions">
                 <button id="choose-audio-btn" class="secondary-btn" type="button"><i data-lucide="folder-open"></i> Choisir un fichier</button>
-                <button id="analyze-audio-btn" class="primary-btn" type="button" disabled><i data-lucide="activity"></i> Lancer le scan DSP</button>
+                <button id="analyze-audio-btn" class="primary-btn" type="button" disabled><i data-lucide="activity"></i> Scan DSP V1</button>
+                <button id="deep-analyze-audio-btn" class="primary-btn deep-btn" type="button" disabled><i data-lucide="brain-circuit"></i> Deep Scan V2</button>
               </div>
             </div>
           </div>
 
           <aside class="analysis-status" aria-live="polite">
             <div class="analysis-status-head">
-              <span class="analysis-status-title">Analysis pipeline</span>
+              <span class="analysis-status-title">Browser analysis pipeline</span>
               <span id="analysis-percent" class="analysis-percent">0%</span>
             </div>
             <div class="analysis-progress-track"><div id="analysis-progress-fill" class="analysis-progress-fill"></div></div>
@@ -121,6 +122,20 @@
             <div class="export-row">
               <button id="export-json-btn" class="secondary-btn" type="button" disabled><i data-lucide="download"></i> Export JSON</button>
             </div>
+
+            <div class="v2-control-panel">
+              <div class="v2-control-head">
+                <div class="v2-control-title"><i data-lucide="server-cog"></i> Deep Audio V2 node</div>
+                <span id="v2-status-tag" class="v2-status-tag">V2 OFFLINE</span>
+              </div>
+              <div class="v2-api-row">
+                <input id="v2-api-url" type="url" aria-label="V2 API URL" value="http://127.0.0.1:8000" />
+                <button id="v2-connect-btn" class="secondary-btn" type="button"><i data-lucide="plug-zap"></i> Connect</button>
+              </div>
+              <div class="v2-progress-track"><div id="v2-progress-fill" class="v2-progress-fill"></div></div>
+              <div id="v2-status-text" class="v2-status-text">Démarre le backend V2 puis connecte le nœud.</div>
+              <div id="v2-node-grid" class="v2-node-grid"></div>
+            </div>
           </aside>
         </div>
       </section>
@@ -129,6 +144,14 @@
         <span id="data-origin-text">Upload un MP3/WAV pour remplacer les données d’exemple.</span>
         <strong id="data-origin-tag">DEMO DATA</strong>
       </div>
+
+      <section id="v2-results" class="glass-card v2-results hidden">
+        <div class="v2-results-header">
+          <div class="v2-results-title"><i data-lucide="badge-check"></i> Deep Mastering V2 — Reference Measurements</div>
+          <div id="v2-provenance" class="v2-provenance"></div>
+        </div>
+        <div id="v2-results-grid" class="v2-results-grid"></div>
+      </section>
 
       <section class="metrics-row card-grid-7">
         <div class="glass-card metric-card">
@@ -236,6 +259,7 @@
   <script src="js/charts.js"></script>
   <script src="js/terminal.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/v2-client.js"></script>
 
   <script>lucide.createIcons();</script>
 </body>
