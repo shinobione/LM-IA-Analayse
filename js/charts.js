@@ -1,114 +1,125 @@
 /**
- * Chart.js Visualizations (Radar, Similarity Map, Timeline)
+ * Chart.js visualizations driven by real analysis results.
  */
 
-let radarChartInstance, similarityChartInstance, timelineChartInstance;
+let radarChartInstance, spectralChartInstance, timelineChartInstance;
+
+function destroyChart(instance) {
+  if (instance && typeof instance.destroy === 'function') instance.destroy();
+}
 
 function renderCharts(data) {
+  if (!window.Chart || !data) return;
   Chart.defaults.color = '#94a3b8';
   Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
 
-  // 1. Radar Chart (Sonic DNA)
-  const radarCtx = document.getElementById('radarChart').getContext('2d');
-  radarChartInstance = new Chart(radarCtx, {
-    type: 'radar',
-    data: {
-      labels: ['Energy', 'Danceability', 'Valence', 'Acousticness', 'Speechiness', 'Instrumentalness'],
-      datasets: [{
-        label: 'Audio Feature Vector',
-        data: [
-          data.acoustics.energy * 100,
-          data.acoustics.danceability * 100,
-          data.acoustics.valence * 100,
-          data.acoustics.acousticness * 100,
-          data.acoustics.speechiness * 100,
-          data.acoustics.instrumentalness * 100
-        ],
-        backgroundColor: 'rgba(29, 185, 84, 0.2)',
-        borderColor: '#1db954',
-        pointBackgroundColor: '#00f0ff',
-        borderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        r: {
-          angleLines: { color: 'rgba(255,255,255,0.08)' },
-          grid: { color: 'rgba(255,255,255,0.08)' },
-          pointLabels: { color: '#cbd5e1', font: { size: 11 } },
-          ticks: { display: false }
-        }
+  const dna = data.dna || {
+    energy: data.acoustics?.energy || 0.5,
+    rhythm: data.acoustics?.danceability || 0.5,
+    brightness: 0.5,
+    dynamics: 0.5,
+    stereoWidth: 0.5,
+    tonality: 0.5
+  };
+
+  const radarCanvas = document.getElementById('radarChart');
+  if (radarCanvas) {
+    destroyChart(radarChartInstance);
+    radarChartInstance = new Chart(radarCanvas.getContext('2d'), {
+      type: 'radar',
+      data: {
+        labels: ['Energy', 'Rhythm', 'Brightness', 'Dynamics', 'Stereo Width', 'Tonality'],
+        datasets: [{
+          label: 'DSP Feature Vector',
+          data: [dna.energy, dna.rhythm, dna.brightness, dna.dynamics, dna.stereoWidth, dna.tonality].map(v => Math.round(v * 100)),
+          backgroundColor: 'rgba(29, 185, 84, 0.18)',
+          borderColor: '#1db954',
+          pointBackgroundColor: '#00f0ff',
+          borderWidth: 2
+        }]
       },
-      plugins: { legend: { display: false } }
-    }
-  });
-
-  // 2. Similarity Clustering Scatter Map
-  const simCtx = document.getElementById('similarityChart').getContext('2d');
-  const scatterPoints = Array.from({ length: 40 }, () => ({
-    x: (Math.random() - 0.5) * 10,
-    y: (Math.random() - 0.5) * 10
-  }));
-
-  similarityChartInstance = new Chart(simCtx, {
-    type: 'scatter',
-    data: {
-      datasets: [
-        {
-          label: 'SHINOBIWAN Tracks',
-          data: [
-            { x: 1.2, y: 2.3 }, { x: 1.8, y: 2.9 }, { x: 2.1, y: 1.9 },
-            { x: -1.5, y: -2.1 }, { x: -0.9, y: -1.8 }
-          ],
-          backgroundColor: '#1db954',
-          pointRadius: 7
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 650 },
+        scales: {
+          r: {
+            min: 0,
+            max: 100,
+            angleLines: { color: 'rgba(255,255,255,0.08)' },
+            grid: { color: 'rgba(255,255,255,0.08)' },
+            pointLabels: { color: '#cbd5e1', font: { size: 11 } },
+            ticks: { display: false }
+          }
         },
-        {
-          label: 'Latent Cluster References',
-          data: scatterPoints,
-          backgroundColor: 'rgba(255, 255, 255, 0.2)',
-          pointRadius: 4
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        x: { grid: { color: 'rgba(255,255,255,0.05)' } },
-        y: { grid: { color: 'rgba(255,255,255,0.05)' } }
-      },
-      plugins: { legend: { display: false } }
-    }
-  });
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
 
-  // 3. Emotional Timeline
-  const timeCtx = document.getElementById('timelineChart').getContext('2d');
-  timelineChartInstance = new Chart(timeCtx, {
-    type: 'line',
-    data: {
-      labels: data.emotionalTimeline.map(item => item.phase),
-      datasets: [{
-        label: 'Emotional Intensity',
-        data: data.emotionalTimeline.map(item => item.intensity),
-        borderColor: '#00f0ff',
-        backgroundColor: 'rgba(0, 240, 255, 0.1)',
-        fill: true,
-        tension: 0.4,
-        pointRadius: 5,
-        pointBackgroundColor: '#7000ff'
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: { grid: { color: 'rgba(255,255,255,0.05)' }, max: 100 },
-        x: { grid: { display: false } }
+  const spectralCanvas = document.getElementById('spectralChart');
+  if (spectralCanvas) {
+    destroyChart(spectralChartInstance);
+    const fallbackBands = [
+      { name: 'sub', value: 7 }, { name: 'bass', value: 19 }, { name: 'lowMid', value: 18 },
+      { name: 'mid', value: 28 }, { name: 'presence', value: 21 }, { name: 'air', value: 7 }
+    ];
+    const bands = data.spectralBands || fallbackBands;
+    const nice = { sub: 'Sub <60', bass: 'Bass 60–250', lowMid: 'Low-mid 250–500', mid: 'Mid 500–2k', presence: 'Presence 2–6k', air: 'Air 6–16k' };
+    spectralChartInstance = new Chart(spectralCanvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: bands.map(b => nice[b.name] || b.name),
+        datasets: [{
+          label: 'Spectral energy share',
+          data: bands.map(b => b.value),
+          backgroundColor: 'rgba(0, 240, 255, 0.38)',
+          borderColor: '#00f0ff',
+          borderWidth: 1
+        }]
       },
-      plugins: { legend: { display: false } }
-    }
-  });
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { callback: v => `${v}%` } },
+          x: { grid: { display: false } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+
+  const timelineCanvas = document.getElementById('timelineChart');
+  if (timelineCanvas) {
+    destroyChart(timelineChartInstance);
+    const timeline = data.emotionalTimeline || [];
+    timelineChartInstance = new Chart(timelineCanvas.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: timeline.map(item => item.phase),
+        datasets: [{
+          label: 'Relative section energy',
+          data: timeline.map(item => item.intensity),
+          borderColor: '#00f0ff',
+          backgroundColor: 'rgba(0, 240, 255, 0.08)',
+          fill: true,
+          tension: 0.35,
+          pointRadius: 3,
+          pointBackgroundColor: '#1db954'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { min: 0, max: 100, grid: { color: 'rgba(255,255,255,0.05)' } },
+          x: { grid: { display: false } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
 }
+
+window.renderCharts = renderCharts;
