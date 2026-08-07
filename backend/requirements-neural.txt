@@ -4,7 +4,7 @@
 # GPU / inference
 # Install the CUDA-compatible PyTorch build appropriate for the machine first.
 torch>=2.4
- torchaudio>=2.4
+torchaudio>=2.4
 
 # Audio ML layers planned for LMNotebook
 transformers>=4.45
