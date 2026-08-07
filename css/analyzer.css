@@ -278,6 +278,75 @@
   margin-top: 12px;
 }
 
+/* --------------------------------------------------------------------------
+   Fluid desktop canvas
+   Keep the dashboard edge-to-edge on large/ultrawide displays while retaining
+   the existing stacking rules on tablets and phones.
+   -------------------------------------------------------------------------- */
+.app-layout {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: clamp(12px, 1.25vw, 30px);
+  gap: clamp(14px, 1.2vw, 24px);
+}
+
+.dashboard-grid {
+  gap: clamp(14px, 1.2vw, 24px);
+}
+
+.main-charts-row,
+.secondary-charts-row,
+.swot-row,
+.report-row {
+  gap: clamp(14px, 1.15vw, 24px);
+}
+
+@media (min-width: 1600px) {
+  .top-header {
+    padding-inline: clamp(24px, 1.5vw, 38px);
+  }
+
+  .card-grid-7 {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .upload-lab-inner {
+    grid-template-columns: minmax(0, 1.65fr) minmax(360px, .55fr);
+    gap: clamp(22px, 1.4vw, 34px);
+  }
+
+  .upload-description {
+    max-width: 1050px;
+  }
+
+  .chart-container {
+    height: clamp(280px, 16vw, 410px);
+  }
+
+  .waveform-box {
+    height: clamp(78px, 5vw, 118px);
+  }
+
+  .spectrogram-box {
+    height: clamp(140px, 8.5vw, 220px);
+  }
+
+  .acoustics-grid {
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  }
+}
+
+@media (min-width: 2200px) {
+  .glass-card {
+    padding: 22px;
+  }
+
+  .upload-lab-inner {
+    grid-template-columns: minmax(0, 1.8fr) minmax(420px, .6fr);
+  }
+}
+
 @media (max-width: 900px) {
   .upload-lab-inner {
     grid-template-columns: 1fr;
@@ -285,6 +354,10 @@
 }
 
 @media (max-width: 640px) {
+  .app-layout {
+    padding: 10px;
+  }
+
   .file-tech-grid {
     grid-template-columns: 1fr;
   }
