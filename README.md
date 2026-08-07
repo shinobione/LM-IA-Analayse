@@ -1,6 +1,6 @@
 # LMNotebook Neural Audio Analyzer
 
-Analyseur audio expérimental pour fichiers **MP3 / WAV**.
+Analyseur audio expérimental pour fichiers **MP3 / WAV**, désormais construit comme un moteur hybride **Browser DSP V1 + Deep Audio V2**.
 
 ## V1 — Browser DSP
 
@@ -25,83 +25,143 @@ La V1 fonctionne directement dans le navigateur et garde le fichier audio local 
 
 Les descripteurs de style de la V1 sont **heuristiques**. Ils ne doivent pas être confondus avec une vraie classification de genres par modèle ML.
 
-## V2 — Deep Neural Scan
+## V2 — Deep Audio backend
 
-La V2 devient une architecture hybride : le navigateur garde la V1 instantanée, puis un backend Python effectue les calculs trop lourds ou nécessitant des modèles ML.
+La V2 est maintenant amorcée dans `backend/` avec FastAPI.
 
-### Architecture cible
+Architecture retenue pour le développement :
 
 ```text
-GitHub Pages / Frontend
+GitHub Pages / navigateur
         │
-        ├── Browser DSP V1 (instantané)
+        ├── Browser DSP V1
         │
-        └── POST /api/analyze
-                  │
-                  ▼
-             FastAPI backend
-                  │
-       ┌──────────┼──────────┐
-       ▼          ▼          ▼
-   FFmpeg      Essentia    Neural models
-   / ffprobe   / librosa   / embeddings
-       │          │          │
-       └──────────┼──────────┘
-                  ▼
-          Unified analysis JSON
-                  │
-                  ▼
-         Dashboard + provenance
+        └── Deep Scan V2
+                 │
+                 ▼
+        RTX 3060 12 GB machine
+        FastAPI coordinator :8000
+          │
+          ├── FFmpeg / ffprobe / BS.1770
+          ├── futurs modèles neuraux lourds
+          │
+          └──── LAN ────> RTX 3070 Ti 8 GB worker :8001
+                          futurs stems / inférence parallèle
 ```
 
-### V2-A — Mastering / mesures de référence
+Le frontend n'a besoin de connaître que l'adresse du **coordinator RTX 3060**. Le backend inspecte ensuite les workers configurés sur le réseau local.
 
-Premier backend à construire, car il améliore immédiatement la précision sans dépendre de gros modèles :
+### V2-A — Mastering de référence — IMPLEMENTED FOUNDATION
 
-- FFmpeg / ffprobe pour normaliser et inspecter les fichiers
-- LUFS intégré, short-term et momentary selon BS.1770 / EBU R128
+`POST /api/analyze` mesure côté serveur :
+
+- métadonnées ffprobe : codec, conteneur, bitrate, sample rate, canaux, durée
+- Integrated Loudness (LUFS)
 - Loudness Range (LRA)
-- True Peak
-- dynamique et headroom
-- détection de clipping / inter-sample risk
-- mesures spectrales plus robustes
-- résultat JSON fusionné avec le DSP navigateur
+- True Peak (dBTP)
+- seuil loudness relatif
+- mean / max volume FFmpeg pour cross-check
+- provenance explicite `measured`
+- suppression du fichier temporaire après analyse
 
-### V2-B — Neural Music Understanding
+Endpoints :
 
-Ajouter ensuite les modèles audio :
+- `GET /api/health`
+- `GET /api/cluster`
+- `POST /api/analyze`
+- `/docs`
+
+Le dashboard contient maintenant un panneau **Deep Audio V2 node**, un bouton **Deep Scan V2** et une zone dédiée aux mesures mastering V2.
+
+## Hardware plan
+
+### Primary — RTX 3060 12 GB
+
+Rôle prévu :
+
+- coordinateur FastAPI
+- modèles nécessitant le plus de VRAM
+- genre / mood / embeddings
+- transcription lourde si nécessaire
+- fallback pour tous les jobs GPU
+
+### Secondary LAN worker — RTX 3070 Ti 8 GB
+
+Rôle prévu :
+
+- Demucs / séparation stems
+- modèles plus petits
+- transcription parallèle
+- batch / jobs concurrents
+
+Le routage futur privilégiera d'abord **la quantité de VRAM requise**, puis la vitesse et la charge du worker.
+
+## Lancer V2 localement
+
+Sur la machine RTX 3060 :
+
+```powershell
+cd backend
+Copy-Item .env.example .env
+.\run_windows.ps1
+```
+
+API :
+
+```text
+http://127.0.0.1:8000
+http://127.0.0.1:8000/docs
+```
+
+Pour éviter les contraintes HTTPS/HTTP pendant le développement, lancer aussi le frontend local depuis la racine :
+
+```powershell
+.\run_frontend_windows.ps1
+```
+
+Puis ouvrir :
+
+```text
+http://127.0.0.1:8008
+```
+
+Le site GitHub Pages public restera le frontend de production. Quand l'API locale sera validée, elle pourra être exposée proprement via un endpoint **HTTPS sécurisé / tunnel** sans louer immédiatement un GPU cloud.
+
+Voir `backend/README.md` pour la configuration complète du cluster RTX 3060 + RTX 3070 Ti.
+
+## V2-B — Neural Music Understanding — NEXT
 
 - genre / sous-genre multi-label avec probabilités
 - mood, valence, arousal, danceability et energy estimés
 - détection d'instruments
-- embeddings audio pour empreinte de morceau et similarité
-- scores de confiance affichés pour chaque prédiction
+- embeddings audio
+- scores de confiance par modèle
+- exécution CUDA locale
 
-### V2-C — Song Anatomy
+## V2-C — Song Anatomy
 
 - segmentation Intro / Verse / Chorus / Drop / Bridge / Outro
 - self-similarity matrix
-- détection de répétitions / hooks / climax
+- répétitions / hooks / climax
 - accords avec timestamps
 - changements de tonalité et tempo local
 
-### V2-D — Stems & Vocals
+## V2-D — Stems & Vocals
 
-- séparation stems avec Demucs : vocals / drums / bass / other
-- analyse DSP indépendante de chaque stem
-- transcription lyrics avec timestamps
+- Demucs : vocals / drums / bass / other
+- analyse DSP par stem
+- transcription lyrics + timestamps
 - langue détectée
-- activité vocale / densité / plages de pitch approximatives
+- activité vocale / densité / pitch approximatif
+- répartition des jobs entre les deux GPU
 
-### V2-E — Catalog Intelligence
-
-Quand plusieurs morceaux ont été analysés :
+## V2-E — Catalog Intelligence
 
 - index d'embeddings par track
 - carte de similarité réelle du catalogue
-- détection de clusters sonores
-- comparaison de deux versions d'un même morceau
-- historique des masters et différences V1/V2
+- clusters sonores
+- comparaison de versions / masters
+- historique d'analyse
 
 ## Principe de confiance des données
 
@@ -109,15 +169,14 @@ Chaque métrique doit indiquer sa provenance :
 
 - `measured` : mesure DSP déterministe
 - `estimated` : estimation algorithmique
-- `neural` : prédiction d'un modèle ML avec confiance
+- `neural` : prédiction ML avec confiance
 - `heuristic` : score dérivé / expérimental
 
 Les scores comme « commercial potential », « originality » ou « Spotify compatibility » ne doivent jamais être présentés comme des mesures objectives du fichier audio.
 
 ## Déploiement
 
-Le front statique reste sur **GitHub Pages**.
-
-Le backend V2 doit être hébergé séparément sur un service capable d'exécuter Python, FFmpeg et éventuellement des modèles lourds. Le front appelle ensuite l'URL du backend via HTTPS/CORS.
-
-**Prochain jalon recommandé : V2-A.** Créer `backend/` avec FastAPI + endpoint `/api/analyze`, brancher LUFS / True Peak / ffprobe, puis connecter ce résultat au dashboard existant avant d'ajouter les modèles neuraux.
+- **Frontend :** GitHub Pages
+- **V2 développement :** RTX 3060 locale + RTX 3070 Ti LAN
+- **V2 public :** endpoint HTTPS vers le coordinator local ou hébergement cloud ultérieur
+- **GPU cloud :** inutile tant que les deux GPU locaux couvrent correctement la charge
