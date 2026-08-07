@@ -1,0 +1,300 @@
+/* Audio Analyzer V1 additions */
+
+.upload-lab {
+  position: relative;
+  overflow: hidden;
+}
+
+.upload-lab::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 12% 0%, rgba(29,185,84,.10), transparent 34%);
+}
+
+.upload-lab-inner {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(280px, .7fr);
+  gap: 22px;
+  align-items: stretch;
+}
+
+.upload-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.upload-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  color: var(--spotify-green);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.upload-title {
+  font-size: clamp(1.35rem, 2vw, 2rem);
+  line-height: 1.15;
+  letter-spacing: -.03em;
+}
+
+.upload-description {
+  color: var(--text-muted);
+  max-width: 760px;
+  line-height: 1.6;
+  font-size: .92rem;
+}
+
+.drop-zone {
+  border: 1px dashed rgba(29,185,84,.45);
+  border-radius: 14px;
+  min-height: 168px;
+  padding: 20px;
+  background: rgba(29,185,84,.035);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  transition: border-color .2s ease, background .2s ease, transform .2s ease;
+}
+
+.drop-zone.dragover {
+  border-color: var(--cyber-blue);
+  background: rgba(0,240,255,.07);
+  transform: translateY(-1px);
+}
+
+.drop-zone input[type='file'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.drop-zone-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.drop-zone-meta {
+  color: var(--text-dim);
+  font-size: .8rem;
+  line-height: 1.5;
+}
+
+.analysis-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.primary-btn,
+.secondary-btn {
+  appearance: none;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 15px;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: .84rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity .2s ease, transform .2s ease, border-color .2s ease;
+}
+
+.primary-btn {
+  background: var(--spotify-green);
+  color: #041108;
+}
+
+.secondary-btn {
+  background: rgba(255,255,255,.05);
+  color: var(--text-main);
+  border: 1px solid rgba(255,255,255,.09);
+}
+
+.primary-btn:hover:not(:disabled),
+.secondary-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.primary-btn:disabled,
+.secondary-btn:disabled {
+  opacity: .42;
+  cursor: not-allowed;
+}
+
+.selected-file {
+  min-height: 20px;
+  color: var(--cyber-blue);
+  font-family: var(--font-mono);
+  font-size: .78rem;
+  word-break: break-word;
+}
+
+.analysis-status {
+  background: rgba(0,0,0,.18);
+  border: 1px solid rgba(255,255,255,.05);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.analysis-status-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.analysis-status-title {
+  font-size: .82rem;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.analysis-percent {
+  font-family: var(--font-mono);
+  color: var(--spotify-green);
+  font-weight: 700;
+}
+
+.analysis-progress-track {
+  height: 8px;
+  background: rgba(255,255,255,.07);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.analysis-progress-fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--spotify-green), var(--cyber-blue));
+  transition: width .18s ease;
+}
+
+.analysis-step {
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: .76rem;
+  min-height: 18px;
+}
+
+.file-tech-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.file-tech {
+  border: 1px solid rgba(255,255,255,.05);
+  background: rgba(255,255,255,.025);
+  border-radius: 9px;
+  padding: 9px 10px;
+}
+
+.file-tech span {
+  display: block;
+  font-size: .66rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.file-tech strong {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: .78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.data-origin-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 13px;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 10px;
+  background: rgba(255,255,255,.025);
+  font-size: .77rem;
+  color: var(--text-muted);
+}
+
+.data-origin-banner strong {
+  color: var(--spotify-green);
+  font-family: var(--font-mono);
+  font-size: .72rem;
+}
+
+.metric-card.measured .metric-title::before {
+  content: '●';
+  color: var(--spotify-green);
+  font-size: .55rem;
+  margin-right: 7px;
+}
+
+.metric-value-box.compact {
+  font-size: 1.25rem;
+  word-break: break-word;
+}
+
+.metric-sub {
+  font-size: .69rem;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+.analysis-disclaimer {
+  margin-top: 14px;
+  font-size: .72rem;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.export-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+@media (max-width: 900px) {
+  .upload-lab-inner {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .file-tech-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analysis-actions {
+    flex-direction: column;
+  }
+
+  .primary-btn,
+  .secondary-btn {
+    width: 100%;
+  }
+}
