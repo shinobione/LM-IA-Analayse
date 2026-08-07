@@ -12,6 +12,7 @@ from .cluster import inspect_workers
 from .config import settings
 from .ffmpeg_analysis import analyze_levels, analyze_loudness, check_ffmpeg, probe_audio
 from .gpu import detect_nvidia_gpus
+from .task_router import route_task
 
 
 app = FastAPI(
@@ -32,6 +33,7 @@ app.add_middleware(
 @app.get('/api/health')
 def health() -> dict[str, Any]:
     tools = check_ffmpeg()
+    gpus = detect_nvidia_gpus()
     return {
         'status': 'ok' if all(tools.values()) else 'degraded',
         'service': settings.app_name,
@@ -39,8 +41,8 @@ def health() -> dict[str, Any]:
         'node_name': settings.node_name,
         'node_role': settings.node_role,
         'ffmpeg': tools,
-        'gpus': detect_nvidia_gpus(),
-        'gpu_ready': bool(detect_nvidia_gpus()),
+        'gpus': gpus,
+        'gpu_ready': bool(gpus),
         'analysis_layers': {
             'v2a_mastering': True,
             'v2b_neural': False,
@@ -66,6 +68,12 @@ async def cluster() -> dict[str, Any]:
         'online_gpu_count': len(local_gpu)
         + sum(len(worker.get('gpus', [])) for worker in workers if worker.get('online')),
     }
+
+
+@app.get('/api/route/{task}')
+async def route(task: str) -> dict[str, Any]:
+    """Preview which GPU node should receive a future neural task."""
+    return await route_task(task)
 
 
 @app.post('/api/analyze')
