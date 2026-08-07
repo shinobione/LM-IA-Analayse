@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="LMNotebook Neural Audio Analyzer icon">
+  <defs>
+    <linearGradient id="g" x1="8" y1="14" x2="56" y2="50" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1db954"/>
+      <stop offset="1" stop-color="#00f0ff"/>
+    </linearGradient>
+    <radialGradient id="bg" cx="0" cy="0" r="1" gradientTransform="translate(20 16) rotate(44) scale(58)">
+      <stop stop-color="#14251b"/>
+      <stop offset="0.55" stop-color="#0b1110"/>
+      <stop offset="1" stop-color="#050708"/>
+    </radialGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#bg)" stroke="#26312d" stroke-width="2"/>
+  <circle cx="32" cy="32" r="21" fill="none" stroke="#1db954" stroke-opacity="0.22" stroke-width="2"/>
+  <circle cx="32" cy="32" r="15" fill="none" stroke="#00f0ff" stroke-opacity="0.13" stroke-width="1.5" stroke-dasharray="2.5 4"/>
+  <path d="M10 32h7l3.5-8 5.5 18 5-26 5.5 31 5-20 3.5 10 3.5-5H54" fill="none" stroke="url(#g)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="10" cy="32" r="2.5" fill="#1db954"/>
+  <circle cx="54" cy="32" r="2.5" fill="#00f0ff"/>
+</svg>
