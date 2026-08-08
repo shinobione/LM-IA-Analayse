@@ -2,6 +2,7 @@
   'use strict';
 
   const DEFAULT_API = 'http://127.0.0.1:8000';
+  const LOCAL_UI = 'http://127.0.0.1:8008';
   let selectedFile = null;
   let apiBase = DEFAULT_API;
   let connected = false;
@@ -38,10 +39,36 @@
     });
 
     deepBtn.addEventListener('click', runDeepScan);
+
+    if (isLocalRuntimePage()) {
+      setV2Status('V2 CONNECTING', 'Runtime local détecté • connexion automatique au moteur Deep Audio V2…');
+      window.setTimeout(async () => {
+        apiBase = DEFAULT_API;
+        await testConnection();
+        syncDeepButton(deepBtn);
+      }, 350);
+    } else if (isGitHubPages()) {
+      setV2Status(
+        'V2 LOCAL',
+        'Le Deep Scan V2 s’utilise depuis la page locale ouverte automatiquement par LMNotebook_START.cmd.'
+      );
+    }
   });
 
   function normalizeBase(value) {
     return String(value).trim().replace(/\/+$/, '');
+  }
+
+  function isLocalRuntimePage() {
+    return ['127.0.0.1', 'localhost'].includes(location.hostname) && location.port === '8008';
+  }
+
+  function isGitHubPages() {
+    return location.hostname.endsWith('github.io');
+  }
+
+  function isLoopbackApi() {
+    return apiBase.startsWith('http://127.0.0.1') || apiBase.startsWith('http://localhost');
   }
 
   function syncDeepButton(button) {
@@ -52,13 +79,13 @@
     setV2Status('CONNECTING', 'Connexion au nœud Deep Audio V2…');
     const deepBtn = document.getElementById('deep-analyze-audio-btn');
     try {
-      const healthResponse = await fetch(`${apiBase}/api/health`, { method: 'GET' });
+      const healthResponse = await fetch(`${apiBase}/api/health`, { method: 'GET', cache: 'no-store' });
       if (!healthResponse.ok) throw new Error(`HTTP ${healthResponse.status}`);
       const health = await healthResponse.json();
 
       let cluster = null;
       try {
-        const clusterResponse = await fetch(`${apiBase}/api/cluster`, { method: 'GET' });
+        const clusterResponse = await fetch(`${apiBase}/api/cluster`, { method: 'GET', cache: 'no-store' });
         if (clusterResponse.ok) cluster = await clusterResponse.json();
       } catch (_) {
         // Cluster details are optional for a single-node V2-A deployment.
@@ -195,10 +222,16 @@
 
   function explainConnectionError(error) {
     const message = error?.message || String(error || 'Connection failed');
-    if (location.protocol === 'https:' && apiBase.startsWith('http://') && !apiBase.includes('localhost') && !apiBase.includes('127.0.0.1')) {
-      return `HTTPS page → HTTP API bloquée par le navigateur. Utilise un endpoint HTTPS/tunnel. ${message}`;
+    if (isGitHubPages() && isLoopbackApi()) {
+      return `Tu es sur GitHub Pages. Pour le Deep Scan local, utilise ${LOCAL_UI}, ouvert automatiquement par LMNotebook_START.cmd. ${message}`;
     }
-    return `${message}. Démarre backend/run_windows.ps1 puis reconnecte le nœud.`;
+    if (isLocalRuntimePage()) {
+      return `${message}. Le moteur local n'a pas répondu ; relance LMNotebook_START.cmd, qui vérifiera désormais l'API avant d'ouvrir la page.`;
+    }
+    if (location.protocol === 'https:' && apiBase.startsWith('http://')) {
+      return `HTTPS page → HTTP API potentiellement bloquée par le navigateur. Utilise un endpoint HTTPS/tunnel. ${message}`;
+    }
+    return `${message}. Vérifie que le runtime LMNotebook est lancé.`;
   }
 
   function escapeHtml(value) {
