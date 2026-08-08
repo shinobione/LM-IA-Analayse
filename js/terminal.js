@@ -3,16 +3,17 @@
  */
 
 const TERMINAL_LOGS = [
-  '[SYSTEM] LMNotebook Local Audio DSP v1.0 ready',
+  '[SYSTEM] LMNotebook Local Audio DSP + Deep Audio V2 ready',
   '[INPUT] Accepted formats: MP3 / WAV',
-  '[PRIVACY] Audio remains inside the browser session',
-  '[DSP] PCM amplitude, RMS, peak, crest factor, clipping',
+  '[PRIVACY] V1 stays in browser; V2 temp files are deleted after analysis',
+  '[DSP V1] PCM amplitude, RMS, peak, crest factor, clipping',
   '[RHYTHM] Tempo estimation via onset-envelope autocorrelation',
   '[TONAL] Chroma extraction + major/minor key profile matching',
   '[SPECTRAL] FFT centroid, roll-off, flatness, flux and band energy',
   '[STEREO] Mid/Side width, channel balance and L/R correlation',
-  '[VISUAL] Real waveform, spectrogram and section-energy timeline',
-  '[V2] Neural genre, stems, lyrics, chords and BS.1770 LUFS planned'
+  '[V2-A] BS.1770 / EBU R128 loudness, LRA, true peak and metadata',
+  '[V2-B] CUDA neural genre/style, mood, instrumentation and 512D embeddings active',
+  '[NEXT] Song anatomy, stems, lyrics and LAN GPU worker'
 ];
 
 function startTerminal() {

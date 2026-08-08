@@ -1,6 +1,6 @@
 /**
  * LMNotebook Neural Audio — Application Orchestrator
- * Loads demo data, then replaces it with real DSP measurements after upload.
+ * Starts from a clean waiting state and only renders measurements from a real file.
  */
 
 let selectedAudioFile = null;
@@ -9,20 +9,7 @@ let analyzerInstance = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   initLoader(async () => {
-    let demoData = null;
-    try {
-      const response = await fetch('data/analysis.json');
-      demoData = await response.json();
-    } catch (err) {
-      console.warn('Demo payload unavailable:', err);
-    }
-
-    if (demoData) {
-      const normalized = normalizeLegacyData(demoData);
-      populateData(normalized, false);
-      renderCharts(normalized);
-    }
-
+    initializeEmptyState();
     initWaveform();
     initSpectrogram();
     startTerminal();
@@ -30,6 +17,45 @@ document.addEventListener('DOMContentLoaded', () => {
     lucide.createIcons();
   });
 });
+
+function initializeEmptyState() {
+  updateTopMetrics({ acoustics: {} }, false);
+  updateFileTech(null, false);
+  setDataOrigin('AWAITING ANALYSIS', 'Choisis un MP3/WAV : aucune donnée de démonstration n’est injectée.');
+  animateGauge(0);
+
+  const genresContainer = document.getElementById('genres-container');
+  if (genresContainer) {
+    genresContainer.innerHTML = '<span class="genre-tag">En attente du scan DSP</span>';
+  }
+
+  const strengthsList = document.getElementById('strengths-list');
+  if (strengthsList) {
+    strengthsList.innerHTML = '<li>Les points forts techniques apparaîtront après l’analyse du fichier.</li>';
+  }
+
+  const weaknessesList = document.getElementById('weaknesses-list');
+  if (weaknessesList) {
+    weaknessesList.innerHTML = '<li>Les points de vigilance apparaîtront après l’analyse du fichier.</li>';
+  }
+
+  const reportBox = document.getElementById('ai-report-box');
+  if (reportBox) {
+    reportBox.innerHTML = `
+      <div>
+        <div class="report-section-title">ANALYSIS STATUS</div>
+        <p>Aucun morceau analysé. LMNotebook n’affiche ici que des résultats calculés à partir du fichier sélectionné.</p>
+      </div>
+      <div>
+        <div class="report-section-title">AVAILABLE LAYERS</div>
+        <p>Scan DSP V1 local + Deep Mastering V2 + Neural Music Understanding V2-B lorsque le runtime CUDA est disponible.</p>
+      </div>
+    `;
+  }
+
+  const visualTag = document.getElementById('visual-data-tag');
+  if (visualTag) visualTag.textContent = 'WAITING FOR FILE';
+}
 
 function setupAudioAnalyzerUI() {
   const fileInput = document.getElementById('audio-file-input');
@@ -84,6 +110,7 @@ function setSelectedFile(file) {
   const analyzeBtn = document.getElementById('analyze-audio-btn');
   if (analyzeBtn) analyzeBtn.disabled = false;
   setStatus(0, 'Fichier prêt. Lance le scan DSP.', false);
+  setDataOrigin('FILE READY', `${file.name} • aucune analyse lancée pour l’instant`);
 }
 
 async function runAnalysis() {
@@ -109,6 +136,8 @@ async function runAnalysis() {
     animateGauge(result.system.confidenceScore);
     setStatus(100, 'Analyse terminée — données réelles affichées.', false);
     setDataOrigin('REAL LOCAL DSP', `${result.file.name} • ${result.file.duration} • ${result.file.sampleRate} Hz`);
+    const visualTag = document.getElementById('visual-data-tag');
+    if (visualTag) visualTag.textContent = 'REAL FILE DATA';
     if (exportBtn) exportBtn.disabled = false;
     lucide.createIcons();
   } catch (err) {
@@ -205,8 +234,8 @@ function updateFileTech(file, isReal) {
   if (!grid) return;
   if (!file) {
     grid.innerHTML = `
-      <div class="file-tech"><span>Source</span><strong>Demo payload</strong></div>
-      <div class="file-tech"><span>Mode</span><strong>Preview</strong></div>
+      <div class="file-tech"><span>Source</span><strong>Aucun fichier</strong></div>
+      <div class="file-tech"><span>Mode</span><strong>En attente</strong></div>
     `;
     return;
   }
@@ -217,7 +246,7 @@ function updateFileTech(file, isReal) {
     ['Sample rate', file.sampleRate ? `${file.sampleRate} Hz` : '—'],
     ['Channels', file.channels ?? '—'],
     ['Size', file.sizeMB ? `${file.sizeMB} MB` : '—'],
-    ['Origin', isReal ? 'Local browser DSP' : 'Demo'],
+    ['Origin', isReal ? 'Local browser DSP' : '—'],
     ['Privacy', isReal ? 'File stays on device' : '—']
   ].map(([label, value]) => `
     <div class="file-tech"><span>${escapeHtml(label)}</span><strong title="${escapeHtml(String(value))}">${escapeHtml(String(value))}</strong></div>
@@ -257,31 +286,6 @@ function exportLastAnalysis() {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function normalizeLegacyData(data) {
-  if (data.dna) return data;
-  const ac = data.acoustics || {};
-  const stereoWidth = parseFloat(ac.stereoWidth) || 100;
-  const demo = {
-    ...data,
-    source: 'demo-payload',
-    dna: {
-      energy: Number(ac.energy ?? 0.72),
-      rhythm: Number(ac.danceability ?? 0.68),
-      brightness: 0.58,
-      dynamics: 0.52,
-      stereoWidth: Math.min(1, stereoWidth / 160),
-      tonality: Number(ac.chromaEnergy ?? 0.72)
-    },
-    spectralBands: [
-      { name: 'sub', value: 8 }, { name: 'bass', value: 19 }, { name: 'lowMid', value: 15 },
-      { name: 'mid', value: 27 }, { name: 'presence', value: 23 }, { name: 'air', value: 8 }
-    ],
-    file: null
-  };
-  setDataOrigin('DEMO DATA', 'Upload un MP3/WAV pour remplacer ces valeurs');
-  return demo;
 }
 
 function humanizeKey(key) {
