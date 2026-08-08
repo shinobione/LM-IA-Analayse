@@ -2,6 +2,10 @@
 
 Analyseur audio expérimental pour fichiers **MP3 / WAV**, construit comme un moteur hybride **Browser DSP V1 + Deep Audio V2**.
 
+## SHINOBIWAN Studio Phase 5
+
+The coordinator now exposes `POST /api/studio/analyze`, a one-upload, temporary-audio endpoint that returns the versioned Studio analysis envelope while preserving partial-layer warnings. Canonical persistence remains in LaunchPAD/R2 through Track Manager; SonicTrace does not retain or own a competing production catalog. See [`docs/STUDIO_PHASE5_CONTRACT.md`](docs/STUDIO_PHASE5_CONTRACT.md).
+
 ## Windows — mode zéro fatigue neuronale
 
 Sur la machine RTX 3060, l’usage normal est désormais :
