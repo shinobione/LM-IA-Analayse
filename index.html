@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="css/animations.css" />
   <link rel="stylesheet" href="css/analyzer.css" />
   <link rel="stylesheet" href="css/v2.css" />
+  <link rel="stylesheet" href="css/anatomy.css" />
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
@@ -89,17 +90,17 @@
         <div class="upload-lab-inner">
           <div class="upload-copy">
             <div class="upload-eyebrow"><i data-lucide="scan-line"></i> AUDIO FORENSICS / HYBRID DSP</div>
-            <h2 class="upload-title">Un seul morceau, deux couches d’analyse : V1 instantanée dans le navigateur + Deep Scan V2 sur le nœud Python.</h2>
+            <h2 class="upload-title">Un seul morceau, plusieurs couches d’analyse : V1 instantanée + Deep Audio V2 + compréhension structurelle.</h2>
             <p class="upload-description">
               La V1 garde BPM, tonalité, RMS, peak, stéréo, FFT, waveform et spectrogramme en local.
-              La V2 ajoute le mastering de référence via FFmpeg / BS.1770 / EBU R128 et la couche V2-B exploite la RTX pour genre/style, mood, instrumentation et embeddings.
+              La V2 ajoute le mastering de référence, Neural Music Understanding, Song Anatomy V2-C et le cluster GPU pour les stems Demucs.
             </p>
 
             <div id="drop-zone" class="drop-zone">
               <input id="audio-file-input" type="file" accept="audio/mpeg,audio/wav,.mp3,.wav" />
               <div class="drop-zone-title"><i data-lucide="upload-cloud"></i> Glisse un MP3/WAV ici ou sélectionne un fichier</div>
               <div id="selected-file-name" class="selected-file">Aucun fichier sélectionné</div>
-              <div class="drop-zone-meta">V1 reste 100% locale. Le Deep Scan V2 envoie temporairement le fichier au nœud local, puis le supprime après analyse.</div>
+              <div class="drop-zone-meta">V1 reste 100% locale. Les couches V2 envoient temporairement le fichier au nœud local, puis le suppriment après analyse.</div>
               <div class="analysis-actions">
                 <button id="choose-audio-btn" class="secondary-btn" type="button"><i data-lucide="folder-open"></i> Choisir un fichier</button>
                 <button id="analyze-audio-btn" class="primary-btn" type="button" disabled><i data-lucide="activity"></i> Scan DSP V1</button>
@@ -260,6 +261,7 @@
   <script src="js/terminal.js"></script>
   <script src="js/app.js"></script>
   <script src="js/v2-client.js"></script>
+  <script src="js/anatomy-client.js"></script>
 
   <script>lucide.createIcons();</script>
 </body>
