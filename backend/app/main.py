@@ -16,6 +16,7 @@ from .gpu import detect_nvidia_gpus
 from .neural import analyze_neural, runtime_status as neural_runtime_status
 from .task_router import route_task
 
+API_SCHEMA = '2.1'
 
 app = FastAPI(
     title=settings.app_name,
@@ -39,6 +40,7 @@ def health() -> dict[str, Any]:
     neural = neural_runtime_status()
     return {
         'status': 'ok' if all(tools.values()) else 'degraded',
+        'api_schema': API_SCHEMA,
         'service': settings.app_name,
         'version': settings.version,
         'node_name': settings.node_name,
@@ -134,7 +136,7 @@ async def analyze(file: UploadFile = File(...), neural: bool = True) -> dict[str
                 neural_warning = neural_status.get('error') or 'Neural runtime is not ready.'
 
         payload: dict[str, Any] = {
-            'schema_version': '2.1',
+            'schema_version': API_SCHEMA,
             'engine': {
                 'name': settings.app_name,
                 'version': settings.version,
