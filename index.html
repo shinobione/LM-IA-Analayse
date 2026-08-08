@@ -92,14 +92,14 @@
             <h2 class="upload-title">Un seul morceau, deux couches d’analyse : V1 instantanée dans le navigateur + Deep Scan V2 sur le nœud Python.</h2>
             <p class="upload-description">
               La V1 garde BPM, tonalité, RMS, peak, stéréo, FFT, waveform et spectrogramme en local.
-              La V2 ajoute des mesures mastering de référence via FFmpeg / BS.1770 / EBU R128 et prépare les couches GPU pour genre, mood, embeddings, stems et transcription.
+              La V2 ajoute le mastering de référence via FFmpeg / BS.1770 / EBU R128 et la couche V2-B exploite la RTX pour genre/style, mood, instrumentation et embeddings.
             </p>
 
             <div id="drop-zone" class="drop-zone">
               <input id="audio-file-input" type="file" accept="audio/mpeg,audio/wav,.mp3,.wav" />
               <div class="drop-zone-title"><i data-lucide="upload-cloud"></i> Glisse un MP3/WAV ici ou sélectionne un fichier</div>
               <div id="selected-file-name" class="selected-file">Aucun fichier sélectionné</div>
-              <div class="drop-zone-meta">V1 reste 100% locale. Le Deep Scan V2 envoie temporairement le fichier au nœud que tu as configuré, puis le supprime après analyse.</div>
+              <div class="drop-zone-meta">V1 reste 100% locale. Le Deep Scan V2 envoie temporairement le fichier au nœud local, puis le supprime après analyse.</div>
               <div class="analysis-actions">
                 <button id="choose-audio-btn" class="secondary-btn" type="button"><i data-lucide="folder-open"></i> Choisir un fichier</button>
                 <button id="analyze-audio-btn" class="primary-btn" type="button" disabled><i data-lucide="activity"></i> Scan DSP V1</button>
@@ -116,8 +116,8 @@
             <div class="analysis-progress-track"><div id="analysis-progress-fill" class="analysis-progress-fill"></div></div>
             <div id="analysis-step" class="analysis-step">En attente d’un fichier audio.</div>
             <div id="file-tech-grid" class="file-tech-grid">
-              <div class="file-tech"><span>Source</span><strong>Demo payload</strong></div>
-              <div class="file-tech"><span>Mode</span><strong>Preview</strong></div>
+              <div class="file-tech"><span>Source</span><strong>Aucun fichier</strong></div>
+              <div class="file-tech"><span>Mode</span><strong>En attente</strong></div>
             </div>
             <div class="export-row">
               <button id="export-json-btn" class="secondary-btn" type="button" disabled><i data-lucide="download"></i> Export JSON</button>
@@ -133,7 +133,7 @@
                 <button id="v2-connect-btn" class="secondary-btn" type="button"><i data-lucide="plug-zap"></i> Connect</button>
               </div>
               <div class="v2-progress-track"><div id="v2-progress-fill" class="v2-progress-fill"></div></div>
-              <div id="v2-status-text" class="v2-status-text">Démarre le backend V2 puis connecte le nœud.</div>
+              <div id="v2-status-text" class="v2-status-text">Connexion automatique au runtime local quand il est disponible.</div>
               <div id="v2-node-grid" class="v2-node-grid"></div>
             </div>
           </aside>
@@ -141,8 +141,8 @@
       </section>
 
       <div class="data-origin-banner">
-        <span id="data-origin-text">Upload un MP3/WAV pour remplacer les données d’exemple.</span>
-        <strong id="data-origin-tag">DEMO DATA</strong>
+        <span id="data-origin-text">Choisis un MP3/WAV : aucune donnée de démonstration n’est injectée.</span>
+        <strong id="data-origin-tag">AWAITING ANALYSIS</strong>
       </div>
 
       <section id="v2-results" class="glass-card v2-results hidden">
@@ -196,13 +196,13 @@
           <h3 class="card-header"><i data-lucide="radar"></i> Measured Sonic DNA</h3>
           <div class="chart-container"><canvas id="radarChart"></canvas></div>
           <div class="genres-badges" id="genres-container"></div>
-          <p class="analysis-disclaimer">Les badges sont des descripteurs heuristiques issus du DSP. Ils ne sont pas encore des prédictions de genre par réseau neuronal.</p>
+          <p class="analysis-disclaimer">Les badges de ce bloc sont les descripteurs heuristiques V1. Les prédictions Neural V2-B apparaissent dans leur section dédiée après un Deep Scan.</p>
         </div>
 
         <div class="glass-card col-span-8">
           <div class="card-header-flex">
             <h3><i data-lucide="waves"></i> Waveform & Spectrogram</h3>
-            <span class="tag-live">REAL FILE DATA</span>
+            <span id="visual-data-tag" class="tag-live">WAITING FOR FILE</span>
           </div>
           <div class="waveform-box"><svg id="svg-waveform" viewBox="0 0 1000 120" preserveAspectRatio="none"></svg></div>
           <div class="spectrogram-box"><canvas id="spectrogramCanvas" height="140"></canvas></div>
@@ -244,7 +244,7 @@
             <div class="terminal-dots">
               <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
             </div>
-            <span class="terminal-title">LMNotebook DSP Console v1.0</span>
+            <span class="terminal-title">LMNotebook DSP Console v2.1</span>
           </div>
           <div class="terminal-body" id="terminal-output"></div>
         </div>
