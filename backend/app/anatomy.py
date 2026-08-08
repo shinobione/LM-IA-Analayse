@@ -12,22 +12,29 @@ from .config import settings
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 ANATOMY_PYTHON = BACKEND_ROOT / ".venv-anatomy" / "Scripts" / "python.exe"
 ANATOMY_RUNNER = BACKEND_ROOT / "anatomy_runner.py"
+ANATOMY_READY_MARKER = BACKEND_ROOT / ".v2c-ready"
 
 
 def runtime_status(deep: bool = False) -> dict[str, Any]:
+    installed = ANATOMY_PYTHON.exists() and ANATOMY_RUNNER.exists()
+    preflight_validated = ANATOMY_READY_MARKER.exists()
     status: dict[str, Any] = {
-        "installed": ANATOMY_PYTHON.exists() and ANATOMY_RUNNER.exists(),
+        "installed": installed,
+        "preflight_validated": preflight_validated,
         "ready": False,
         "runtime": "isolated",
         "python": str(ANATOMY_PYTHON),
         "engine": "librosa/scipy structural DSP",
     }
-    if not status["installed"]:
+    if not installed:
         status["error"] = "Song Anatomy runtime is not installed."
+        return status
+    if not preflight_validated:
+        status["error"] = "Song Anatomy runtime exists but its dependency preflight has not passed."
         return status
     if not deep:
         status["ready"] = True
-        status["status_source"] = "launcher-preflight"
+        status["status_source"] = "launcher-preflight-marker"
         return status
 
     code = (
