@@ -84,9 +84,27 @@ function loadUnifiedAnalysisAssets() {
   }
 }
 
+function loadHumanInsightAssets() {
+  if (!document.querySelector('link[data-lmn-human-insights]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'css/human-insights.css?v=1';
+    link.dataset.lmnHumanInsights = '1';
+    document.head.appendChild(link);
+  }
+
+  if (!document.querySelector('script[data-lmn-human-insights]')) {
+    const script = document.createElement('script');
+    script.src = 'js/human-insights.js?v=1';
+    script.dataset.lmnHumanInsights = '1';
+    document.head.appendChild(script);
+  }
+}
+
 loadFusionAssets();
 loadSemanticAssets();
 loadUnifiedAnalysisAssets();
+loadHumanInsightAssets();
 
 function initLoader(onComplete) {
   const statusEl = document.getElementById('loader-status');
