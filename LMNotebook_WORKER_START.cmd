@@ -6,6 +6,7 @@ title LMNotebook GPU Worker
 set "ROOT=%~dp0"
 set "BACKEND=%~dp0backend"
 set "VENV=%~dp0backend\.venv"
+set "STEMS_VENV=%~dp0backend\.venv-stems"
 set "HF_HOME=%~dp0backend\models\huggingface"
 set "PATH=%LOCALAPPDATA%\Microsoft\WinGet\Links;%USERPROFILE%\.local\bin;%PATH%"
 if not exist "%HF_HOME%" mkdir "%HF_HOME%" >nul 2>&1
@@ -15,7 +16,7 @@ echo ============================================================
 echo  LMNotebook - GPU WORKER LAN
 echo ============================================================
 echo.
-echo Ce PC devient un worker GPU LMNotebook sur le reseau local.
+echo V2-B Neural et V2-D Demucs utilisent maintenant deux environnements separes.
 echo Aucun frontend n'est lance ici.
 echo.
 
@@ -38,37 +39,40 @@ if not defined FFMPEG goto :fail
 for %%D in ("%FFMPEG%") do set "PATH=%%~dpD;%PATH%"
 echo [2/7] FFmpeg OK.
 
-echo [3/7] Environnement Python prive...
+echo [3/7] Environnement Python principal V2-A/V2-B...
 if not exist "%VENV%\Scripts\python.exe" (
   if exist "%VENV%" rmdir /s /q "%VENV%"
   "%UV%" venv --python 3.12 "%VENV%"
   if errorlevel 1 goto :fail
 )
 
-echo [4/7] Dependances backend...
+echo [4/7] Reparation / synchronisation V2-A + V2-B...
 "%UV%" pip install --python "%VENV%\Scripts\python.exe" -r "%BACKEND%\requirements.txt"
 if errorlevel 1 goto :fail
-
-echo [5/7] CUDA + Neural...
-"%VENV%\Scripts\python.exe" -c "import torch; import sys; sys.exit(0 if torch.cuda.is_available() else 3)" >nul 2>&1
-if errorlevel 1 (
-  "%UV%" pip install --python "%VENV%\Scripts\python.exe" torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128
-  if errorlevel 1 goto :fail
-)
-"%UV%" pip install --python "%VENV%\Scripts\python.exe" -r "%BACKEND%\requirements-neural.txt"
+rem Remove packages that were accidentally mixed into the CLAP environment by the first V2-D bootstrap.
+"%UV%" pip uninstall --python "%VENV%\Scripts\python.exe" demucs torchaudio >nul 2>&1
+rem Force the known CUDA build back in case Demucs previously replaced it with a PyPI CPU/default build.
+"%UV%" pip install --python "%VENV%\Scripts\python.exe" --upgrade torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128
 if errorlevel 1 goto :fail
-"%VENV%\Scripts\python.exe" -c "import torch; from transformers import ClapModel, ClapProcessor; assert torch.cuda.is_available(); x=torch.randn((64,64),device='cuda'); y=x@x; torch.cuda.synchronize(); print('[OK] Neural CUDA:',torch.cuda.get_device_name(0))"
+"%UV%" pip install --python "%VENV%\Scripts\python.exe" --upgrade -r "%BACKEND%\requirements-neural.txt"
+if errorlevel 1 goto :fail
+"%VENV%\Scripts\python.exe" -c "import torch,transformers; from transformers import ClapModel,ClapProcessor; assert torch.cuda.is_available(); assert torch.__version__.startswith('2.11.0'); print('[OK] V2-B Neural CUDA:',torch.cuda.get_device_name(0),'| Torch',torch.__version__,'| Transformers',transformers.__version__)"
 if errorlevel 1 goto :fail
 
-echo [6/7] Demucs + torchaudio CUDA...
-"%VENV%\Scripts\python.exe" -c "import torch,torchaudio,demucs; assert torch.cuda.is_available()" >nul 2>&1
-if errorlevel 1 (
-  "%UV%" pip install --python "%VENV%\Scripts\python.exe" --upgrade torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/cu128
-  if errorlevel 1 goto :fail
-  "%UV%" pip install --python "%VENV%\Scripts\python.exe" --upgrade -r "%BACKEND%\requirements-stems.txt"
+echo [5/7] Creation du runtime ISOLE V2-D Stems...
+if not exist "%STEMS_VENV%\Scripts\python.exe" (
+  if exist "%STEMS_VENV%" rmdir /s /q "%STEMS_VENV%"
+  "%UV%" venv --python 3.12 "%STEMS_VENV%"
   if errorlevel 1 goto :fail
 )
-"%VENV%\Scripts\python.exe" -c "import torch,torchaudio,demucs; assert torch.cuda.is_available(); print('[OK] Demucs htdemucs:',torch.cuda.get_device_name(0))"
+
+echo [6/7] Installation PyTorch / torchaudio CUDA + Demucs dans .venv-stems...
+"%UV%" pip install --python "%STEMS_VENV%\Scripts\python.exe" torch==2.11.0 torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/cu128
+if errorlevel 1 goto :fail
+rem Do NOT use --upgrade here: installed CUDA torch/torchaudio must stay pinned.
+"%UV%" pip install --python "%STEMS_VENV%\Scripts\python.exe" -r "%BACKEND%\requirements-stems.txt"
+if errorlevel 1 goto :fail
+"%STEMS_VENV%\Scripts\python.exe" -c "import torch,torchaudio,demucs; assert torch.cuda.is_available(); assert torch.__version__.startswith('2.11.0'); assert torchaudio.__version__.startswith('2.11.0'); print('[OK] V2-D Demucs ISOLE:',torch.cuda.get_device_name(0),'| Torch',torch.__version__,'| Torchaudio',torchaudio.__version__)"
 if errorlevel 1 goto :fail
 
 echo [7/7] Pare-feu LAN + demarrage worker...
@@ -79,8 +83,8 @@ set "LMN_WORKER_PORT=8001"
 if errorlevel 1 goto :fail
 
 echo.
-echo [OK] Worker GPU LMNotebook actif + Demucs READY.
-echo [INFO] Le coordinateur RTX3060 le detectera automatiquement sur le LAN.
+echo [OK] Worker GPU actif.
+echo [OK] V2-B CLAP et V2-D Demucs sont isoles l'un de l'autre.
 for /f "delims=" %%I in ('powershell -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 ^| ? {$_.IPAddress -notlike '169.254*' -and $_.IPAddress -ne '127.0.0.1'} ^| Select-Object -First 1 -ExpandProperty IPAddress)"') do set "LANIP=%%I"
 if defined LANIP echo [INFO] Adresse worker : http://%LANIP%:8001
 echo.
@@ -105,6 +109,6 @@ exit /b 0
 :fail
 echo.
 echo [ERREUR] Le worker n'a pas pu etre initialise.
-echo Le PC principal n'est pas affecte. Envoie-moi cette fenetre.
+echo Le coordinateur n'est pas affecte. Envoie-moi cette fenetre.
 pause
 exit /b 1
