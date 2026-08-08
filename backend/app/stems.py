@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import json
 import math
 import subprocess
-import sys
 import tempfile
 import time
 from pathlib import Path
@@ -13,28 +13,52 @@ from .gpu import detect_nvidia_gpus
 
 MODEL_NAME = 'htdemucs'
 EXPECTED_STEMS = ('vocals', 'drums', 'bass', 'other')
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+STEMS_PYTHON = BACKEND_ROOT / '.venv-stems' / 'Scripts' / 'python.exe'
+STEMS_RUNNER = BACKEND_ROOT / 'stems_runner.py'
 
 
 def runtime_status() -> dict[str, Any]:
-    try:
-        import demucs  # type: ignore
-        import torch
-        import torchaudio  # noqa: F401
-
-        cuda_ready = bool(torch.cuda.is_available())
+    if not STEMS_PYTHON.exists():
         return {
-            'ready': cuda_ready,
+            'ready': False,
             'model': MODEL_NAME,
-            'demucs_version': getattr(demucs, '__version__', '4.x'),
-            'torch_version': torch.__version__,
-            'cuda_runtime': torch.version.cuda,
-            'device_name': torch.cuda.get_device_name(0) if cuda_ready else None,
-            'error': None if cuda_ready else 'CUDA is not available for Demucs.',
+            'runtime': 'isolated',
+            'error': 'backend/.venv-stems is not installed yet.',
         }
+
+    code = (
+        "import json,torch,torchaudio,demucs; "
+        "cuda=bool(torch.cuda.is_available()); "
+        "print(json.dumps({'ready':cuda,'torch_version':torch.__version__,"
+        "'torchaudio_version':torchaudio.__version__,'cuda_runtime':torch.version.cuda,"
+        "'device_name':torch.cuda.get_device_name(0) if cuda else None,"
+        "'demucs_version':getattr(demucs,'__version__','4.x')}))"
+    )
+    try:
+        completed = subprocess.run(
+            [str(STEMS_PYTHON), '-c', code],
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+        if completed.returncode != 0:
+            tail = (completed.stderr or completed.stdout or '')[-2000:]
+            raise RuntimeError(tail or f'stems runtime exited {completed.returncode}')
+        payload = json.loads((completed.stdout or '').strip().splitlines()[-1])
+        payload.update({'model': MODEL_NAME, 'runtime': 'isolated', 'python': str(STEMS_PYTHON)})
+        if not payload.get('ready'):
+            payload['error'] = 'CUDA is not available in the isolated Demucs runtime.'
+        else:
+            payload['error'] = None
+        return payload
     except Exception as exc:  # noqa: BLE001
         return {
             'ready': False,
             'model': MODEL_NAME,
+            'runtime': 'isolated',
+            'python': str(STEMS_PYTHON),
             'error': str(exc),
         }
 
@@ -43,6 +67,8 @@ def separate_and_analyze(path: Path) -> dict[str, Any]:
     status = runtime_status()
     if not status.get('ready'):
         raise RuntimeError(status.get('error') or 'Demucs runtime is not ready.')
+    if not STEMS_RUNNER.exists():
+        raise RuntimeError(f'Isolated Demucs runner missing: {STEMS_RUNNER}')
 
     started = time.perf_counter()
     gpu = detect_nvidia_gpus()
@@ -50,16 +76,14 @@ def separate_and_analyze(path: Path) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix='lmn-demucs-') as tmp_dir:
         out_dir = Path(tmp_dir)
         command = [
-            sys.executable,
-            '-m',
-            'demucs.separate',
-            '--name',
-            MODEL_NAME,
-            '--device',
-            'cuda',
-            '--out',
-            str(out_dir),
+            str(STEMS_PYTHON),
+            str(STEMS_RUNNER),
+            '--input',
             str(path),
+            '--output',
+            str(out_dir),
+            '--model',
+            MODEL_NAME,
         ]
         completed = subprocess.run(
             command,
@@ -102,17 +126,25 @@ def separate_and_analyze(path: Path) -> dict[str, Any]:
         return {
             'ready': True,
             'model': MODEL_NAME,
+            'runtime': 'isolated',
             'device': status.get('device_name') or 'cuda',
+            'torch_version': status.get('torch_version'),
+            'torchaudio_version': status.get('torchaudio_version'),
+            'cuda_runtime': status.get('cuda_runtime'),
             'gpu_snapshot': gpu,
             'elapsed_seconds': round(time.perf_counter() - started, 2),
             'stem_count': len(stems),
             'stems': stems,
-            'provenance': 'DEMUCS GPU separation + FFmpeg per-stem measurements',
+            'provenance': 'DEMUCS GPU separation (isolated runtime) + FFmpeg per-stem measurements',
         }
 
 
 def _find_stem_dir(out_dir: Path) -> Path:
-    candidates = [p for p in out_dir.rglob('*') if p.is_dir() and any((p / f'{name}.wav').exists() for name in EXPECTED_STEMS)]
+    candidates = [
+        p
+        for p in out_dir.rglob('*')
+        if p.is_dir() and any((p / f'{name}.wav').exists() for name in EXPECTED_STEMS)
+    ]
     if not candidates:
         raise RuntimeError('Demucs finished but no stem directory was found.')
     candidates.sort(key=lambda p: len(p.parts))
