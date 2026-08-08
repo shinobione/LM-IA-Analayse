@@ -59,8 +59,8 @@ function Install-WingetPackage([string]$Id, [string]$Label) {
 function Test-PythonCandidate([string]$Exe, [string[]]$Prefix) {
     if (-not $Exe -or -not (Test-Path $Exe)) { return $null }
     try {
-        $cmdArgs = @($Prefix) + @('--version')
-        $output = (& $Exe $cmdArgs 2>&1 | Select-Object -First 1)
+        $pythonArgs = @($Prefix) + @('--version')
+        $output = (& $Exe @pythonArgs 2>&1 | Select-Object -First 1)
         if ($LASTEXITCODE -eq 0 -and "$output" -match '^Python\s+\d') {
             return @{ exe = $Exe; prefix = @($Prefix); version = "$output" }
         }
@@ -94,9 +94,14 @@ function Resolve-Python {
     return $null
 }
 
-function Run-Python($Py, [string[]]$Args) {
-    $cmdArgs = @($Py.prefix) + @($Args)
-    & $Py.exe $cmdArgs
+function Invoke-PythonCommand {
+    param(
+        [Parameter(Mandatory = $true)]$Py,
+        [Parameter(Mandatory = $true)][string[]]$CommandArgs
+    )
+
+    $allPythonArgs = @($Py.prefix) + @($CommandArgs)
+    & $Py.exe @allPythonArgs
     if ($LASTEXITCODE -ne 0) {
         throw "Python a retourne le code $LASTEXITCODE."
     }
@@ -217,10 +222,22 @@ try {
     if (-not (Test-Path $Backend)) { throw 'Dossier backend introuvable.' }
     $Venv = Join-Path $Backend '.venv'
     $VenvPython = Join-Path $Venv 'Scripts\python.exe'
+
+    if ((Test-Path $Venv) -and -not (Test-Path $VenvPython)) {
+        Warn 'Environnement Python incomplet detecte : nettoyage automatique.'
+        Remove-Item $Venv -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
     if (-not (Test-Path $VenvPython)) {
         Write-Host 'Creation de l environnement Python (premiere fois uniquement)...' -ForegroundColor DarkGray
-        Run-Python $Py @('-m', 'venv', $Venv)
+        Invoke-PythonCommand -Py $Py -CommandArgs @('-m', 'venv', $Venv)
     }
+
+    if (-not (Test-Path $VenvPython)) {
+        throw 'La creation de l environnement Python a echoue. Envoie-moi simplement un screenshot de cette fenetre.'
+    }
+    Good 'Environnement Python cree'
+
     & $VenvPython -m pip install --disable-pip-version-check --quiet --upgrade pip
     if ($LASTEXITCODE -ne 0) { throw 'Impossible de mettre pip a jour.' }
     & $VenvPython -m pip install --disable-pip-version-check --quiet -r (Join-Path $Backend 'requirements.txt')
