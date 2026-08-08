@@ -62,7 +62,7 @@ def start() -> int:
     env["LMN_DISCOVER_WORKERS"] = "0"
 
     process = subprocess.Popen(
-        [str(VENV_PYTHON), "-m", "uvicorn", "app.main:app", "--host", HOST, "--port", str(PORT)],
+        [str(VENV_PYTHON), "-m", "uvicorn", "app.entrypoint:app", "--host", HOST, "--port", str(PORT)],
         cwd=str(BACKEND),
         stdin=subprocess.DEVNULL,
         stdout=log,
@@ -72,7 +72,8 @@ def start() -> int:
         close_fds=True,
     )
     RUNTIME_FILE.write_text(json.dumps({"pid": process.pid, "port": PORT, "started_at": time.strftime('%Y-%m-%dT%H:%M:%S')}, indent=2), encoding="utf-8")
-    print(f"[OK] Worker LMNotebook lancé sur le port {PORT} (PID {process.pid}).")
+    print(f"[OK] Worker LMNotebook lance sur le port {PORT} (PID {process.pid}).")
+    print(f"[INFO] Health leger : http://127.0.0.1:{PORT}/api/live")
     return 0
 
 
@@ -83,7 +84,7 @@ def stop() -> int:
         RUNTIME_FILE.unlink(missing_ok=True)
     except OSError:
         pass
-    print("[OK] Worker LMNotebook arrêté.")
+    print("[OK] Worker LMNotebook arrete.")
     return 0
 
 

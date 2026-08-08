@@ -37,7 +37,7 @@ def _schema_compatible(value: Any) -> bool:
     return current[0] == required[0] and current >= required
 
 
-def _http_json(url: str, timeout: float = 1.5) -> dict[str, Any] | None:
+def _http_json(url: str, timeout: float = 2.0) -> dict[str, Any] | None:
     try:
         request = urllib.request.Request(url, headers={"Cache-Control": "no-cache"})
         with urllib.request.urlopen(request, timeout=timeout) as response:
@@ -57,12 +57,16 @@ def _http_ok(url: str, timeout: float = 1.5) -> bool:
         return False
 
 
+def api_live() -> dict[str, Any] | None:
+    return _http_json(f"{API_URL}/api/live")
+
+
 def api_health() -> dict[str, Any] | None:
     return _http_json(f"{API_URL}/api/health")
 
 
 def api_ready() -> bool:
-    payload = api_health()
+    payload = api_live()
     return bool(
         payload
         and str(payload.get("service", "")).startswith("LMNotebook")
@@ -114,14 +118,14 @@ def read_runtime() -> dict[str, Any]:
 
 def write_runtime(api_pid: int | None, frontend_pid: int | None) -> None:
     previous = read_runtime()
-    health = api_health() or {}
+    live = api_live() or {}
     payload = {
         "started_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "api_pid": api_pid or previous.get("api_pid"),
         "frontend_pid": frontend_pid or previous.get("frontend_pid"),
         "api": API_URL,
         "frontend": FRONTEND_URL,
-        "api_schema": health.get("api_schema") or REQUIRED_API_SCHEMA,
+        "api_schema": live.get("api_schema") or REQUIRED_API_SCHEMA,
     }
     RUNTIME_FILE.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
@@ -161,12 +165,19 @@ def stop_spawned(api_pid: int | None, frontend_pid: int | None) -> None:
 
 
 def stop_previous_runtime_if_incompatible() -> None:
-    current = api_health()
-    if not current or _schema_compatible(current.get("api_schema")):
+    live = api_live()
+    if live and _schema_compatible(live.get("api_schema")):
         return
+
+    # A legacy app.main runtime can answer /api/health but has no /api/live.
+    # If anything is listening from a previous LMNotebook run, stop its tracked PID.
+    legacy = api_health()
+    if not legacy:
+        return
+
     print(
-        f"[runtime] API incompatible detectee (schema {current.get('api_schema') or 'legacy'}). "
-        f"Redemarrage vers schema {REQUIRED_API_SCHEMA}+..."
+        f"[runtime] Ancienne API detectee (schema {legacy.get('api_schema') or 'legacy'}). "
+        f"Redemarrage vers la facade health legere {REQUIRED_API_SCHEMA}+..."
     )
     runtime = read_runtime()
     kill_pid(runtime.get("api_pid"))
@@ -187,17 +198,17 @@ def start() -> int:
 
     stop_previous_runtime_if_incompatible()
 
-    print(f"[runtime] Verification du backend V2 schema {REQUIRED_API_SCHEMA}+...")
+    print(f"[runtime] Verification du backend V2 schema {REQUIRED_API_SCHEMA}+ (health leger)...")
     if api_ready():
-        health = api_health() or {}
-        print(f"[OK] API V2 deja active sur 127.0.0.1:8000 (schema {health.get('api_schema') or '?'})")
+        live = api_live() or {}
+        print(f"[OK] API V2 deja active sur 127.0.0.1:8000 (schema {live.get('api_schema') or '?'})")
     else:
         api_pid = spawn_process(
             [
                 str(VENV_PYTHON),
                 "-m",
                 "uvicorn",
-                "app.main:app",
+                "app.entrypoint:app",
                 "--host",
                 "127.0.0.1",
                 "--port",
@@ -208,13 +219,13 @@ def start() -> int:
         )
         print(f"[runtime] API lancee en arriere-plan (PID {api_pid})")
         if not wait_for(api_ready, 30):
-            print(f"\n[ERREUR] L'API V2 schema {REQUIRED_API_SCHEMA}+ n'a pas repondu dans les 30 secondes.")
+            print(f"\n[ERREUR] Le ping leger /api/live du schema {REQUIRED_API_SCHEMA}+ n'a pas repondu dans les 30 secondes.")
             print("--- backend.log ---")
             print(tail(api_log))
             stop_spawned(api_pid, None)
             return 1
-        health = api_health() or {}
-        print(f"[OK] API V2 repond correctement (schema {health.get('api_schema') or '?'}).")
+        live = api_live() or {}
+        print(f"[OK] API V2 repond correctement (schema {live.get('api_schema') or '?'}).")
 
     print("[runtime] Verification du frontend local...")
     if frontend_ready():
@@ -243,7 +254,7 @@ def start() -> int:
 
     write_runtime(api_pid, frontend_pid)
 
-    health = api_health() or {}
+    health = api_health() or api_live() or {}
     gpu_count = len(health.get("gpus") or [])
     ffmpeg = health.get("ffmpeg") or {}
     neural = health.get("neural") or {}
@@ -252,20 +263,10 @@ def start() -> int:
         f"[OK] Deep Audio V2 ONLINE | schema {health.get('api_schema') or '?'} | GPU locales: {gpu_count} | "
         f"FFmpeg: {'READY' if ffmpeg.get('ffmpeg') and ffmpeg.get('ffprobe') else 'DEGRADED'}"
     )
-    if neural.get("ready"):
-        print(
-            f"[OK] V2-B NEURAL CUDA READY | {neural.get('device_name') or 'GPU'} | "
-            f"Torch {neural.get('torch_version') or '?'} | CUDA {neural.get('cuda_runtime') or '?'}"
-        )
-    else:
-        print(f"[INFO] V2-B Neural non active: {neural.get('error') or 'runtime optionnel indisponible'}")
-    if stems.get("ready"):
-        print(
-            f"[OK] V2-D STEMS READY | {stems.get('device_name') or 'GPU'} | "
-            f"Torch {stems.get('torch_version') or '?'} | Torchaudio {stems.get('torchaudio_version') or '?'}"
-        )
-    else:
-        print(f"[INFO] V2-D Stems local non actif: {stems.get('error') or 'worker LAN/fallback optionnel'}")
+    print(
+        f"[OK] V2-B Neural: {'READY' if neural.get('ready') else 'WAIT'} | "
+        f"V2-D Stems: {'READY' if stems.get('ready') else 'WAIT'} | health={health.get('health_mode') or 'light'}"
+    )
 
     local_url = f"{FRONTEND_URL}/?runtime=local-v2"
     print(f"[runtime] Ouverture de {local_url}")
