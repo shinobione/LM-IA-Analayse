@@ -9,6 +9,7 @@ set "VENV=%~dp0backend\.venv"
 set "HF_HOME=%~dp0backend\models\huggingface"
 set "PATH=%LOCALAPPDATA%\Microsoft\WinGet\Links;%USERPROFILE%\.local\bin;%PATH%"
 if not exist "%HF_HOME%" mkdir "%HF_HOME%" >nul 2>&1
+if not exist "%ROOT%logs" mkdir "%ROOT%logs" >nul 2>&1
 
 echo.
 echo ============================================================
@@ -106,19 +107,45 @@ if not exist "%BACKEND%\.env" if exist "%BACKEND%\.env.example" copy /Y "%BACKEN
 
 rem --- Optional CUDA / neural layer ----------------------------------------
 echo [5/6] Verification V2-B Neural / CUDA...
-"%VENV%\Scripts\python.exe" -c "import torch, transformers, librosa; import sys; sys.exit(0 if torch.cuda.is_available() else 3)" >nul 2>&1
+set "NEURAL_READY=0"
+
+rem 5A - CUDA PyTorch is checked independently from Transformers.
+"%VENV%\Scripts\python.exe" -c "import torch,sys; sys.exit(0 if torch.cuda.is_available() else 3)" >nul 2>&1
 if errorlevel 1 (
-  echo [INFO] Premier branchement neural: installation PyTorch CUDA 12.8 + CLAP runtime.
-  echo [INFO] C'est le gros telechargement initial; les lancements suivants seront rapides.
-  "%UV%" pip install --python "%VENV%\Scripts\python.exe" torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128
-  if errorlevel 1 goto :neural_warning
-  "%UV%" pip install --python "%VENV%\Scripts\python.exe" -r "%BACKEND%\requirements-neural.txt"
-  if errorlevel 1 goto :neural_warning
+  echo [V2-B 1/3] Installation / correction de PyTorch CUDA 12.8...
+  echo [INFO] Gros telechargement possible au premier passage. Laisse cette fenetre travailler.
+  "%UV%" pip install --python "%VENV%\Scripts\python.exe" --upgrade torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128
+  if errorlevel 1 (
+    echo [WARN] Echec de l'installation PyTorch CUDA.
+    goto :neural_warning
+  )
+) else (
+  echo [V2-B 1/3] PyTorch CUDA deja operationnel.
 )
 
-rem Real CUDA smoke test: allocate and execute a tiny matrix multiply on the GPU.
-"%VENV%\Scripts\python.exe" -c "import torch, transformers, librosa; import sys; assert torch.cuda.is_available(); x=torch.randn((128,128),device='cuda'); y=x@x; torch.cuda.synchronize(); print('[OK] V2-B CUDA:', torch.__version__, '| CUDA', torch.version.cuda, '|', torch.cuda.get_device_name(0), '| test', float(y[0,0])); sys.exit(0)"
-if errorlevel 1 goto :neural_warning
+rem 5B - Install the exact CLAP-compatible user-space stack.
+"%VENV%\Scripts\python.exe" -c "from transformers import ClapModel,ClapProcessor; import librosa,numpy,soundfile,safetensors,huggingface_hub" >nul 2>&1
+if errorlevel 1 (
+  echo [V2-B 2/3] Installation du runtime CLAP / Transformers...
+  "%UV%" pip install --python "%VENV%\Scripts\python.exe" --upgrade -r "%BACKEND%\requirements-neural.txt"
+  if errorlevel 1 (
+    echo [WARN] Echec de l'installation des dependances CLAP.
+    echo [WARN] Le fichier utilise est: %BACKEND%\requirements-neural.txt
+    goto :neural_warning
+  )
+) else (
+  echo [V2-B 2/3] Runtime CLAP deja installe.
+)
+
+rem 5C - Real import + GPU compute smoke test. V2-B is READY only after this passes.
+echo [V2-B 3/3] Test CUDA + imports CLAP...
+"%VENV%\Scripts\python.exe" -c "import torch,transformers,librosa,numpy; from transformers import ClapModel,ClapProcessor; assert torch.cuda.is_available(); x=torch.randn((128,128),device='cuda'); y=x@x; torch.cuda.synchronize(); print('[OK] V2-B READY | Torch',torch.__version__,'| CUDA',torch.version.cuda,'| Transformers',transformers.__version__,'| GPU',torch.cuda.get_device_name(0),'| test',round(float(y[0,0]),4))"
+if errorlevel 1 (
+  echo [WARN] Le test final V2-B a echoue. Diagnostic imports:
+  "%VENV%\Scripts\python.exe" -c "import sys,traceback; mods=['torch','transformers','librosa','numpy','soundfile','safetensors','huggingface_hub']; import importlib; [(print('[OK]',m) if not importlib.import_module(m) is None else None) for m in mods]" 2>&1
+  goto :neural_warning
+)
+
 set "NEURAL_READY=1"
 goto :launch
 
@@ -144,7 +171,8 @@ if errorlevel 1 (
 
 echo.
 if "%NEURAL_READY%"=="1" (
-  echo [OK] V2-A + V2-B CUDA pretes. Le modele CLAP sera telecharge au premier Deep Scan.
+  echo [OK] V2-A + V2-B CUDA PRETES.
+  echo [INFO] Le modele CLAP sera telecharge au premier Deep Scan si necessaire.
   echo [INFO] Cache du modele: %HF_HOME%
 ) else (
   echo [OK] V2-A prete. Couche Neural en attente de diagnostic.
