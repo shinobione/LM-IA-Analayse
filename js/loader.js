@@ -101,10 +101,28 @@ function loadHumanInsightAssets() {
   }
 }
 
+function loadReadabilityOverhaulAssets() {
+  if (!document.querySelector('link[data-sonictrace-readability]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'css/readability-overhaul.css?v=1';
+    link.dataset.sonictraceReadability = '1';
+    document.head.appendChild(link);
+  }
+
+  if (!document.querySelector('script[data-sonictrace-readability]')) {
+    const script = document.createElement('script');
+    script.src = 'js/readability-overhaul.js?v=1';
+    script.dataset.sonictraceReadability = '1';
+    document.head.appendChild(script);
+  }
+}
+
 loadFusionAssets();
 loadSemanticAssets();
 loadUnifiedAnalysisAssets();
 loadHumanInsightAssets();
+loadReadabilityOverhaulAssets();
 
 function initLoader(onComplete) {
   const statusEl = document.getElementById('loader-status');
