@@ -40,6 +40,8 @@ def runtime_status() -> dict[str, Any]:
             [str(STEMS_PYTHON), '-c', code],
             capture_output=True,
             text=True,
+            encoding='utf-8',
+            errors='replace',
             timeout=20,
             check=False,
         )
@@ -89,6 +91,8 @@ def separate_and_analyze(path: Path) -> dict[str, Any]:
             command,
             capture_output=True,
             text=True,
+            encoding='utf-8',
+            errors='replace',
             check=False,
         )
         if completed.returncode != 0:
