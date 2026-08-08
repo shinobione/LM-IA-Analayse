@@ -1,0 +1,5 @@
+# V2-D — optional GPU stem separation layer.
+# PyTorch + torchaudio CUDA wheels are installed explicitly by the launcher.
+# Keep this layer separate so V2-A/V2-B remain usable if Demucs is unavailable.
+
+demucs==4.0.1
