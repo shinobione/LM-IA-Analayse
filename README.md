@@ -2,6 +2,32 @@
 
 Analyseur audio expérimental pour fichiers **MP3 / WAV**, désormais construit comme un moteur hybride **Browser DSP V1 + Deep Audio V2**.
 
+## Windows — mode zéro fatigue neuronale
+
+Sur la machine RTX 3060, l’usage normal est désormais :
+
+1. **Première installation si le repo n’est pas encore présent :** lancer `LMNotebook_INSTALL.cmd`.
+2. **Tous les jours :** double-cliquer `LMNotebook_START.cmd` ou le raccourci **LMNotebook Audio Analyzer** créé automatiquement sur le Bureau.
+3. **Pour arrêter :** double-cliquer `LMNotebook_STOP.cmd`.
+
+Le lanceur START s’occupe automatiquement de :
+
+- mettre le repo à jour avec Git quand c’est sûr ;
+- détecter Python, FFmpeg, ffprobe et NVIDIA ;
+- tenter d’installer automatiquement Git / Python / FFmpeg via `winget` quand ils manquent ;
+- détecter la RTX et afficher sa VRAM ;
+- créer l’environnement Python `.venv` au premier lancement ;
+- installer / mettre à jour les dépendances backend ;
+- créer `backend/.env` si nécessaire ;
+- démarrer l’API V2 sur le port `8000` ;
+- démarrer le frontend local sur le port `8008` ;
+- attendre que le moteur réponde ;
+- ouvrir automatiquement LMNotebook dans le navigateur ;
+- créer un raccourci Bureau ;
+- enregistrer un log dans `logs/` en cas de souci.
+
+En cas d’erreur, **aucun diagnostic manuel n’est demandé** : envoyer simplement une capture de la fenêtre du lanceur ou le dernier fichier de `logs/`.
+
 ## V1 — Browser DSP
 
 La V1 fonctionne directement dans le navigateur et garde le fichier audio local :
@@ -96,9 +122,11 @@ Rôle prévu :
 
 Le routage futur privilégiera d'abord **la quantité de VRAM requise**, puis la vitesse et la charge du worker.
 
-## Lancer V2 localement
+## Lancement manuel — seulement pour debug
 
-Sur la machine RTX 3060 :
+Le mode manuel reste disponible pour le développement avancé, mais il n’est plus nécessaire pour l’usage normal.
+
+Backend :
 
 ```powershell
 cd backend
@@ -106,22 +134,17 @@ Copy-Item .env.example .env
 .\run_windows.ps1
 ```
 
-API :
-
-```text
-http://127.0.0.1:8000
-http://127.0.0.1:8000/docs
-```
-
-Pour éviter les contraintes HTTPS/HTTP pendant le développement, lancer aussi le frontend local depuis la racine :
+Frontend :
 
 ```powershell
 .\run_frontend_windows.ps1
 ```
 
-Puis ouvrir :
+Adresses locales :
 
 ```text
+http://127.0.0.1:8000
+http://127.0.0.1:8000/docs
 http://127.0.0.1:8008
 ```
 
