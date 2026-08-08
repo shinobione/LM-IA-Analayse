@@ -1,0 +1,3 @@
+Normal updater: stash dirty tracked + untracked files, then fast-forward main.
+Rescue updater: self-copy to TEMP, stash dirty tree, fetch, reset local main to origin/main, start SonicTrace.
+Old stash is intentionally retained and not re-applied automatically.
