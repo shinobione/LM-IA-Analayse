@@ -6,6 +6,10 @@ V2-E turns completed SonicTrace analyses into a local catalog. Audio files remai
 
 Storage: browser IndexedDB (`sonictrace-catalog`).
 
+This IndexedDB is a standalone local memory, not the SHINOBIWAN Studio source of truth. When Studio context supplies a canonical `trackId`, V2-E reuses it. Without that context, the record is explicitly `localOnly: true`, has `trackId: null`, and uses a `local-st-*` storage key that must never be interpreted as a catalog track identity.
+
+Studio Phase 5 persistence lives in LaunchPAD/R2 sidecars and is accessed only through the protected Track Manager bridge.
+
 A saved track contains only structured analysis data:
 
 - compact browser DSP (BPM, key, dynamics, stereo, spectral descriptors, DNA)

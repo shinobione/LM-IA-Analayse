@@ -261,7 +261,7 @@ try {
     } elseif (Port-Listening 8000) {
         throw 'Le port 8000 est deja utilise par un autre programme. Lance LMNotebook_STOP.cmd; si ca persiste, envoie-moi un screenshot.'
     } else {
-        $backendCommand = "`$Host.UI.RawUI.WindowTitle='LMNotebook V2 API'; Set-Location '$Backend'; & '$VenvPython' -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+        $backendCommand = "`$Host.UI.RawUI.WindowTitle='LMNotebook V2 API'; Set-Location '$Backend'; & '$VenvPython' -m uvicorn app.entrypoint:app --host 0.0.0.0 --port 8000"
         $backendProcess = Start-Process powershell.exe -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-NoExit','-Command',$backendCommand) -PassThru
         Good "API V2 lancee (PID $($backendProcess.Id))"
     }

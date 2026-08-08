@@ -96,7 +96,7 @@
     const declared = clone(window.LMNSemanticDeclaredMetadata || {}), dsp = capture.dsp || domDsp(), file = currentFile();
     const filename = file?.name || analyze.file?.name || fusionPayload.file?.name || dsp?.file?.name || 'Untitled';
     const track = {
-      schema:'sonictrace.catalog.track.v1', id:'', fingerprint:'', createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(),
+      schema:'sonictrace.catalog.track.v1', id:'', trackId:null, localOnly:true, fingerprint:'', createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(),
       title:cleanTitle(declared.TITLE || filename.replace(/\.[^.]+$/, '')), filename, year:declared.YEAR || '', declared,
       file:compactFile(file, analyze.file, dsp?.file), dsp:compactDsp(dsp), mastering:clone(analyze.mastering || {}),
       neural:{ model:neural.engine?.model || embedding.model || '', genres:rank(neural.genres,8), moods:rank(neural.moods,8), instruments:rank(neural.instruments,10), traits:traits(neural.traits), embedding:{ model:embedding.model || neural.engine?.model || '', dimension:Number(embedding.dimension || vector.length || 0), vector } },
@@ -104,7 +104,11 @@
       compute:{ neural:clone(neural.engine || {}), fusion:clone(fusionPayload.compute || {}) },
       privacy:{ audioStored:false, note:'No WAV/MP3 bytes are persisted in the SonicTrace catalog.' },
     };
-    track.fingerprint = fingerprint(track); track.id = track.fingerprint; NS.currentSnapshot = track; return track;
+    track.fingerprint = fingerprint(track);
+    track.trackId = studioTrackId();
+    track.localOnly = !track.trackId;
+    track.id = track.trackId || `local-${track.fingerprint}`;
+    NS.currentSnapshot = track; return track;
   }
 
   function compactFile(file={}, backend={}, dsp={}) { return { name:file?.name || backend?.name || dsp?.name || '', sizeBytes:num(file?.size ?? dsp?.sizeBytes), type:file?.type || dsp?.type || '', durationSeconds:num(backend?.duration_seconds ?? dsp?.durationSeconds), sampleRateHz:num(backend?.sample_rate_hz ?? dsp?.sampleRate), channels:num(backend?.channels ?? dsp?.channels), codec:backend?.codec || dsp?.format || '', bitrateKbps:num(backend?.bit_rate_kbps), format:backend?.format || dsp?.format || '' }; }
@@ -133,6 +137,7 @@
   function effectiveBpmDelta(a,b) { return Math.min(Math.abs(a-b),Math.abs(a*2-b),Math.abs(a-b*2),Math.abs(a*.5-b),Math.abs(a-b*.5)); }
 
   function fingerprint(track) { const basis=[Math.round(Number(track.file?.durationSeconds||0)*10),(track.neural?.embedding?.vector||[]).slice(0,96).map(v=>Number(v).toFixed(4)).join(','),normalize(track.title)].join('|'); let h=2166136261; for(let i=0;i<basis.length;i++){h^=basis.charCodeAt(i);h=Math.imul(h,16777619);} return `st-${(h>>>0).toString(16).padStart(8,'0')}`; }
+  function studioTrackId() { const context=window.SonicTraceStudioContext?.trackId || new URLSearchParams(location.search).get('trackId') || new URLSearchParams(location.search).get('track_id') || ''; return /^[a-z0-9][a-z0-9-]{0,119}$/.test(String(context)) ? String(context) : null; }
 
   function openDb() { if(dbPromise)return dbPromise; dbPromise=new Promise((resolve,reject)=>{const request=indexedDB.open(DB,VERSION);request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains(TRACKS)){const s=db.createObjectStore(TRACKS,{keyPath:'id'});s.createIndex('title','title');s.createIndex('updatedAt','updatedAt');}if(!db.objectStoreNames.contains(PROJECTS)){const s=db.createObjectStore(PROJECTS,{keyPath:'id'});s.createIndex('updatedAt','updatedAt');}};request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error||new Error('IndexedDB open failed'));}); return dbPromise; }
   async function tx(store,mode,action) { const db=await openDb(); return new Promise((resolve,reject)=>{const t=db.transaction(store,mode),s=t.objectStore(store),r=action(s);let value;r.onsuccess=()=>{value=r.result;};r.onerror=()=>reject(r.error||new Error('IndexedDB request failed'));t.oncomplete=()=>resolve(value);t.onerror=()=>reject(t.error||new Error('IndexedDB transaction failed'));}); }

@@ -21,7 +21,7 @@ try {
 
         $cim = Get-CimInstance Win32_Process -Filter "ProcessId = $pidValue" -ErrorAction SilentlyContinue
         $commandLine = if ($cim) { "$($cim.CommandLine)" } else { '' }
-        $looksLikeLMNotebook = $commandLine -match 'LMNotebook V2 API|LMNotebook Frontend|uvicorn app\.main:app|http\.server 8008'
+        $looksLikeLMNotebook = $commandLine -match 'LMNotebook V2 API|LMNotebook Frontend|uvicorn app\.(main|entrypoint):app|http\.server 8008'
 
         if ($looksLikeLMNotebook) {
             Write-Host "Arret du processus LMNotebook $pidValue..." -ForegroundColor DarkGray

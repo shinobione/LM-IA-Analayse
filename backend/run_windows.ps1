@@ -44,4 +44,4 @@ Write-Host 'Docs: http://127.0.0.1:8000/docs' -ForegroundColor Green
 Write-Host 'LAN : http://<THIS-PC-IP>:8000' -ForegroundColor Yellow
 Write-Host ''
 
-& $python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+& $python -m uvicorn app.entrypoint:app --host 0.0.0.0 --port 8000 --reload
