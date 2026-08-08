@@ -104,7 +104,7 @@ def analyze_neural(path: Path, duration_seconds: float | None = None) -> dict[st
     audio_inputs = {key: value.to(device) if hasattr(value, 'to') else value for key, value in audio_inputs.items()}
 
     with torch.inference_mode():
-        audio_features = model.get_audio_features(**audio_inputs)
+        audio_features = _feature_tensor(model.get_audio_features(**audio_inputs))
         audio_features = F.normalize(audio_features.float(), dim=-1)
         track_embedding = F.normalize(audio_features.mean(dim=0, keepdim=True), dim=-1)
 
@@ -175,6 +175,19 @@ def _load_model() -> tuple[Any, Any, str]:
         return model, processor, device
 
 
+def _feature_tensor(value: Any) -> Any:
+    """Normalize Transformers 4/5 feature return shapes to a projected tensor."""
+    if hasattr(value, 'audio_embeds') and value.audio_embeds is not None:
+        return value.audio_embeds
+    if hasattr(value, 'text_embeds') and value.text_embeds is not None:
+        return value.text_embeds
+    if hasattr(value, 'pooler_output') and value.pooler_output is not None:
+        return value.pooler_output
+    if isinstance(value, (tuple, list)) and value:
+        return value[0]
+    return value
+
+
 def _rank_labels(
     model: Any,
     processor: Any,
@@ -191,7 +204,7 @@ def _rank_labels(
     text_inputs = {key: value.to(device) if hasattr(value, 'to') else value for key, value in text_inputs.items()}
 
     with torch.inference_mode():
-        text_features = model.get_text_features(**text_inputs)
+        text_features = _feature_tensor(model.get_text_features(**text_inputs))
         text_features = F.normalize(text_features.float(), dim=-1)
         similarities = track_embedding @ text_features.T
         scale = _logit_scale(model)
@@ -219,7 +232,8 @@ def _score_traits(model: Any, processor: Any, track_embedding: Any, device: str)
         text_inputs = processor(text=list(pair), return_tensors='pt', padding=True)
         text_inputs = {key: value.to(device) if hasattr(value, 'to') else value for key, value in text_inputs.items()}
         with torch.inference_mode():
-            text_features = F.normalize(model.get_text_features(**text_inputs).float(), dim=-1)
+            text_features = _feature_tensor(model.get_text_features(**text_inputs))
+            text_features = F.normalize(text_features.float(), dim=-1)
             similarities = track_embedding @ text_features.T
             probabilities = torch.softmax(similarities[0] * _logit_scale(model), dim=-1)
         positive = float(probabilities[0].detach().cpu())
@@ -255,7 +269,6 @@ def _decode_segments(path: Path, duration_seconds: float | None) -> tuple[list[A
         fractions = [0.12, 0.32, 0.52, 0.72, 0.88][: max(1, MAX_SEGMENTS)]
         max_start = max(0.0, duration - SEGMENT_SECONDS)
         offsets = [max(0.0, min(max_start, duration * fraction - SEGMENT_SECONDS / 2)) for fraction in fractions]
-        # Keep offsets stable while removing duplicates on short tracks.
         offsets = list(dict.fromkeys(round(value, 3) for value in offsets))
 
     segments: list[Any] = []
