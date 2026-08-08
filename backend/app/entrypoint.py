@@ -14,6 +14,11 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 NEURAL_PYTHON = BACKEND_ROOT / '.venv' / 'Scripts' / 'python.exe'
 STEMS_PYTHON = BACKEND_ROOT / '.venv-stems' / 'Scripts' / 'python.exe'
 
+# Do the cheap executable/GPU probes once while Uvicorn imports the app. Every
+# subsequent /api/live and /api/health request is then pure in-memory JSON.
+_BOOT_TOOLS = check_ffmpeg()
+_BOOT_GPUS = detect_nvidia_gpus()
+
 
 def _remove_route(path: str) -> None:
     app.router.routes[:] = [
@@ -22,14 +27,14 @@ def _remove_route(path: str) -> None:
 
 
 def _light_status() -> dict[str, Any]:
-    tools = check_ffmpeg()
-    gpus = detect_nvidia_gpus()
+    tools = dict(_BOOT_TOOLS)
+    gpus = [dict(gpu) for gpu in _BOOT_GPUS]
     gpu_ready = bool(gpus)
     device_name = gpus[0].get('name') if gpus else None
 
     # START/WORKER_START validate the real CUDA imports before launching the API.
-    # The health endpoint therefore only needs installation/runtime hints here;
-    # it must never import Torch/Demucs just to answer a liveness probe.
+    # Health only reports those bootstrap-validated runtime hints and never
+    # imports Torch/Demucs itself.
     neural_ready = gpu_ready and NEURAL_PYTHON.exists()
     stems_ready = gpu_ready and STEMS_PYTHON.exists()
 
@@ -75,13 +80,13 @@ _remove_route('/api/health')
 
 @app.get('/api/live')
 def live() -> dict[str, Any]:
-    """Fast liveness probe. Never imports Torch, Transformers, Torchaudio or Demucs."""
+    """Instant liveness probe: pure cached JSON, no subprocess or ML import."""
     return _light_status()
 
 
 @app.get('/api/health')
 def health() -> dict[str, Any]:
-    """Backward-compatible lightweight health endpoint used by the UI and LAN cluster."""
+    """Backward-compatible lightweight health endpoint used by UI and LAN cluster."""
     return _light_status()
 
 
