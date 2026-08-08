@@ -28,7 +28,25 @@ function loadFusionAssets() {
   }
 }
 
+function loadSemanticAssets() {
+  if (!document.querySelector('link[data-lmn-semantic]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'css/semantic.css';
+    link.dataset.lmnSemantic = '1';
+    document.head.appendChild(link);
+  }
+
+  if (!document.querySelector('script[data-lmn-semantic]')) {
+    const script = document.createElement('script');
+    script.src = 'js/semantic-client.js';
+    script.dataset.lmnSemantic = '1';
+    document.head.appendChild(script);
+  }
+}
+
 loadFusionAssets();
+loadSemanticAssets();
 
 function initLoader(onComplete) {
   const statusEl = document.getElementById('loader-status');
