@@ -3,22 +3,28 @@ setlocal EnableExtensions
 cd /d "%~dp0"
 title LMNotebook Launcher
 
-rem ---------------------------------------------------------------------------
-rem Safety net: create the Python virtual environment from CMD, not PowerShell.
-rem This avoids the Windows PowerShell argument-binding issue that could open
-rem the Python interactive REPL (>>>) instead of running `python -m venv`.
-rem ---------------------------------------------------------------------------
+set "PY="
+set "PYLAUNCHER="
+where python.exe >nul 2>&1 && set "PY=python.exe"
+if not defined PY if exist "%LOCALAPPDATA%\Programs\Python\Python312\python.exe" set "PY=%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
+if not defined PY if exist "C:\Program Files\Python312\python.exe" set "PY=C:\Program Files\Python312\python.exe"
+if not defined PY where py.exe >nul 2>&1 && set "PYLAUNCHER=1"
+
 if not exist "%~dp0backend\.venv\Scripts\python.exe" (
-  where python.exe >nul 2>&1
-  if not errorlevel 1 (
-    echo [LMNotebook] Preparation de l'environnement Python...
-    if exist "%~dp0backend\.venv" rmdir /s /q "%~dp0backend\.venv"
-    python.exe -m venv "%~dp0backend\.venv"
-    if errorlevel 1 (
-      echo [LMNotebook] Le venv n'a pas pu etre cree maintenant. Le bootstrap va tenter de reparer les prerequis.
-    ) else (
-      echo [OK] Environnement Python cree.
-    )
+  echo [LMNotebook] Preparation de l'environnement Python...
+  if exist "%~dp0backend\.venv" rmdir /s /q "%~dp0backend\.venv"
+
+  if defined PY (
+    "%PY%" -m venv "%~dp0backend\.venv"
+  ) else if defined PYLAUNCHER (
+    py.exe -3.12 -m venv "%~dp0backend\.venv"
+    if errorlevel 1 py.exe -3 -m venv "%~dp0backend\.venv"
+  )
+
+  if exist "%~dp0backend\.venv\Scripts\python.exe" (
+    echo [OK] Environnement Python cree.
+  ) else (
+    echo [INFO] Python n'est pas encore accessible depuis CMD. Le bootstrap va verifier les prerequis.
   )
 )
 
