@@ -18,7 +18,6 @@ async def inspect_workers() -> list[dict[str, Any]]:
     if settings.discover_workers and settings.node_role != 'gpu-worker':
         urls.extend(await discover_worker_urls())
 
-    # Preserve order while deduplicating explicit + discovered URLs.
     urls = list(dict.fromkeys(url.rstrip('/') for url in urls if url))
     if not urls:
         return []
@@ -44,8 +43,6 @@ async def discover_worker_urls(force: bool = False) -> list[str]:
         _DISCOVERY_CACHE = (now, [])
         return []
 
-    # A home/office LAN is normally /24. Scan only one subnet and only the
-    # dedicated LMNotebook worker port; no arbitrary service probing.
     network = ipaddress.ip_network(f'{local_ips[0]}/24', strict=False)
     own = set(local_ips)
     semaphore = asyncio.Semaphore(64)
@@ -68,7 +65,6 @@ async def discover_worker_urls(force: bool = False) -> list[str]:
     probes = await asyncio.gather(*(probe(str(host)) for host in network.hosts()))
     candidates = [url for url in probes if url]
 
-    # Verify that open ports are actually LMNotebook gpu-worker APIs.
     verified: list[str] = []
     timeout = httpx.Timeout(settings.discovery_http_timeout_seconds)
     async with httpx.AsyncClient(timeout=timeout) as client:
@@ -91,7 +87,7 @@ async def _is_lmn_worker(client: httpx.AsyncClient, url: str) -> bool:
             str(payload.get('service', '')).startswith('LMNotebook')
             and payload.get('node_role') == 'gpu-worker'
         )
-    except Exception:  # noqa: BLE001 - discovery should fail closed
+    except Exception:  # noqa: BLE001
         return False
 
 
@@ -113,8 +109,9 @@ async def _inspect_worker(client: httpx.AsyncClient, url: str, configured: bool)
             'version': payload.get('version'),
             'api_schema': payload.get('api_schema'),
             'neural': payload.get('neural'),
+            'stems': payload.get('stems'),
         }
-    except Exception as exc:  # noqa: BLE001 - surfaced as worker health state
+    except Exception as exc:  # noqa: BLE001
         return {
             'url': url,
             'online': False,

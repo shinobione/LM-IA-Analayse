@@ -46,13 +46,16 @@
   outline: none;
 }
 
-.v2-api-row input:focus {
-  border-color: rgba(0,240,255,.45);
-}
+.v2-api-row input:focus { border-color: rgba(0,240,255,.45); }
 
 .deep-btn {
   background: linear-gradient(120deg, rgba(0,240,255,.95), rgba(29,185,84,.95));
   color: #02100f;
+}
+
+.stems-btn {
+  border-color: rgba(154, 92, 255, .32);
+  background: linear-gradient(120deg, rgba(154,92,255,.13), rgba(0,240,255,.08));
 }
 
 .v2-status-tag {
@@ -62,9 +65,7 @@
   font-size: .7rem;
 }
 
-.v2-status-tag.error {
-  color: var(--danger-red);
-}
+.v2-status-tag.error { color: var(--danger-red); }
 
 .v2-status-text {
   color: var(--text-dim);
@@ -86,7 +87,6 @@
   transition: width .24s ease;
 }
 
-/* The node grid lives in a narrow sidebar: never explode it to 8 columns. */
 .v2-node-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -134,7 +134,8 @@
 }
 
 .v2-results,
-.v2-neural-results {
+.v2-neural-results,
+.v2-stems-results {
   border-color: rgba(0,240,255,.13);
   background: linear-gradient(135deg, rgba(0,240,255,.025), var(--panel-bg) 45%);
 }
@@ -142,6 +143,11 @@
 .v2-neural-results {
   border-color: rgba(29,185,84,.18);
   background: linear-gradient(135deg, rgba(29,185,84,.04), var(--panel-bg) 48%);
+}
+
+.v2-stems-results {
+  border-color: rgba(154,92,255,.23);
+  background: linear-gradient(135deg, rgba(154,92,255,.05), var(--panel-bg) 48%);
 }
 
 .v2-results-header {
@@ -253,45 +259,113 @@
   font-family: var(--font-mono);
 }
 
+.v2-stems-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.v2-stem-card {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(154,92,255,.16);
+  border-radius: 11px;
+  background: rgba(0,0,0,.16);
+}
+
+.v2-stem-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+  margin-bottom: 9px;
+}
+
+.v2-stem-head strong {
+  color: var(--text-main);
+  text-transform: uppercase;
+  font-size: .78rem;
+  letter-spacing: .04em;
+}
+
+.v2-stem-head span {
+  color: var(--cyber-blue);
+  font-family: var(--font-mono);
+  font-size: .66rem;
+}
+
+.v2-stem-energy {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,.05);
+  margin-bottom: 12px;
+}
+
+.v2-stem-energy > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(154,92,255,.95), var(--cyber-blue));
+}
+
+.v2-stem-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.v2-stem-metrics span {
+  min-width: 0;
+  padding: 7px 8px;
+  border-radius: 7px;
+  background: rgba(255,255,255,.025);
+}
+
+.v2-stem-metrics small,
+.v2-stem-metrics b {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v2-stem-metrics small {
+  color: var(--text-dim);
+  font-size: .58rem;
+}
+
+.v2-stem-metrics b {
+  margin-top: 3px;
+  color: var(--text-main);
+  font-family: var(--font-mono);
+  font-size: .74rem;
+}
+
 @media (min-width: 1800px) {
-  .v2-results-grid {
-    grid-template-columns: repeat(8, minmax(0, 1fr));
-  }
+  .v2-results-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
 }
 
 @media (max-width: 1300px) {
-  .v2-traits-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
+  .v2-traits-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .v2-stems-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 1100px) {
-  .v2-results-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .v2-neural-columns {
-    grid-template-columns: 1fr;
-  }
-
-  .v2-traits-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+  .v2-results-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .v2-neural-columns { grid-template-columns: 1fr; }
+  .v2-traits-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 640px) {
   .v2-api-row,
   .v2-node-grid,
   .v2-results-grid,
-  .v2-traits-grid {
+  .v2-traits-grid,
+  .v2-stems-grid {
     grid-template-columns: 1fr;
   }
 
-  .v2-results-header {
-    flex-direction: column;
-  }
-
-  .v2-provenance {
-    text-align: left;
-  }
+  .v2-results-header { flex-direction: column; }
+  .v2-provenance { text-align: left; }
 }
