@@ -1,14 +1,16 @@
 @echo off
 setlocal EnableExtensions
 cd /d "%~dp0"
-title SonicTrace - Mise a jour
+title SonicTrace - Mise a jour sure
 
 set "ROOT=%~dp0"
 set "GIT="
+set "DIRTY="
+set "BACKUP_CREATED=0"
 
 echo.
 echo ============================================================
-echo  SONICTRACE - MISE A JOUR
+echo  SONICTRACE - MISE A JOUR SURE
 echo ============================================================
 echo.
 
@@ -20,7 +22,7 @@ if not exist "%ROOT%.git" (
 
 call :resolve_git
 if not defined GIT (
-  echo [1/4] Git absent. Installation automatique via winget...
+  echo [1/5] Git absent. Installation automatique via winget...
   where winget.exe >nul 2>&1
   if errorlevel 1 (
     echo [ERREUR] Git n'est pas installe et winget est indisponible.
@@ -30,11 +32,11 @@ if not defined GIT (
   if errorlevel 1 goto :fail
   call :resolve_git
 ) else (
-  echo [1/4] Git trouve : %GIT%
+  echo [1/5] Git trouve : %GIT%
 )
 if not defined GIT goto :fail
 
-echo [2/4] Verification du depot...
+echo [2/5] Verification du depot...
 "%GIT%" remote get-url origin >nul 2>&1
 if errorlevel 1 (
   echo [ERREUR] Aucun remote Git nomme origin n'est configure.
@@ -44,34 +46,46 @@ if errorlevel 1 (
 for /f "delims=" %%I in ('"%GIT%" status --porcelain') do set "DIRTY=1"
 if defined DIRTY (
   echo.
-  echo [ATTENTION] Des fichiers locaux ont ete modifies.
-  echo La mise a jour utilisera uniquement un fast-forward et ne supprimera rien.
-  echo Si Git refuse, tes modifications resteront intactes.
+  echo [INFO] Modifications locales detectees.
+  echo Elles vont etre sauvegardees automatiquement dans un stash Git.
+  echo Aucun fichier local ne sera perdu.
   echo.
+  echo [3/5] Sauvegarde de secours des fichiers locaux...
+  "%GIT%" stash push --include-untracked -m "SonicTrace auto-backup before update"
+  if errorlevel 1 (
+    echo [ERREUR] Impossible de sauvegarder les changements locaux.
+    echo Mise a jour annulee pour proteger tes fichiers.
+    goto :fail
+  )
+  set "BACKUP_CREATED=1"
+) else (
+  echo [3/5] Aucun changement local a sauvegarder.
 )
 
-echo [3/4] Recuperation de la derniere version de main...
+echo [4/5] Recuperation de la derniere version de main...
 "%GIT%" fetch origin main
 if errorlevel 1 goto :fail
 
 "%GIT%" checkout main
-if errorlevel 1 (
-  echo [ERREUR] Impossible de basculer sur main. Verifie les modifications locales affichees ci-dessus.
-  goto :fail
-)
+if errorlevel 1 goto :fail
 
 "%GIT%" pull --ff-only origin main
 if errorlevel 1 (
   echo.
   echo [ERREUR] Git a refuse la mise a jour automatique.
-  echo Rien n'a ete efface. Tes fichiers locaux sont preserves.
+  if "%BACKUP_CREATED%"=="1" echo Tes anciens fichiers restent proteges dans le stash Git.
   goto :fail
 )
 
-echo [4/4] Version installee :
+echo [5/5] Version installee :
 "%GIT%" --no-pager log -1 --oneline
 echo.
 echo [OK] SonicTrace est a jour.
+if "%BACKUP_CREATED%"=="1" (
+  echo [OK] Tes anciens fichiers locaux sont conserves dans :
+  "%GIT%" stash list -1
+  echo Pour les restaurer manuellement plus tard : git stash pop
+)
 echo.
 if /I "%SONICTRACE_NO_PAUSE%"=="1" exit /b 0
 pause
