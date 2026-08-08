@@ -17,9 +17,17 @@ try {
 
     foreach ($pidValue in $pids) {
         $proc = Get-Process -Id ([int]$pidValue) -ErrorAction SilentlyContinue
-        if ($proc) {
-            Write-Host "Arret du processus $pidValue..." -ForegroundColor DarkGray
+        if (-not $proc) { continue }
+
+        $cim = Get-CimInstance Win32_Process -Filter "ProcessId = $pidValue" -ErrorAction SilentlyContinue
+        $commandLine = if ($cim) { "$($cim.CommandLine)" } else { '' }
+        $looksLikeLMNotebook = $commandLine -match 'LMNotebook V2 API|LMNotebook Frontend|uvicorn app\.main:app|http\.server 8008'
+
+        if ($looksLikeLMNotebook) {
+            Write-Host "Arret du processus LMNotebook $pidValue..." -ForegroundColor DarkGray
             & taskkill.exe /PID $pidValue /T /F | Out-Null
+        } else {
+            Write-Host "PID $pidValue reutilise par un autre programme : je ne le touche pas." -ForegroundColor Yellow
         }
     }
 
