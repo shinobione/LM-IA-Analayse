@@ -1,0 +1,2 @@
+LMNotebook Windows Rescue v3
+Git/Python path fallbacks + direct critical-file recovery.
