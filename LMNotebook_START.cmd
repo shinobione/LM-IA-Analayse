@@ -13,16 +13,12 @@ echo ============================================================
 echo  LMNotebook Neural Audio Analyzer - SAFE RUNTIME
 echo ============================================================
 echo.
-echo LMNotebook gere maintenant son propre Python.
+echo LMNotebook gere son propre Python via uv.
 echo Aucun Python systeme ni alias Microsoft Store n'est utilise.
 echo.
 
 rem --- Resolve/install uv ----------------------------------------------------
-set "UV="
-where uv.exe >nul 2>&1 && set "UV=uv.exe"
-if not defined UV if exist "%USERPROFILE%\.local\bin\uv.exe" set "UV=%USERPROFILE%\.local\bin\uv.exe"
-if not defined UV if exist "%LOCALAPPDATA%\Microsoft\WinGet\Links\uv.exe" set "UV=%LOCALAPPDATA%\Microsoft\WinGet\Links\uv.exe"
-
+call :resolve_uv
 if not defined UV (
   echo [1/5] Installation du runtime LMNotebook ^(uv^)...
   where winget.exe >nul 2>&1
@@ -32,22 +28,29 @@ if not defined UV (
     pause
     exit /b 1
   )
+
   winget install --id astral-sh.uv -e --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
-  set "PATH=%LOCALAPPDATA%\Microsoft\WinGet\Links;%USERPROFILE%\.local\bin;%PATH%"
-  where uv.exe >nul 2>&1 && set "UV=uv.exe"
-  if not defined UV if exist "%USERPROFILE%\.local\bin\uv.exe" set "UV=%USERPROFILE%\.local\bin\uv.exe"
-  if not defined UV if exist "%LOCALAPPDATA%\Microsoft\WinGet\Links\uv.exe" set "UV=%LOCALAPPDATA%\Microsoft\WinGet\Links\uv.exe"
+  if errorlevel 1 (
+    echo [ERREUR] L'installation de uv a echoue.
+    pause
+    exit /b 1
+  )
+
+  rem WinGet peut demander un nouveau shell avant de rafraichir le PATH.
+  rem On contourne cela en cherchant directement uv.exe dans ses dossiers reels.
+  call :resolve_uv
 ) else (
   echo [1/5] Runtime LMNotebook deja present.
 )
 
 if not defined UV (
-  echo [ERREUR] uv n'a pas ete trouve apres installation.
-  echo Rien d'autre n'a ete modifie. Envoie-moi cette fenetre.
+  echo [ERREUR] uv est installe mais son executable reste introuvable.
+  echo Aucun autre composant n'est lance. Envoie-moi cette fenetre.
   pause
   exit /b 1
 )
 
+echo [OK] Runtime : %UV%
 "%UV%" --version
 if errorlevel 1 (
   echo [ERREUR] Le runtime uv ne demarre pas correctement.
@@ -57,20 +60,27 @@ if errorlevel 1 (
 
 rem --- FFmpeg ---------------------------------------------------------------
 echo [2/5] Verification FFmpeg...
-where ffmpeg.exe >nul 2>&1
-if errorlevel 1 (
+call :resolve_ffmpeg
+if not defined FFMPEG (
   echo Installation automatique de FFmpeg...
   winget install --id Gyan.FFmpeg -e --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
-  set "PATH=%LOCALAPPDATA%\Microsoft\WinGet\Links;%PATH%"
+  if errorlevel 1 (
+    echo [ERREUR] L'installation de FFmpeg a echoue.
+    pause
+    exit /b 1
+  )
+  call :resolve_ffmpeg
 )
-where ffmpeg.exe >nul 2>&1
-if errorlevel 1 (
-  echo [ERREUR] FFmpeg reste introuvable. Le moteur n'est pas lance.
+
+if not defined FFMPEG (
+  echo [ERREUR] FFmpeg est installe mais son executable reste introuvable.
   echo Envoie-moi cette fenetre, sans rien bricoler.
   pause
   exit /b 1
 )
-echo [OK] FFmpeg disponible.
+
+for %%D in ("%FFMPEG%") do set "PATH=%%~dpD;%PATH%"
+echo [OK] FFmpeg : %FFMPEG%
 
 rem --- Private managed Python + venv ---------------------------------------
 echo [3/5] Preparation du Python prive LMNotebook 3.12...
@@ -108,6 +118,25 @@ echo.
 echo [OK] LMNotebook lance.
 echo Cette fenetre peut etre fermee.
 timeout /t 3 /nobreak >nul
+exit /b 0
+
+:resolve_uv
+set "UV="
+for /f "delims=" %%I in ('where uv.exe 2^>nul') do if not defined UV set "UV=%%I"
+if not defined UV if exist "%USERPROFILE%\.local\bin\uv.exe" set "UV=%USERPROFILE%\.local\bin\uv.exe"
+if not defined UV if exist "%LOCALAPPDATA%\Microsoft\WinGet\Links\uv.exe" set "UV=%LOCALAPPDATA%\Microsoft\WinGet\Links\uv.exe"
+if not defined UV if exist "%LOCALAPPDATA%\Microsoft\WinGet\Packages" (
+  for /f "delims=" %%I in ('where /r "%LOCALAPPDATA%\Microsoft\WinGet\Packages" uv.exe 2^>nul') do if not defined UV set "UV=%%I"
+)
+exit /b 0
+
+:resolve_ffmpeg
+set "FFMPEG="
+for /f "delims=" %%I in ('where ffmpeg.exe 2^>nul') do if not defined FFMPEG set "FFMPEG=%%I"
+if not defined FFMPEG if exist "%LOCALAPPDATA%\Microsoft\WinGet\Links\ffmpeg.exe" set "FFMPEG=%LOCALAPPDATA%\Microsoft\WinGet\Links\ffmpeg.exe"
+if not defined FFMPEG if exist "%LOCALAPPDATA%\Microsoft\WinGet\Packages" (
+  for /f "delims=" %%I in ('where /r "%LOCALAPPDATA%\Microsoft\WinGet\Packages" ffmpeg.exe 2^>nul') do if not defined FFMPEG set "FFMPEG=%%I"
+)
 exit /b 0
 
 :venv_error
