@@ -1,32 +1,32 @@
 # LMNotebook Neural Audio Analyzer
 
-Analyseur audio expérimental pour fichiers **MP3 / WAV**, désormais construit comme un moteur hybride **Browser DSP V1 + Deep Audio V2**.
+Analyseur audio expérimental pour fichiers **MP3 / WAV**, construit comme un moteur hybride **Browser DSP V1 + Deep Audio V2**.
 
 ## Windows — mode zéro fatigue neuronale
 
 Sur la machine RTX 3060, l’usage normal est désormais :
 
 1. **Première installation si le repo n’est pas encore présent :** lancer `LMNotebook_INSTALL.cmd`.
-2. **Tous les jours :** double-cliquer `LMNotebook_START.cmd` ou le raccourci **LMNotebook Audio Analyzer** créé automatiquement sur le Bureau.
+2. **Tous les jours :** double-cliquer `LMNotebook_START.cmd`.
 3. **Pour arrêter :** double-cliquer `LMNotebook_STOP.cmd`.
 
-Le lanceur START s’occupe automatiquement de :
+### Runtime isolé avec uv
 
-- mettre le repo à jour avec Git quand c’est sûr ;
-- détecter Python, FFmpeg, ffprobe et NVIDIA ;
-- tenter d’installer automatiquement Git / Python / FFmpeg via `winget` quand ils manquent ;
-- détecter la RTX et afficher sa VRAM ;
-- créer l’environnement Python `.venv` au premier lancement ;
-- installer / mettre à jour les dépendances backend ;
-- créer `backend/.env` si nécessaire ;
-- démarrer l’API V2 sur le port `8000` ;
-- démarrer le frontend local sur le port `8008` ;
-- attendre que le moteur réponde ;
-- ouvrir automatiquement LMNotebook dans le navigateur ;
-- créer un raccourci Bureau ;
-- enregistrer un log dans `logs/` en cas de souci.
+Le lanceur ne dépend plus du Python installé dans Windows, ni des alias Microsoft Store, ni d’un `PATH` Python correct.
 
-En cas d’erreur, **aucun diagnostic manuel n’est demandé** : envoyer simplement une capture de la fenêtre du lanceur ou le dernier fichier de `logs/`.
+`LMNotebook_START.cmd` :
+
+- détecte ou installe `uv` via `winget` ;
+- laisse `uv` télécharger et gérer un Python 3.12 privé pour LMNotebook si nécessaire ;
+- crée `backend/.venv` sans modifier le Python système ;
+- installe les dépendances backend dans cet environnement isolé ;
+- vérifie / installe FFmpeg ;
+- crée `backend/.env` si nécessaire ;
+- démarre l’API V2 sur `http://127.0.0.1:8000` ;
+- démarre le frontend sur `http://127.0.0.1:8008` ;
+- ouvre automatiquement LMNotebook dans le navigateur.
+
+Le but est simple : **le système Python de Windows n’est plus une dépendance du projet**.
 
 ## V1 — Browser DSP
 
@@ -53,7 +53,7 @@ Les descripteurs de style de la V1 sont **heuristiques**. Ils ne doivent pas êt
 
 ## V2 — Deep Audio backend
 
-La V2 est maintenant amorcée dans `backend/` avec FastAPI.
+La V2 est amorcée dans `backend/` avec FastAPI.
 
 Architecture retenue pour le développement :
 
@@ -97,7 +97,7 @@ Endpoints :
 - `POST /api/analyze`
 - `/docs`
 
-Le dashboard contient maintenant un panneau **Deep Audio V2 node**, un bouton **Deep Scan V2** et une zone dédiée aux mesures mastering V2.
+Le dashboard contient un panneau **Deep Audio V2 node**, un bouton **Deep Scan V2** et une zone dédiée aux mesures mastering V2.
 
 ## Hardware plan
 
@@ -124,21 +124,7 @@ Le routage futur privilégiera d'abord **la quantité de VRAM requise**, puis la
 
 ## Lancement manuel — seulement pour debug
 
-Le mode manuel reste disponible pour le développement avancé, mais il n’est plus nécessaire pour l’usage normal.
-
-Backend :
-
-```powershell
-cd backend
-Copy-Item .env.example .env
-.\run_windows.ps1
-```
-
-Frontend :
-
-```powershell
-.\run_frontend_windows.ps1
-```
+Le mode manuel reste disponible pour le développement avancé, mais n’est pas nécessaire pour l’usage normal.
 
 Adresses locales :
 
