@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import array
 import json
 import math
 import subprocess
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -16,6 +18,8 @@ EXPECTED_STEMS = ('vocals', 'drums', 'bass', 'other')
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 STEMS_PYTHON = BACKEND_ROOT / '.venv-stems' / 'Scripts' / 'python.exe'
 STEMS_RUNNER = BACKEND_ROOT / 'stems_runner.py'
+ACTIVITY_SAMPLE_RATE = 8000
+ACTIVITY_WINDOW_SECONDS = 1.0
 
 
 def runtime_status() -> dict[str, Any]:
@@ -119,6 +123,7 @@ def separate_and_analyze(path: Path) -> dict[str, Any]:
                     'metadata': metadata,
                     'loudness': loudness,
                     'levels': levels,
+                    'activity': _activity_timeline(stem_path),
                 }
             )
 
@@ -139,8 +144,69 @@ def separate_and_analyze(path: Path) -> dict[str, Any]:
             'elapsed_seconds': round(time.perf_counter() - started, 2),
             'stem_count': len(stems),
             'stems': stems,
-            'provenance': 'DEMUCS GPU separation (isolated runtime) + FFmpeg per-stem measurements',
+            'activity_format': {
+                'window_seconds': ACTIVITY_WINDOW_SECONDS,
+                'sample_rate_hz': ACTIVITY_SAMPLE_RATE,
+                'metric': 'mono RMS dBFS decoded through FFmpeg',
+            },
+            'provenance': 'DEMUCS GPU separation + FFmpeg per-stem measurements + compact temporal RMS activity',
         }
+
+
+def _activity_timeline(path: Path) -> dict[str, Any]:
+    command = [
+        'ffmpeg',
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-i',
+        str(path),
+        '-vn',
+        '-ac',
+        '1',
+        '-ar',
+        str(ACTIVITY_SAMPLE_RATE),
+        '-f',
+        'f32le',
+        'pipe:1',
+    ]
+    completed = subprocess.run(
+        command,
+        capture_output=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        return {
+            'window_seconds': ACTIVITY_WINDOW_SECONDS,
+            'rms_dbfs': [],
+            'error': (completed.stderr or b'')[-1000:].decode('utf-8', errors='replace'),
+        }
+
+    samples = array.array('f')
+    usable = len(completed.stdout) - (len(completed.stdout) % samples.itemsize)
+    if usable <= 0:
+        return {'window_seconds': ACTIVITY_WINDOW_SECONDS, 'rms_dbfs': []}
+    samples.frombytes(completed.stdout[:usable])
+    if sys.byteorder != 'little':
+        samples.byteswap()
+
+    window = max(1, int(ACTIVITY_SAMPLE_RATE * ACTIVITY_WINDOW_SECONDS))
+    values: list[float] = []
+    for start in range(0, len(samples), window):
+        chunk = samples[start:start + window]
+        if not chunk:
+            continue
+        square_sum = 0.0
+        for value in chunk:
+            square_sum += float(value) * float(value)
+        rms = math.sqrt(square_sum / len(chunk))
+        dbfs = 20.0 * math.log10(max(rms, 1e-9))
+        values.append(round(max(-120.0, min(6.0, dbfs)), 2))
+
+    return {
+        'window_seconds': ACTIVITY_WINDOW_SECONDS,
+        'rms_dbfs': values,
+    }
 
 
 def _find_stem_dir(out_dir: Path) -> Path:
