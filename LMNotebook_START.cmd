@@ -6,7 +6,9 @@ title LMNotebook Launcher
 set "ROOT=%~dp0"
 set "BACKEND=%~dp0backend"
 set "VENV=%~dp0backend\.venv"
+set "HF_HOME=%~dp0backend\models\huggingface"
 set "PATH=%LOCALAPPDATA%\Microsoft\WinGet\Links;%USERPROFILE%\.local\bin;%PATH%"
+if not exist "%HF_HOME%" mkdir "%HF_HOME%" >nul 2>&1
 
 echo.
 echo ============================================================
@@ -104,7 +106,7 @@ if not exist "%BACKEND%\.env" if exist "%BACKEND%\.env.example" copy /Y "%BACKEN
 
 rem --- Optional CUDA / neural layer ----------------------------------------
 echo [5/6] Verification V2-B Neural / CUDA...
-"%VENV%\Scripts\python.exe" -c "import torch, transformers, librosa; import sys; print('Torch', torch.__version__, '| CUDA runtime', torch.version.cuda, '| GPU', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'OFFLINE'); sys.exit(0 if torch.cuda.is_available() else 3)" >nul 2>&1
+"%VENV%\Scripts\python.exe" -c "import torch, transformers, librosa; import sys; sys.exit(0 if torch.cuda.is_available() else 3)" >nul 2>&1
 if errorlevel 1 (
   echo [INFO] Premier branchement neural: installation PyTorch CUDA 12.8 + CLAP runtime.
   echo [INFO] C'est le gros telechargement initial; les lancements suivants seront rapides.
@@ -114,7 +116,8 @@ if errorlevel 1 (
   if errorlevel 1 goto :neural_warning
 )
 
-"%VENV%\Scripts\python.exe" -c "import torch, transformers, librosa; import sys; print('[OK] V2-B CUDA:', torch.__version__, '| CUDA', torch.version.cuda, '|', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'GPU indisponible'); sys.exit(0 if torch.cuda.is_available() else 3)"
+rem Real CUDA smoke test: allocate and execute a tiny matrix multiply on the GPU.
+"%VENV%\Scripts\python.exe" -c "import torch, transformers, librosa; import sys; assert torch.cuda.is_available(); x=torch.randn((128,128),device='cuda'); y=x@x; torch.cuda.synchronize(); print('[OK] V2-B CUDA:', torch.__version__, '| CUDA', torch.version.cuda, '|', torch.cuda.get_device_name(0), '| test', float(y[0,0])); sys.exit(0)"
 if errorlevel 1 goto :neural_warning
 set "NEURAL_READY=1"
 goto :launch
@@ -142,6 +145,7 @@ if errorlevel 1 (
 echo.
 if "%NEURAL_READY%"=="1" (
   echo [OK] V2-A + V2-B CUDA pretes. Le modele CLAP sera telecharge au premier Deep Scan.
+  echo [INFO] Cache du modele: %HF_HOME%
 ) else (
   echo [OK] V2-A prete. Couche Neural en attente de diagnostic.
 )
