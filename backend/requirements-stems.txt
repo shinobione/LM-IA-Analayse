@@ -4,4 +4,5 @@
 # launcher; install this file WITHOUT --upgrade so Demucs cannot replace them.
 # V2-A/V2-B live in backend/.venv and must never share Demucs dependencies.
 
+numpy>=1.26,<3
 demucs==4.1.0
