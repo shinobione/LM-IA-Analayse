@@ -21,35 +21,35 @@ echo.
 
 call :resolve_uv
 if not defined UV (
-  echo [1/6] Installation du runtime uv...
+  echo [1/7] Installation du runtime uv...
   winget install --id astral-sh.uv -e --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
   call :resolve_uv
 )
 if not defined UV goto :fail
-echo [1/6] Runtime OK : %UV%
+echo [1/7] Runtime OK : %UV%
 
 call :resolve_ffmpeg
 if not defined FFMPEG (
-  echo [2/6] Installation FFmpeg...
+  echo [2/7] Installation FFmpeg...
   winget install --id Gyan.FFmpeg -e --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
   call :resolve_ffmpeg
 )
 if not defined FFMPEG goto :fail
 for %%D in ("%FFMPEG%") do set "PATH=%%~dpD;%PATH%"
-echo [2/6] FFmpeg OK.
+echo [2/7] FFmpeg OK.
 
-echo [3/6] Environnement Python prive...
+echo [3/7] Environnement Python prive...
 if not exist "%VENV%\Scripts\python.exe" (
   if exist "%VENV%" rmdir /s /q "%VENV%"
   "%UV%" venv --python 3.12 "%VENV%"
   if errorlevel 1 goto :fail
 )
 
-echo [4/6] Dependances backend...
+echo [4/7] Dependances backend...
 "%UV%" pip install --python "%VENV%\Scripts\python.exe" -r "%BACKEND%\requirements.txt"
 if errorlevel 1 goto :fail
 
-echo [5/6] CUDA + Neural...
+echo [5/7] CUDA + Neural...
 "%VENV%\Scripts\python.exe" -c "import torch; import sys; sys.exit(0 if torch.cuda.is_available() else 3)" >nul 2>&1
 if errorlevel 1 (
   "%UV%" pip install --python "%VENV%\Scripts\python.exe" torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128
@@ -57,10 +57,21 @@ if errorlevel 1 (
 )
 "%UV%" pip install --python "%VENV%\Scripts\python.exe" -r "%BACKEND%\requirements-neural.txt"
 if errorlevel 1 goto :fail
-"%VENV%\Scripts\python.exe" -c "import torch; from transformers import ClapModel, ClapProcessor; assert torch.cuda.is_available(); x=torch.randn((64,64),device='cuda'); y=x@x; torch.cuda.synchronize(); print('[OK] CUDA:',torch.cuda.get_device_name(0),'|',round(torch.cuda.get_device_properties(0).total_memory/1073741824,1),'GB')"
+"%VENV%\Scripts\python.exe" -c "import torch; from transformers import ClapModel, ClapProcessor; assert torch.cuda.is_available(); x=torch.randn((64,64),device='cuda'); y=x@x; torch.cuda.synchronize(); print('[OK] Neural CUDA:',torch.cuda.get_device_name(0))"
 if errorlevel 1 goto :fail
 
-echo [6/6] Pare-feu LAN + demarrage worker...
+echo [6/7] Demucs + torchaudio CUDA...
+"%VENV%\Scripts\python.exe" -c "import torch,torchaudio,demucs; assert torch.cuda.is_available()" >nul 2>&1
+if errorlevel 1 (
+  "%UV%" pip install --python "%VENV%\Scripts\python.exe" --upgrade torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/cu128
+  if errorlevel 1 goto :fail
+  "%UV%" pip install --python "%VENV%\Scripts\python.exe" --upgrade -r "%BACKEND%\requirements-stems.txt"
+  if errorlevel 1 goto :fail
+)
+"%VENV%\Scripts\python.exe" -c "import torch,torchaudio,demucs; assert torch.cuda.is_available(); print('[OK] Demucs htdemucs:',torch.cuda.get_device_name(0))"
+if errorlevel 1 goto :fail
+
+echo [7/7] Pare-feu LAN + demarrage worker...
 powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$name='LMNotebook GPU Worker 8001'; if(-not (Get-NetFirewallRule -DisplayName $name -ErrorAction SilentlyContinue)){ try { New-NetFirewallRule -DisplayName $name -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8001 -Profile Private -RemoteAddress LocalSubnet | Out-Null } catch {} }" >nul 2>&1
 set "LMN_WORKER_PORT=8001"
 "%VENV%\Scripts\python.exe" "%ROOT%tools\worker_runtime.py" stop >nul 2>&1
@@ -68,7 +79,7 @@ set "LMN_WORKER_PORT=8001"
 if errorlevel 1 goto :fail
 
 echo.
-echo [OK] Worker GPU LMNotebook actif.
+echo [OK] Worker GPU LMNotebook actif + Demucs READY.
 echo [INFO] Le coordinateur RTX3060 le detectera automatiquement sur le LAN.
 for /f "delims=" %%I in ('powershell -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 ^| ? {$_.IPAddress -notlike '169.254*' -and $_.IPAddress -ne '127.0.0.1'} ^| Select-Object -First 1 -ExpandProperty IPAddress)"') do set "LANIP=%%I"
 if defined LANIP echo [INFO] Adresse worker : http://%LANIP%:8001
