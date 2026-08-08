@@ -61,14 +61,29 @@ async def route_task(task: str) -> dict[str, Any]:
     viable = [candidate for candidate in candidates if candidate['fits']]
     viable.sort(key=lambda candidate: candidate['score'], reverse=True)
 
+    selected = viable[0] if viable else None
     return {
         'task': task,
         'requirement': requirement,
         'routable': bool(viable),
-        'selected': viable[0] if viable else None,
+        'selected': selected,
         'candidates': candidates,
-        'routing_policy': 'VRAM fit first; then free VRAM; coordinator locality is a small tie-breaker.',
+        'routing_policy': (
+            'VRAM fit first; large models stay on the 12 GB coordinator; '
+            'Demucs prefers a fitting LAN worker so the coordinator remains free.'
+        ),
+        'selected_reason': _selected_reason(task, selected),
     }
+
+
+def _selected_reason(task: str, selected: dict[str, Any] | None) -> str | None:
+    if not selected:
+        return None
+    if task == 'demucs' and not selected.get('local'):
+        return 'Dedicated LAN GPU selected for stems; coordinator VRAM preserved.'
+    if task == 'large-model' and selected.get('local'):
+        return '12 GB coordinator selected because the model needs the larger VRAM pool.'
+    return 'Best current VRAM fit and free-memory score.'
 
 
 def _candidate(
@@ -96,8 +111,11 @@ def _candidate(
             score += 4
         if task == 'large-model' and total >= 11000:
             score += 25
-        if task == 'demucs' and total < 11000:
-            # Keep the 12 GB card freer for larger models when an 8 GB worker fits.
+        if task == 'demucs' and not local:
+            # Strongly prefer a remote 8 GB worker for source separation when
+            # it fits, keeping the 12 GB coordinator available for larger ML.
+            score += 28
+        elif task == 'demucs' and total < 11000:
             score += 8
 
     return {
