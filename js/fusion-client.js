@@ -6,12 +6,14 @@
   let fusionReady = false;
   let latestResult = null;
 
-  document.addEventListener('DOMContentLoaded', () => {
+  function initFusionClient() {
     const input = document.getElementById('audio-file-input');
     const deepBtn = document.getElementById('deep-analyze-audio-btn');
-    if (!input || !deepBtn) return;
+    if (!input || !deepBtn || document.getElementById('fusion-analyze-audio-btn')) return;
 
     const button = ensureButton(deepBtn);
+    selectedFile = input.files?.[0] || null;
+
     input.addEventListener('change', () => {
       selectedFile = input.files?.[0] || null;
       syncButton(button);
@@ -23,8 +25,15 @@
     });
 
     button.addEventListener('click', () => runFusion(button));
-    window.setTimeout(() => refreshCapability(button), 1100);
-  });
+    syncButton(button);
+    window.setTimeout(() => refreshCapability(button), 450);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initFusionClient, { once: true });
+  } else {
+    initFusionClient();
+  }
 
   function ensureButton(deepBtn) {
     let button = document.getElementById('fusion-analyze-audio-btn');
