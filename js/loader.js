@@ -67,8 +67,26 @@ function loadSemanticAssets() {
   }
 }
 
+function loadUnifiedAnalysisAssets() {
+  if (!document.querySelector('link[data-lmn-unified-analysis]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'css/unified-analysis.css?v=1';
+    link.dataset.lmnUnifiedAnalysis = '1';
+    document.head.appendChild(link);
+  }
+
+  if (!document.querySelector('script[data-lmn-unified-analysis]')) {
+    const script = document.createElement('script');
+    script.src = 'js/unified-analysis.js?v=1';
+    script.dataset.lmnUnifiedAnalysis = '1';
+    document.head.appendChild(script);
+  }
+}
+
 loadFusionAssets();
 loadSemanticAssets();
+loadUnifiedAnalysisAssets();
 
 function initLoader(onComplete) {
   const statusEl = document.getElementById('loader-status');
