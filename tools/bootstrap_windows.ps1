@@ -29,7 +29,8 @@ function Warn([string]$Text) {
 function Refresh-Path {
     $machine = [Environment]::GetEnvironmentVariable('Path', 'Machine')
     $user = [Environment]::GetEnvironmentVariable('Path', 'User')
-    $env:Path = "$machine;$user;$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+    $wingetLinks = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Links'
+    $env:Path = "$machine;$user;$wingetLinks"
 }
 
 function Has([string]$Name) {
@@ -44,28 +45,58 @@ function Install-WingetPackage([string]$Id, [string]$Label) {
     }
 
     Step "Installation automatique : $Label"
-    try {
-        & winget install --id $Id --exact --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
-        Refresh-Path
+    & winget install --id $Id --exact --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
+    Refresh-Path
+    if ($LASTEXITCODE -eq 0) {
+        Good "$Label installe"
         return $true
-    } catch {
-        Warn "Installation automatique de $Label impossible : $($_.Exception.Message)"
-        return $false
     }
+
+    Warn "Windows n'a pas pu installer $Label automatiquement (code $LASTEXITCODE)."
+    return $false
+}
+
+function Test-PythonCandidate([string]$Exe, [string[]]$Prefix) {
+    if (-not $Exe -or -not (Test-Path $Exe)) { return $null }
+    try {
+        $cmdArgs = @($Prefix) + @('--version')
+        $output = (& $Exe $cmdArgs 2>&1 | Select-Object -First 1)
+        if ($LASTEXITCODE -eq 0 -and "$output" -match '^Python\s+\d') {
+            return @{ exe = $Exe; prefix = @($Prefix); version = "$output" }
+        }
+    } catch {}
+    return $null
 }
 
 function Resolve-Python {
-    if (Has 'python') {
-        return @{ exe = (Get-Command python).Source; prefix = @() }
+    $pythonCommand = Get-Command python -ErrorAction SilentlyContinue
+    if ($pythonCommand) {
+        $candidate = Test-PythonCandidate $pythonCommand.Source @()
+        if ($candidate) { return $candidate }
     }
-    if (Has 'py') {
-        return @{ exe = (Get-Command py).Source; prefix = @('-3') }
+
+    $pyCommand = Get-Command py -ErrorAction SilentlyContinue
+    if ($pyCommand) {
+        $candidate = Test-PythonCandidate $pyCommand.Source @('-3')
+        if ($candidate) { return $candidate }
     }
+
+    $localPythonRoot = Join-Path $env:LOCALAPPDATA 'Programs\Python'
+    if (Test-Path $localPythonRoot) {
+        $candidates = Get-ChildItem -Path $localPythonRoot -Filter python.exe -Recurse -ErrorAction SilentlyContinue |
+            Sort-Object FullName -Descending
+        foreach ($item in $candidates) {
+            $candidate = Test-PythonCandidate $item.FullName @()
+            if ($candidate) { return $candidate }
+        }
+    }
+
     return $null
 }
 
 function Run-Python($Py, [string[]]$Args) {
-    & $Py.exe @($Py.prefix) @Args
+    $cmdArgs = @($Py.prefix) + @($Args)
+    & $Py.exe $cmdArgs
     if ($LASTEXITCODE -ne 0) {
         throw "Python a retourne le code $LASTEXITCODE."
     }
@@ -86,6 +117,11 @@ function Api-Ready {
     } catch {
         return $false
     }
+}
+
+function Read-Runtime {
+    if (-not (Test-Path $RuntimeFile)) { return $null }
+    try { return (Get-Content $RuntimeFile -Raw | ConvertFrom-Json) } catch { return $null }
 }
 
 function Create-DesktopShortcut {
@@ -122,8 +158,8 @@ try {
     if ((Test-Path (Join-Path $Root '.git')) -and -not $NoUpdate) {
         if (-not (Has 'git')) {
             Install-WingetPackage 'Git.Git' 'Git' | Out-Null
+            Refresh-Path
         }
-        Refresh-Path
         if (Has 'git') {
             $dirty = (& git status --porcelain 2>$null)
             if ([string]::IsNullOrWhiteSpace(($dirty -join ''))) {
@@ -147,10 +183,9 @@ try {
         $Py = Resolve-Python
     }
     if (-not $Py) {
-        throw 'Python manque toujours. Le lanceur a essaye de l installer automatiquement mais Windows ne le voit pas encore. Relance simplement LMNotebook_START.cmd une fois.'
+        throw 'Python manque toujours. Relance simplement LMNotebook_START.cmd une fois; si ca bloque encore, envoie-moi cette fenetre.'
     }
-    $pythonVersion = (& $Py.exe @($Py.prefix) --version 2>&1 | Select-Object -First 1)
-    Good "Python : $pythonVersion"
+    Good "Python : $($Py.version)"
 
     Step 'Verification FFmpeg / ffprobe'
     if (-not (Has 'ffmpeg')) {
@@ -158,7 +193,7 @@ try {
         Refresh-Path
     }
     if (-not (Has 'ffmpeg')) {
-        throw 'FFmpeg manque toujours. Le lanceur a tente l installation automatique. Relance le START; si ca bloque encore, envoie-moi simplement le contenu de cette fenetre.'
+        throw 'FFmpeg manque toujours. Le lanceur a tente l installation automatique. Relance START une fois; si ca bloque encore, envoie-moi cette fenetre.'
     }
     if (-not (Has 'ffprobe')) {
         throw 'ffprobe manque alors que FFmpeg est detecte. Envoie-moi cette fenetre et je corrigerai le PATH.'
@@ -175,7 +210,7 @@ try {
             Warn 'nvidia-smi existe mais ne repond pas correctement. V2-A fonctionnera quand meme sur CPU.'
         }
     } else {
-        Warn 'nvidia-smi non detecte. V2-A peut tourner sur CPU; CUDA sera active plus tard quand le pilote NVIDIA sera visible.'
+        Warn 'nvidia-smi non detecte. V2-A peut tourner sur CPU; CUDA sera active lorsque le pilote NVIDIA sera visible.'
     }
 
     Step 'Preparation du backend V2'
@@ -199,6 +234,7 @@ try {
         Good 'Configuration .env creee automatiquement'
     }
 
+    $existingRuntime = Read-Runtime
     $backendProcess = $null
     $frontendProcess = $null
 
@@ -206,7 +242,7 @@ try {
     if (Api-Ready) {
         Good 'API V2 deja active sur le port 8000'
     } elseif (Port-Listening 8000) {
-        throw 'Le port 8000 est deja utilise par un autre programme. Ferme ce programme ou lance LMNotebook_STOP.cmd si c est une ancienne instance.'
+        throw 'Le port 8000 est deja utilise par un autre programme. Lance LMNotebook_STOP.cmd; si ca persiste, envoie-moi un screenshot.'
     } else {
         $backendCommand = "`$Host.UI.RawUI.WindowTitle='LMNotebook V2 API'; Set-Location '$Backend'; & '$VenvPython' -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
         $backendProcess = Start-Process powershell.exe -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-NoExit','-Command',$backendCommand) -PassThru
@@ -222,10 +258,12 @@ try {
         Good "Frontend lance (PID $($frontendProcess.Id))"
     }
 
+    $backendPid = if ($backendProcess) { $backendProcess.Id } elseif ($existingRuntime) { $existingRuntime.backend_pid } else { $null }
+    $frontendPid = if ($frontendProcess) { $frontendProcess.Id } elseif ($existingRuntime) { $existingRuntime.frontend_pid } else { $null }
     $runtime = [ordered]@{
         launched_at = (Get-Date).ToString('o')
-        backend_pid = if ($backendProcess) { $backendProcess.Id } else { $null }
-        frontend_pid = if ($frontendProcess) { $frontendProcess.Id } else { $null }
+        backend_pid = $backendPid
+        frontend_pid = $frontendPid
         api = 'http://127.0.0.1:8000'
         frontend = 'http://127.0.0.1:8008'
     }
@@ -240,7 +278,7 @@ try {
     if ($ready) {
         Good 'Deep Audio V2 repond correctement'
     } else {
-        Warn 'Le frontend va s ouvrir, mais l API n a pas encore repondu. Regarde la fenetre "LMNotebook V2 API" si besoin.'
+        Warn 'Le frontend va s ouvrir, mais l API n a pas encore repondu. Regarde la fenetre LMNotebook V2 API si besoin.'
     }
 
     Create-DesktopShortcut
@@ -250,7 +288,7 @@ try {
     Start-Process 'http://127.0.0.1:8008'
     Good 'LMNotebook est lance.'
     Write-Host ''
-    Write-Host 'La prochaine fois : double-clic sur LMNotebook_START.cmd (ou le raccourci Bureau).' -ForegroundColor Green
+    Write-Host 'A partir de maintenant : double-clic sur LMNotebook_START.cmd ou sur le raccourci Bureau.' -ForegroundColor Green
     Write-Host 'Pour tout arreter : double-clic sur LMNotebook_STOP.cmd.' -ForegroundColor DarkGray
     Write-Host "Log : $LogFile" -ForegroundColor DarkGray
 
@@ -261,7 +299,7 @@ try {
     Write-Host 'LMNotebook n a pas pu terminer le demarrage.' -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Red
     Write-Host ''
-    Write-Host 'Pas besoin de diagnostiquer toi-meme : copie-moi cette erreur ou envoie un screenshot.' -ForegroundColor Yellow
+    Write-Host 'Pas besoin de diagnostiquer toi-meme : envoie-moi un screenshot de cette fenetre.' -ForegroundColor Yellow
     Write-Host "Log : $LogFile" -ForegroundColor DarkGray
     try { Stop-Transcript | Out-Null } catch {}
     exit 1
