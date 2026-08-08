@@ -14,13 +14,13 @@ echo  LMNotebook Neural Audio Analyzer - SAFE RUNTIME
 echo ============================================================
 echo.
 echo LMNotebook gere son propre Python via uv.
-echo Aucun Python systeme ni alias Microsoft Store n'est utilise.
+echo La couche GPU V2-B reste optionnelle: elle ne peut pas casser V2-A.
 echo.
 
 rem --- Resolve/install uv ----------------------------------------------------
 call :resolve_uv
 if not defined UV (
-  echo [1/5] Installation du runtime LMNotebook ^(uv^)...
+  echo [1/6] Installation du runtime LMNotebook ^(uv^)...
   where winget.exe >nul 2>&1
   if errorlevel 1 (
     echo [ERREUR] winget n'est pas disponible sur ce Windows.
@@ -35,15 +35,13 @@ if not defined UV (
     pause
     exit /b 1
   )
-
   call :resolve_uv
 ) else (
-  echo [1/5] Runtime LMNotebook deja present.
+  echo [1/6] Runtime LMNotebook deja present.
 )
 
 if not defined UV (
   echo [ERREUR] uv est installe mais son executable reste introuvable.
-  echo Aucun autre composant n'est lance. Envoie-moi cette fenetre.
   pause
   exit /b 1
 )
@@ -57,7 +55,7 @@ if errorlevel 1 (
 )
 
 rem --- FFmpeg ---------------------------------------------------------------
-echo [2/5] Verification FFmpeg...
+echo [2/6] Verification FFmpeg...
 call :resolve_ffmpeg
 if not defined FFMPEG (
   echo Installation automatique de FFmpeg...
@@ -81,7 +79,7 @@ for %%D in ("%FFMPEG%") do set "PATH=%%~dpD;%PATH%"
 echo [OK] FFmpeg : %FFMPEG%
 
 rem --- Private managed Python + venv ---------------------------------------
-echo [3/5] Preparation du Python prive LMNotebook 3.12...
+echo [3/6] Preparation du Python prive LMNotebook 3.12...
 if exist "%VENV%\Scripts\python.exe" (
   echo [OK] Environnement deja present.
 ) else (
@@ -93,19 +91,45 @@ if exist "%VENV%\Scripts\python.exe" (
 if not exist "%VENV%\Scripts\python.exe" goto :venv_error
 "%VENV%\Scripts\python.exe" --version
 
-rem --- Dependencies ---------------------------------------------------------
-echo [4/5] Synchronisation des dependances V2...
+rem --- Base dependencies ----------------------------------------------------
+echo [4/6] Synchronisation des dependances V2-A...
 "%UV%" pip install --python "%VENV%\Scripts\python.exe" -r "%BACKEND%\requirements.txt"
 if errorlevel 1 (
-  echo [ERREUR] Les dependances du moteur n'ont pas pu etre installees.
+  echo [ERREUR] Les dependances du moteur V2-A n'ont pas pu etre installees.
   pause
   exit /b 1
 )
 
 if not exist "%BACKEND%\.env" if exist "%BACKEND%\.env.example" copy /Y "%BACKEND%\.env.example" "%BACKEND%\.env" >nul
 
+rem --- Optional CUDA / neural layer ----------------------------------------
+echo [5/6] Verification V2-B Neural / CUDA...
+"%VENV%\Scripts\python.exe" -c "import torch, transformers, librosa; import sys; print('Torch', torch.__version__, '| CUDA runtime', torch.version.cuda, '| GPU', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'OFFLINE'); sys.exit(0 if torch.cuda.is_available() else 3)" >nul 2>&1
+if errorlevel 1 (
+  echo [INFO] Premier branchement neural: installation PyTorch CUDA 12.8 + CLAP runtime.
+  echo [INFO] C'est le gros telechargement initial; les lancements suivants seront rapides.
+  "%UV%" pip install --python "%VENV%\Scripts\python.exe" torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128
+  if errorlevel 1 goto :neural_warning
+  "%UV%" pip install --python "%VENV%\Scripts\python.exe" -r "%BACKEND%\requirements-neural.txt"
+  if errorlevel 1 goto :neural_warning
+)
+
+"%VENV%\Scripts\python.exe" -c "import torch, transformers, librosa; import sys; print('[OK] V2-B CUDA:', torch.__version__, '| CUDA', torch.version.cuda, '|', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'GPU indisponible'); sys.exit(0 if torch.cuda.is_available() else 3)"
+if errorlevel 1 goto :neural_warning
+set "NEURAL_READY=1"
+goto :launch
+
+:neural_warning
+echo.
+echo [WARN] La couche Neural V2-B n'est pas encore disponible.
+echo [WARN] V2-A reste 100%% fonctionnelle; LMNotebook va quand meme demarrer.
+echo [WARN] Aucun pilote NVIDIA ni composant Windows n'a ete modifie.
+echo.
+set "NEURAL_READY=0"
+
+:launch
 rem --- Verified runtime supervisor -----------------------------------------
-echo [5/5] Demarrage verifie de LMNotebook...
+echo [6/6] Demarrage verifie de LMNotebook...
 "%VENV%\Scripts\python.exe" "%ROOT%tools\runtime_manager.py" start
 if errorlevel 1 (
   echo.
@@ -116,9 +140,13 @@ if errorlevel 1 (
 )
 
 echo.
-echo [OK] Runtime local V2 valide.
+if "%NEURAL_READY%"=="1" (
+  echo [OK] V2-A + V2-B CUDA pretes. Le modele CLAP sera telecharge au premier Deep Scan.
+) else (
+  echo [OK] V2-A prete. Couche Neural en attente de diagnostic.
+)
 echo Tu peux fermer cette fenetre.
-timeout /t 3 /nobreak >nul
+timeout /t 4 /nobreak >nul
 exit /b 0
 
 :resolve_uv
