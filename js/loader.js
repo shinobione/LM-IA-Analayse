@@ -11,6 +11,25 @@ const LOADING_STEPS = [
   'Local analyzer ready.'
 ];
 
+function loadFusionAssets() {
+  if (!document.querySelector('link[data-lmn-fusion]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'css/fusion.css';
+    link.dataset.lmnFusion = '1';
+    document.head.appendChild(link);
+  }
+
+  if (!document.querySelector('script[data-lmn-fusion]')) {
+    const script = document.createElement('script');
+    script.src = 'js/fusion-client.js';
+    script.dataset.lmnFusion = '1';
+    document.head.appendChild(script);
+  }
+}
+
+loadFusionAssets();
+
 function initLoader(onComplete) {
   const statusEl = document.getElementById('loader-status');
   const barEl = document.getElementById('loader-progress-bar');
