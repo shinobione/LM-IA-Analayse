@@ -32,7 +32,7 @@ function loadSemanticAssets() {
   if (!document.querySelector('link[data-lmn-semantic]')) {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = 'css/semantic.css?v=2';
+    link.href = 'css/semantic.css?v=3';
     link.dataset.lmnSemantic = '1';
     document.head.appendChild(link);
   }
@@ -41,6 +41,13 @@ function loadSemanticAssets() {
     const script = document.createElement('script');
     script.src = 'js/semantic-bootstrap.js?v=2';
     script.dataset.lmnSemanticBootstrap = '1';
+    document.head.appendChild(script);
+  }
+
+  if (!document.querySelector('script[data-lmn-semantic-metadata]')) {
+    const script = document.createElement('script');
+    script.src = 'js/semantic-metadata.js?v=3';
+    script.dataset.lmnSemanticMetadata = '1';
     document.head.appendChild(script);
   }
 }
