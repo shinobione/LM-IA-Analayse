@@ -10,6 +10,8 @@ backend/tmp/
 backend/models/
 backend/cache/
 *.log
+logs/
+.lmn-runtime.json
 
 # OS / editors
 .DS_Store
