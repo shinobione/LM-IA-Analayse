@@ -36,8 +36,6 @@ if not defined UV (
     exit /b 1
   )
 
-  rem WinGet peut demander un nouveau shell avant de rafraichir le PATH.
-  rem On contourne cela en cherchant directement uv.exe dans ses dossiers reels.
   call :resolve_uv
 ) else (
   echo [1/5] Runtime LMNotebook deja present.
@@ -106,17 +104,20 @@ if errorlevel 1 (
 
 if not exist "%BACKEND%\.env" if exist "%BACKEND%\.env.example" copy /Y "%BACKEND%\.env.example" "%BACKEND%\.env" >nul
 
-rem --- Launch ---------------------------------------------------------------
-echo [5/5] Demarrage de LMNotebook...
-start "LMNotebook V2 API" /D "%BACKEND%" cmd /k ""%VENV%\Scripts\python.exe" -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
-start "LMNotebook Frontend" /D "%ROOT%" cmd /k ""%VENV%\Scripts\python.exe" -m http.server 8008 --bind 127.0.0.1"
-
-timeout /t 4 /nobreak >nul
-start "" "http://127.0.0.1:8008"
+rem --- Verified runtime supervisor -----------------------------------------
+echo [5/5] Demarrage verifie de LMNotebook...
+"%VENV%\Scripts\python.exe" "%ROOT%tools\runtime_manager.py" start
+if errorlevel 1 (
+  echo.
+  echo [ERREUR] LMNotebook n'a pas valide son runtime local.
+  echo Le diagnostic utile est affiche ci-dessus et dans le dossier logs.
+  pause
+  exit /b 1
+)
 
 echo.
-echo [OK] LMNotebook lance.
-echo Cette fenetre peut etre fermee.
+echo [OK] Runtime local V2 valide.
+echo Tu peux fermer cette fenetre.
 timeout /t 3 /nobreak >nul
 exit /b 0
 
