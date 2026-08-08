@@ -3,17 +3,18 @@
  */
 
 const TERMINAL_LOGS = [
-  '[SYSTEM] LMNotebook Local Audio DSP + Deep Audio V2 ready',
-  '[INPUT] Accepted formats: MP3 / WAV',
-  '[PRIVACY] V1 stays in browser; V2 temp files are deleted after analysis',
-  '[DSP V1] PCM amplitude, RMS, peak, crest factor, clipping',
-  '[RHYTHM] Tempo estimation via onset-envelope autocorrelation',
-  '[TONAL] Chroma extraction + major/minor key profile matching',
-  '[SPECTRAL] FFT centroid, roll-off, flatness, flux and band energy',
-  '[STEREO] Mid/Side width, channel balance and L/R correlation',
-  '[V2-A] BS.1770 / EBU R128 loudness, LRA, true peak and metadata',
-  '[V2-B] CUDA neural genre/style, mood, instrumentation and 512D embeddings active',
-  '[NEXT] Song anatomy, stems, lyrics and LAN GPU worker'
+  '[SYSTEM] LMNotebook local analysis stack ready',
+  '[INPUT] MP3 / WAV accepted • TXT/LRC lyrics optional',
+  '[PRIVACY] Browser DSP stays local; temporary V2 files are deleted after analysis',
+  '[DSP] Level, dynamics, clipping, stereo, FFT and spectral balance active',
+  '[RHYTHM] Tempo and onset analysis active',
+  '[TONAL] Chroma, key and harmonic tracking active',
+  '[V2-A] BS.1770 / EBU R128 loudness, LRA and true peak active',
+  '[V2-B] CUDA Neural genre/style, mood, instrumentation and 512D embeddings active',
+  '[V2-C] Song Anatomy structure, repetitions, hooks, climax and chord timeline active',
+  '[V2-D] Demucs stems routed to the LAN GPU worker with local fallback',
+  '[V2-CD] Structure + temporal stem activity fusion active',
+  '[V2-CD.1] Semantic arrangement + timestamped lyrics + declared metadata active'
 ];
 
 function startTerminal() {

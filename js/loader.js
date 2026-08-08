@@ -3,12 +3,12 @@
  */
 
 const LOADING_STEPS = [
-  'Booting local audio engine…',
-  'Checking Web Audio API…',
-  'Loading FFT / chroma modules…',
-  'Preparing waveform renderer…',
-  'Preparing DSP charts…',
-  'Local analyzer ready.'
+  'Initialisation du moteur audio local…',
+  'Vérification Web Audio API…',
+  'Chargement FFT / chroma…',
+  'Préparation de la waveform…',
+  'Préparation des visualisations…',
+  'Interface d’analyse prête.'
 ];
 
 function loadFusionAssets() {
@@ -32,22 +32,37 @@ function loadSemanticAssets() {
   if (!document.querySelector('link[data-lmn-semantic]')) {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = 'css/semantic.css?v=3';
+    link.href = 'css/semantic.css?v=4';
     link.dataset.lmnSemantic = '1';
+    document.head.appendChild(link);
+  }
+
+  if (!document.querySelector('link[data-lmn-semantic-human]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'css/semantic-human.css?v=4';
+    link.dataset.lmnSemanticHuman = '1';
     document.head.appendChild(link);
   }
 
   if (!document.querySelector('script[data-lmn-semantic-bootstrap]')) {
     const script = document.createElement('script');
-    script.src = 'js/semantic-bootstrap.js?v=2';
+    script.src = 'js/semantic-bootstrap.js?v=4';
     script.dataset.lmnSemanticBootstrap = '1';
     document.head.appendChild(script);
   }
 
   if (!document.querySelector('script[data-lmn-semantic-metadata]')) {
     const script = document.createElement('script');
-    script.src = 'js/semantic-metadata.js?v=3';
+    script.src = 'js/semantic-metadata.js?v=4';
     script.dataset.lmnSemanticMetadata = '1';
+    document.head.appendChild(script);
+  }
+
+  if (!document.querySelector('script[data-lmn-semantic-human-ui]')) {
+    const script = document.createElement('script');
+    script.src = 'js/semantic-human-ui.js?v=4';
+    script.dataset.lmnSemanticHumanUi = '1';
     document.head.appendChild(script);
   }
 }
