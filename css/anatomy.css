@@ -1,0 +1,80 @@
+.anatomy-btn {
+  border-color: rgba(168, 85, 247, 0.45);
+  background: linear-gradient(135deg, rgba(76, 29, 149, 0.38), rgba(8, 145, 178, 0.2));
+}
+
+.anatomy-results {
+  grid-column: 1 / -1;
+  padding: 18px;
+  border-color: rgba(139, 92, 246, 0.3);
+  overflow: hidden;
+}
+
+.anatomy-header { align-items: flex-start; }
+.anatomy-subtitle { margin-top: 5px; color: var(--muted, #718096); font-size: 0.76rem; }
+.anatomy-summary { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.anatomy-metric strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.anatomy-panel { margin-top: 12px; padding: 13px; border: 1px solid rgba(148, 163, 184, 0.13); border-radius: 12px; background: rgba(3, 7, 18, 0.36); }
+.anatomy-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.anatomy-panel-head strong { font-size: 0.82rem; }
+.anatomy-panel-head span { color: #64748b; font-family: 'JetBrains Mono', monospace; font-size: 0.64rem; }
+.anatomy-timeline-wrap { position: relative; padding-top: 28px; }
+.anatomy-timeline { display: flex; gap: 3px; width: 100%; min-height: 76px; }
+.anatomy-section-block { position: relative; min-width: 36px; flex-grow: 1; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end; gap: 4px; padding: 8px 7px; overflow: hidden; border: 1px solid rgba(255,255,255,.07); border-radius: 7px; color: #e5e7eb; background: linear-gradient(180deg, rgba(14,116,144,.22), rgba(15,23,42,.82)); cursor: pointer; transition: transform .16s ease, border-color .16s ease, filter .16s ease; text-align: left; }
+.anatomy-section-block:hover, .anatomy-section-block.active { transform: translateY(-2px); border-color: rgba(34,211,238,.62); filter: brightness(1.16); }
+.anatomy-section-block strong { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .72rem; }
+.anatomy-section-block small { color: #94a3b8; font-family: 'JetBrains Mono', monospace; font-size: .58rem; }
+.anatomy-section-block em { position: absolute; top: 5px; right: 5px; padding: 2px 4px; border-radius: 4px; color: #67e8f9; background: rgba(8,47,73,.75); font-family: 'JetBrains Mono', monospace; font-size: .53rem; font-style: normal; }
+.anatomy-section-block.type-chorus { background: linear-gradient(180deg, rgba(168,85,247,.34), rgba(49,46,129,.5)); }
+.anatomy-section-block.type-verse { background: linear-gradient(180deg, rgba(14,165,233,.27), rgba(15,23,42,.82)); }
+.anatomy-section-block.type-pre-chorus { background: linear-gradient(180deg, rgba(45,212,191,.3), rgba(15,23,42,.82)); }
+.anatomy-section-block.type-drop { background: linear-gradient(180deg, rgba(244,63,94,.32), rgba(76,5,25,.46)); }
+.anatomy-section-block.type-bridge { background: linear-gradient(180deg, rgba(245,158,11,.26), rgba(69,26,3,.38)); }
+.anatomy-section-block.type-intro, .anatomy-section-block.type-outro { background: linear-gradient(180deg, rgba(100,116,139,.25), rgba(15,23,42,.82)); }
+.anatomy-markers { position: absolute; inset: 0 0 auto 0; height: 26px; pointer-events: none; }
+.anatomy-marker { position: absolute; transform: translateX(-50%); top: 0; display: flex; align-items: center; gap: 3px; color: #cbd5e1; font-family: 'JetBrains Mono', monospace; font-size: .52rem; white-space: nowrap; }
+.anatomy-marker i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; box-shadow: 0 0 9px currentColor; }
+.anatomy-marker.climax { color: #fb7185; font-weight: 700; }
+.anatomy-marker.hook { top: 13px; color: #22d3ee; }
+.anatomy-section-detail { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 7px; margin-top: 10px; }
+.anatomy-section-detail > div { min-width: 0; padding: 7px 8px; border: 1px solid rgba(148,163,184,.1); border-radius: 7px; background: rgba(15,23,42,.44); }
+.anatomy-section-detail span { display: block; color: #64748b; font-size: .54rem; text-transform: uppercase; }
+.anatomy-section-detail strong { display: block; margin-top: 3px; overflow: hidden; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; font-size: .64rem; text-overflow: ellipsis; white-space: nowrap; }
+.anatomy-grid-2 { display: grid; grid-template-columns: minmax(0,1.25fr) minmax(300px,.75fr); gap: 12px; }
+.anatomy-chords { display: flex; align-items: stretch; gap: 2px; min-height: 58px; overflow-x: auto; padding-bottom: 3px; }
+.anatomy-chord { min-width: 34px; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; padding: 6px; border-radius: 5px; background: rgba(8,145,178,.2); border: 1px solid rgba(34,211,238,.14); }
+.anatomy-chord strong { font-family: 'JetBrains Mono', monospace; font-size: .67rem; }
+.anatomy-chord small { margin-top: 3px; color: #64748b; font-size: .52rem; }
+.anatomy-chord.no-chord { opacity: .4; }
+.anatomy-harmonic-changes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.anatomy-harmonic-changes span { padding: 4px 6px; border-radius: 5px; background: rgba(30,41,59,.55); color: #94a3b8; font-family: 'JetBrains Mono', monospace; font-size: .56rem; }
+.anatomy-harmonic-changes b { color: #22d3ee; }
+.anatomy-similarity { --sim-size: 1; display: grid; grid-template-columns: repeat(var(--sim-size), minmax(7px, 1fr)); gap: 2px; aspect-ratio: 1/1; max-height: 250px; width: min(100%,250px); margin: 0 auto; }
+.anatomy-similarity i { display: block; border-radius: 2px; background: #22d3ee; }
+.anatomy-hooks { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+.anatomy-hook-card { padding: 9px; border: 1px solid rgba(34,211,238,.14); border-radius: 8px; background: rgba(8,47,73,.2); }
+.anatomy-hook-card > div { display: flex; justify-content: space-between; gap: 8px; }
+.anatomy-hook-card strong, .anatomy-hook-card b { font-family: 'JetBrains Mono', monospace; font-size: .66rem; }
+.anatomy-hook-card b { color: #22d3ee; }
+.anatomy-hook-card span, .anatomy-hook-card small { display: block; margin-top: 5px; color: #94a3b8; font-size: .58rem; }
+.anatomy-section-list { display: grid; gap: 5px; max-height: 250px; overflow: auto; }
+.anatomy-section-row { display: grid; grid-template-columns: minmax(100px,1.2fr) .8fr .8fr .55fr .6fr .65fr; gap: 7px; align-items: center; padding: 6px 8px; border-radius: 6px; background: rgba(15,23,42,.42); color: #94a3b8; font-family: 'JetBrains Mono', monospace; font-size: .56rem; }
+.anatomy-section-row strong { overflow: hidden; color: #e2e8f0; text-overflow: ellipsis; white-space: nowrap; }
+.anatomy-engine { margin-top: 12px; }
+.anatomy-empty { color: #64748b; font-size: .68rem; }
+
+@media (max-width: 1180px) {
+  .anatomy-summary { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .anatomy-section-detail { grid-template-columns: repeat(4,minmax(0,1fr)); }
+  .anatomy-grid-2 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px) {
+  .anatomy-summary { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .anatomy-section-detail { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .anatomy-hooks { grid-template-columns: 1fr; }
+  .anatomy-section-row { grid-template-columns: 1.1fr .8fr .8fr; }
+  .anatomy-section-row span:nth-of-type(n+3) { display: none; }
+  .anatomy-timeline { overflow-x: auto; }
+  .anatomy-section-block { min-width: 82px; }
+}
