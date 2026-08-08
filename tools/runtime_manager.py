@@ -18,7 +18,23 @@ LOGS = ROOT / "logs"
 RUNTIME_FILE = ROOT / ".lmn-runtime.json"
 API_URL = "http://127.0.0.1:8000"
 FRONTEND_URL = "http://127.0.0.1:8008"
-EXPECTED_API_SCHEMA = "2.1"
+REQUIRED_API_SCHEMA = "2.2"
+
+
+def _schema_tuple(value: Any) -> tuple[int, int] | None:
+    try:
+        major_text, minor_text, *_ = str(value).strip().split(".")
+        return int(major_text), int(minor_text)
+    except (TypeError, ValueError):
+        return None
+
+
+def _schema_compatible(value: Any) -> bool:
+    current = _schema_tuple(value)
+    required = _schema_tuple(REQUIRED_API_SCHEMA)
+    if current is None or required is None:
+        return False
+    return current[0] == required[0] and current >= required
 
 
 def _http_json(url: str, timeout: float = 1.5) -> dict[str, Any] | None:
@@ -50,7 +66,7 @@ def api_ready() -> bool:
     return bool(
         payload
         and str(payload.get("service", "")).startswith("LMNotebook")
-        and str(payload.get("api_schema", "")) == EXPECTED_API_SCHEMA
+        and _schema_compatible(payload.get("api_schema"))
     )
 
 
@@ -98,13 +114,14 @@ def read_runtime() -> dict[str, Any]:
 
 def write_runtime(api_pid: int | None, frontend_pid: int | None) -> None:
     previous = read_runtime()
+    health = api_health() or {}
     payload = {
         "started_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "api_pid": api_pid or previous.get("api_pid"),
         "frontend_pid": frontend_pid or previous.get("frontend_pid"),
         "api": API_URL,
         "frontend": FRONTEND_URL,
-        "api_schema": EXPECTED_API_SCHEMA,
+        "api_schema": health.get("api_schema") or REQUIRED_API_SCHEMA,
     }
     RUNTIME_FILE.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
@@ -145,11 +162,11 @@ def stop_spawned(api_pid: int | None, frontend_pid: int | None) -> None:
 
 def stop_previous_runtime_if_incompatible() -> None:
     current = api_health()
-    if not current or str(current.get("api_schema", "")) == EXPECTED_API_SCHEMA:
+    if not current or _schema_compatible(current.get("api_schema")):
         return
     print(
-        f"[runtime] Ancienne API detectee (schema {current.get('api_schema') or 'legacy'}). "
-        f"Redemarrage vers {EXPECTED_API_SCHEMA}..."
+        f"[runtime] API incompatible detectee (schema {current.get('api_schema') or 'legacy'}). "
+        f"Redemarrage vers schema {REQUIRED_API_SCHEMA}+..."
     )
     runtime = read_runtime()
     kill_pid(runtime.get("api_pid"))
@@ -170,9 +187,10 @@ def start() -> int:
 
     stop_previous_runtime_if_incompatible()
 
-    print(f"[runtime] Verification du backend V2 schema {EXPECTED_API_SCHEMA}...")
+    print(f"[runtime] Verification du backend V2 schema {REQUIRED_API_SCHEMA}+...")
     if api_ready():
-        print("[OK] API V2 deja active sur 127.0.0.1:8000")
+        health = api_health() or {}
+        print(f"[OK] API V2 deja active sur 127.0.0.1:8000 (schema {health.get('api_schema') or '?'})")
     else:
         api_pid = spawn_process(
             [
@@ -190,12 +208,13 @@ def start() -> int:
         )
         print(f"[runtime] API lancee en arriere-plan (PID {api_pid})")
         if not wait_for(api_ready, 30):
-            print("\n[ERREUR] L'API V2.1 n'a pas repondu dans les 30 secondes.")
+            print(f"\n[ERREUR] L'API V2 schema {REQUIRED_API_SCHEMA}+ n'a pas repondu dans les 30 secondes.")
             print("--- backend.log ---")
             print(tail(api_log))
             stop_spawned(api_pid, None)
             return 1
-        print("[OK] API V2.1 repond correctement.")
+        health = api_health() or {}
+        print(f"[OK] API V2 repond correctement (schema {health.get('api_schema') or '?'}).")
 
     print("[runtime] Verification du frontend local...")
     if frontend_ready():
@@ -228,8 +247,9 @@ def start() -> int:
     gpu_count = len(health.get("gpus") or [])
     ffmpeg = health.get("ffmpeg") or {}
     neural = health.get("neural") or {}
+    stems = health.get("stems") or {}
     print(
-        f"[OK] Deep Audio V2 ONLINE | GPU locales: {gpu_count} | "
+        f"[OK] Deep Audio V2 ONLINE | schema {health.get('api_schema') or '?'} | GPU locales: {gpu_count} | "
         f"FFmpeg: {'READY' if ffmpeg.get('ffmpeg') and ffmpeg.get('ffprobe') else 'DEGRADED'}"
     )
     if neural.get("ready"):
@@ -239,6 +259,13 @@ def start() -> int:
         )
     else:
         print(f"[INFO] V2-B Neural non active: {neural.get('error') or 'runtime optionnel indisponible'}")
+    if stems.get("ready"):
+        print(
+            f"[OK] V2-D STEMS READY | {stems.get('device_name') or 'GPU'} | "
+            f"Torch {stems.get('torch_version') or '?'} | Torchaudio {stems.get('torchaudio_version') or '?'}"
+        )
+    else:
+        print(f"[INFO] V2-D Stems local non actif: {stems.get('error') or 'worker LAN/fallback optionnel'}")
 
     local_url = f"{FRONTEND_URL}/?runtime=local-v2"
     print(f"[runtime] Ouverture de {local_url}")
