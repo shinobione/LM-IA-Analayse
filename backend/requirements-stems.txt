@@ -2,4 +2,4 @@
 # PyTorch + torchaudio CUDA wheels are installed explicitly by the launcher.
 # Keep this layer separate so V2-A/V2-B remain usable if Demucs is unavailable.
 
-demucs==4.0.1
+demucs==4.1.0
