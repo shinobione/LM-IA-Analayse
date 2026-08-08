@@ -18,6 +18,7 @@ LOGS = ROOT / "logs"
 RUNTIME_FILE = ROOT / ".lmn-runtime.json"
 API_URL = "http://127.0.0.1:8000"
 FRONTEND_URL = "http://127.0.0.1:8008"
+EXPECTED_API_SCHEMA = "2.1"
 
 
 def _http_json(url: str, timeout: float = 1.5) -> dict[str, Any] | None:
@@ -40,9 +41,17 @@ def _http_ok(url: str, timeout: float = 1.5) -> bool:
         return False
 
 
+def api_health() -> dict[str, Any] | None:
+    return _http_json(f"{API_URL}/api/health")
+
+
 def api_ready() -> bool:
-    payload = _http_json(f"{API_URL}/api/health")
-    return bool(payload and str(payload.get("service", "")).startswith("LMNotebook"))
+    payload = api_health()
+    return bool(
+        payload
+        and str(payload.get("service", "")).startswith("LMNotebook")
+        and str(payload.get("api_schema", "")) == EXPECTED_API_SCHEMA
+    )
 
 
 def frontend_ready() -> bool:
@@ -95,6 +104,7 @@ def write_runtime(api_pid: int | None, frontend_pid: int | None) -> None:
         "frontend_pid": frontend_pid or previous.get("frontend_pid"),
         "api": API_URL,
         "frontend": FRONTEND_URL,
+        "api_schema": EXPECTED_API_SCHEMA,
     }
     RUNTIME_FILE.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
@@ -133,6 +143,19 @@ def stop_spawned(api_pid: int | None, frontend_pid: int | None) -> None:
     kill_pid(frontend_pid)
 
 
+def stop_previous_runtime_if_incompatible() -> None:
+    current = api_health()
+    if not current or str(current.get("api_schema", "")) == EXPECTED_API_SCHEMA:
+        return
+    print(
+        f"[runtime] Ancienne API detectee (schema {current.get('api_schema') or 'legacy'}). "
+        f"Redemarrage vers {EXPECTED_API_SCHEMA}..."
+    )
+    runtime = read_runtime()
+    kill_pid(runtime.get("api_pid"))
+    time.sleep(1.0)
+
+
 def start() -> int:
     if not VENV_PYTHON.exists():
         print("[ERREUR] Python prive LMNotebook introuvable.")
@@ -145,7 +168,9 @@ def start() -> int:
     api_pid: int | None = None
     frontend_pid: int | None = None
 
-    print("[runtime] Verification du backend V2...")
+    stop_previous_runtime_if_incompatible()
+
+    print(f"[runtime] Verification du backend V2 schema {EXPECTED_API_SCHEMA}...")
     if api_ready():
         print("[OK] API V2 deja active sur 127.0.0.1:8000")
     else:
@@ -164,13 +189,13 @@ def start() -> int:
             api_log,
         )
         print(f"[runtime] API lancee en arriere-plan (PID {api_pid})")
-        if not wait_for(api_ready, 25):
-            print("\n[ERREUR] L'API V2 n'a pas repondu dans les 25 secondes.")
+        if not wait_for(api_ready, 30):
+            print("\n[ERREUR] L'API V2.1 n'a pas repondu dans les 30 secondes.")
             print("--- backend.log ---")
             print(tail(api_log))
             stop_spawned(api_pid, None)
             return 1
-        print("[OK] API V2 repond correctement.")
+        print("[OK] API V2.1 repond correctement.")
 
     print("[runtime] Verification du frontend local...")
     if frontend_ready():
@@ -199,13 +224,21 @@ def start() -> int:
 
     write_runtime(api_pid, frontend_pid)
 
-    health = _http_json(f"{API_URL}/api/health") or {}
+    health = api_health() or {}
     gpu_count = len(health.get("gpus") or [])
     ffmpeg = health.get("ffmpeg") or {}
+    neural = health.get("neural") or {}
     print(
         f"[OK] Deep Audio V2 ONLINE | GPU locales: {gpu_count} | "
         f"FFmpeg: {'READY' if ffmpeg.get('ffmpeg') and ffmpeg.get('ffprobe') else 'DEGRADED'}"
     )
+    if neural.get("ready"):
+        print(
+            f"[OK] V2-B NEURAL CUDA READY | {neural.get('device_name') or 'GPU'} | "
+            f"Torch {neural.get('torch_version') or '?'} | CUDA {neural.get('cuda_runtime') or '?'}"
+        )
+    else:
+        print(f"[INFO] V2-B Neural non active: {neural.get('error') or 'runtime optionnel indisponible'}")
 
     local_url = f"{FRONTEND_URL}/?runtime=local-v2"
     print(f"[runtime] Ouverture de {local_url}")

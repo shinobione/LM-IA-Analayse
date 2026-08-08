@@ -86,7 +86,13 @@
   transition: width .24s ease;
 }
 
-.v2-node-grid,
+/* The node grid lives in a narrow sidebar: never explode it to 8 columns. */
+.v2-node-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
 .v2-results-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -127,9 +133,15 @@
   line-height: 1.35;
 }
 
-.v2-results {
+.v2-results,
+.v2-neural-results {
   border-color: rgba(0,240,255,.13);
   background: linear-gradient(135deg, rgba(0,240,255,.025), var(--panel-bg) 45%);
+}
+
+.v2-neural-results {
+  border-color: rgba(29,185,84,.18);
+  background: linear-gradient(135deg, rgba(29,185,84,.04), var(--panel-bg) 48%);
 }
 
 .v2-results-header {
@@ -156,16 +168,113 @@
   text-align: right;
 }
 
+.v2-neural-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.v2-neural-group {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 10px;
+  background: rgba(0,0,0,.14);
+}
+
+.v2-neural-group h4 {
+  margin: 0 0 10px;
+  color: var(--text-main);
+  font-size: .76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.v2-neural-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.v2-neural-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.v2-neural-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-main);
+  font-size: .72rem;
+}
+
+.v2-neural-score {
+  color: var(--cyber-blue);
+  font-family: var(--font-mono);
+  font-size: .7rem;
+}
+
+.v2-neural-bar {
+  grid-column: 1 / -1;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,.05);
+}
+
+.v2-neural-bar > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--spotify-green), var(--cyber-blue));
+}
+
+.v2-traits-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.v2-neural-engine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  color: var(--text-dim);
+  font-size: .68rem;
+  font-family: var(--font-mono);
+}
+
 @media (min-width: 1800px) {
-  .v2-node-grid,
   .v2-results-grid {
     grid-template-columns: repeat(8, minmax(0, 1fr));
   }
 }
 
+@media (max-width: 1300px) {
+  .v2-traits-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 1100px) {
-  .v2-node-grid,
   .v2-results-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .v2-neural-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .v2-traits-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -173,7 +282,8 @@
 @media (max-width: 640px) {
   .v2-api-row,
   .v2-node-grid,
-  .v2-results-grid {
+  .v2-results-grid,
+  .v2-traits-grid {
     grid-template-columns: 1fr;
   }
 
