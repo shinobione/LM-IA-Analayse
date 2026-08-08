@@ -8,6 +8,7 @@ set "BACKEND=%~dp0backend"
 set "VENV=%~dp0backend\.venv"
 set "STEMS_VENV=%~dp0backend\.venv-stems"
 set "ANATOMY_VENV=%~dp0backend\.venv-anatomy"
+set "ANATOMY_MARKER=%~dp0backend\.v2c-ready"
 set "HF_HOME=%~dp0backend\models\huggingface"
 set "PATH=%LOCALAPPDATA%\Microsoft\WinGet\Links;%USERPROFILE%\.local\bin;%PATH%"
 if not exist "%HF_HOME%" mkdir "%HF_HOME%" >nul 2>&1
@@ -101,6 +102,7 @@ echo [WARN] V2-D Demucs local indisponible. Un worker LAN peut toujours executer
 :anatomy_setup
 echo [6/7] Preparation du runtime ISOLE V2-C Song Anatomy...
 set "ANATOMY_READY=0"
+if exist "%ANATOMY_MARKER%" del /q "%ANATOMY_MARKER%" >nul 2>&1
 if not exist "%ANATOMY_VENV%\Scripts\python.exe" (
   if exist "%ANATOMY_VENV%" rmdir /s /q "%ANATOMY_VENV%"
   "%UV%" venv --python 3.12 "%ANATOMY_VENV%"
@@ -110,10 +112,12 @@ if not exist "%ANATOMY_VENV%\Scripts\python.exe" (
 if errorlevel 1 goto :anatomy_warning
 "%ANATOMY_VENV%\Scripts\python.exe" -c "import numpy,scipy,librosa,soundfile; print('[OK] V2-C READY | Librosa',librosa.__version__,'| SciPy',scipy.__version__)"
 if errorlevel 1 goto :anatomy_warning
+>"%ANATOMY_MARKER%" echo validated
 set "ANATOMY_READY=1"
 goto :launch
 
 :anatomy_warning
+if exist "%ANATOMY_MARKER%" del /q "%ANATOMY_MARKER%" >nul 2>&1
 set "ANATOMY_READY=0"
 echo [WARN] V2-C Song Anatomy indisponible; V2-A/V2-B/V2-D restent actives.
 
