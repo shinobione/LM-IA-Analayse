@@ -2,7 +2,7 @@
   'use strict';
 
   const BRAND = 'SonicTrace Audio Intelligence';
-  const RELEASE = Object.freeze({ version: 'V2-E', build: '01', display: 'V2-E · BUILD 01' });
+  const RELEASE = Object.freeze({ version: 'V2-E', build: '02', display: 'V2-E · BUILD 02' });
   let scheduled = false;
 
   const exactTextMap = new Map([
@@ -47,7 +47,7 @@
   }
 
   function installReleaseLabel() {
-    document.documentElement.dataset.sonictraceRelease = 'v2-e-build-01';
+    document.documentElement.dataset.sonictraceRelease = 'v2-e-build-02';
     document.querySelectorAll('.brand-identity').forEach(identity => {
       const copy = identity.querySelector('.brand-title')?.parentElement;
       if (!copy) return;
@@ -104,7 +104,18 @@
     });
 
     const actionRoot = document.querySelector('.analysis-actions');
-    if (!actionRoot || !tools.length || actionRoot.querySelector('.st-toolbox')) return;
+    if (!actionRoot) return;
+
+    const unifiedExpert = document.querySelector('#unified-analysis-shell .unified-expert-buttons');
+    if (unifiedExpert) {
+      tools.forEach(btn => {
+        if (!unifiedExpert.contains(btn)) unifiedExpert.appendChild(btn);
+      });
+      actionRoot.querySelector('.st-toolbox')?.remove();
+      return;
+    }
+
+    if (!tools.length || actionRoot.querySelector('.st-toolbox')) return;
 
     const details = document.createElement('details');
     details.className = 'st-toolbox';

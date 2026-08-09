@@ -1,14 +1,16 @@
 # LMNotebook Neural Audio Analyzer
 
-> SonicTrace UI release: **V2-E · BUILD 01** — first explicit visible public build marker.
+> SonicTrace UI release: **V2-E · BUILD 02** — analysis workflow layout refinement.
 
 Analyseur audio expérimental pour fichiers **MP3 / WAV**, construit comme un moteur hybride **Browser DSP V1 + Deep Audio V2**.
 
 ## SonicTrace release identity
 
-The public interface is branded **SonicTrace Audio Intelligence** by the readability layer. Starting with **V2-E · BUILD 01**, the main brand block also exposes a compact release marker directly below the product subtitle so screenshots, smoke tests and bug reports can identify the deployed UI without opening source/devtools.
+The public interface is branded **SonicTrace Audio Intelligence** by the readability layer. Starting with **V2-E · BUILD 01**, the main brand block exposes a compact release marker directly below the product subtitle so screenshots, smoke tests and bug reports can identify the deployed UI without opening source/devtools.
 
-The marker is frontend-only and does not change DSP, CUDA, catalog persistence, Studio integration or audio-retention behavior. See [`docs/RELEASE-V2E-BUILD01.md`](docs/RELEASE-V2E-BUILD01.md).
+**V2-E · BUILD 02** keeps the same engine and reorganizes the main action workflow only: audio selection and optional Lyrics/TXT context are grouped together first, the two primary analysis choices are presented as equal, prominent actions immediately below, and layer-specific tools remain in a single advanced toolbox. The layout moves the existing controls/handlers instead of creating a second analysis implementation. Mobile stacks the input/actions cleanly.
+
+Build 02 is frontend-only and does not change DSP, CUDA, catalog persistence, Studio integration, FFmpeg/mastering behavior or audio-retention behavior. See [`docs/RELEASE-V2E-BUILD01.md`](docs/RELEASE-V2E-BUILD01.md) and [`docs/RELEASE-V2E-BUILD02.md`](docs/RELEASE-V2E-BUILD02.md).
 
 ## SHINOBIWAN Studio Phase 5
 

@@ -29,8 +29,18 @@
     const shell = document.createElement('div');
     shell.id = 'unified-analysis-shell';
     shell.className = 'unified-analysis-shell';
+    shell.dataset.layout = 'build-02-workflow';
     shell.innerHTML = `
+      <div class="unified-intake-row" aria-label="Fichiers d’analyse">
+        <div class="unified-intake-slot unified-audio-slot" data-unified-audio-slot>
+          <span class="unified-intake-kicker">Audio</span>
+        </div>
+        <div class="unified-intake-slot unified-lyrics-slot" data-unified-lyrics-slot>
+          <span class="unified-intake-kicker">Paroles / contexte</span>
+        </div>
+      </div>
       <div class="unified-main-row">
+        <div class="unified-analysis-kicker">Choisis le niveau d’analyse</div>
         <div class="unified-main-actions">
           <button id="unified-quick-btn" class="unified-btn unified-quick" type="button" disabled>
             <i data-lucide="zap"></i>
@@ -57,8 +67,10 @@
 
     choose.insertAdjacentElement('afterend', shell);
 
-    const mainActions = shell.querySelector('.unified-main-actions');
-    mainActions.insertAdjacentElement('afterend', lyrics);
+    const audioSlot = shell.querySelector('[data-unified-audio-slot]');
+    const lyricsSlot = shell.querySelector('[data-unified-lyrics-slot]');
+    audioSlot?.appendChild(choose);
+    lyricsSlot?.appendChild(lyrics);
     lyrics.classList.add('unified-lyrics');
 
     const expertButtons = shell.querySelector('.unified-expert-buttons');
