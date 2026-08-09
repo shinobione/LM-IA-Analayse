@@ -53,11 +53,11 @@ function loadSemanticAssets() {
 function loadUnifiedAnalysisAssets() {
   if (!document.querySelector('link[data-lmn-unified-analysis]')) {
     const link = document.createElement('link');
-    link.rel = 'stylesheet'; link.href = 'css/unified-analysis.css?v=1'; link.dataset.lmnUnifiedAnalysis = '1'; document.head.appendChild(link);
+    link.rel = 'stylesheet'; link.href = 'css/unified-analysis.css?v=2'; link.dataset.lmnUnifiedAnalysis = '1'; document.head.appendChild(link);
   }
   if (!document.querySelector('script[data-lmn-unified-analysis]')) {
     const script = document.createElement('script');
-    script.src = 'js/unified-analysis.js?v=1'; script.dataset.lmnUnifiedAnalysis = '1'; document.head.appendChild(script);
+    script.src = 'js/unified-analysis.js?v=2'; script.dataset.lmnUnifiedAnalysis = '1'; document.head.appendChild(script);
   }
 }
 
@@ -75,11 +75,11 @@ function loadHumanInsightAssets() {
 function loadReadabilityOverhaulAssets() {
   if (!document.querySelector('link[data-sonictrace-readability]')) {
     const link = document.createElement('link');
-    link.rel = 'stylesheet'; link.href = 'css/readability-overhaul.css?v=1'; link.dataset.sonictraceReadability = '1'; document.head.appendChild(link);
+    link.rel = 'stylesheet'; link.href = 'css/readability-overhaul.css?v=2'; link.dataset.sonictraceReadability = '1'; document.head.appendChild(link);
   }
   if (!document.querySelector('script[data-sonictrace-readability]')) {
     const script = document.createElement('script');
-    script.src = 'js/readability-overhaul.js?v=1'; script.dataset.sonictraceReadability = '1'; document.head.appendChild(script);
+    script.src = 'js/readability-overhaul.js?v=2'; script.dataset.sonictraceReadability = '1'; document.head.appendChild(script);
   }
 }
 
