@@ -2,7 +2,7 @@
   'use strict';
 
   const BRAND = 'SonicTrace Audio Intelligence';
-  const RELEASE = Object.freeze({ version: 'V2-E', build: '03', display: 'V2-E · BUILD 03' });
+  const RELEASE = Object.freeze({ version: 'V2-E', build: '04', display: 'V2-E · BUILD 04' });
   let scheduled = false;
 
   const exactTextMap = new Map([
@@ -47,7 +47,7 @@
   }
 
   function installReleaseLabel() {
-    document.documentElement.dataset.sonictraceRelease = 'v2-e-build-03';
+    document.documentElement.dataset.sonictraceRelease = 'v2-e-build-04';
     document.querySelectorAll('.brand-identity').forEach(identity => {
       const copy = identity.querySelector('.brand-title')?.parentElement;
       if (!copy) return;

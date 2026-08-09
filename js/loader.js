@@ -75,11 +75,11 @@ function loadHumanInsightAssets() {
 function loadReadabilityOverhaulAssets() {
   if (!document.querySelector('link[data-sonictrace-readability]')) {
     const link = document.createElement('link');
-    link.rel = 'stylesheet'; link.href = 'css/readability-overhaul.css?v=3'; link.dataset.sonictraceReadability = '1'; document.head.appendChild(link);
+    link.rel = 'stylesheet'; link.href = 'css/readability-overhaul.css?v=4'; link.dataset.sonictraceReadability = '1'; document.head.appendChild(link);
   }
   if (!document.querySelector('script[data-sonictrace-readability]')) {
     const script = document.createElement('script');
-    script.src = 'js/readability-overhaul.js?v=3'; script.dataset.sonictraceReadability = '1'; document.head.appendChild(script);
+    script.src = 'js/readability-overhaul.js?v=4'; script.dataset.sonictraceReadability = '1'; document.head.appendChild(script);
   }
 }
 
@@ -90,13 +90,14 @@ function loadCatalogIntelligenceAssets() {
   }
   if (!document.querySelector('link[data-sonictrace-style-families]')) {
     const link = document.createElement('link');
-    link.rel = 'stylesheet'; link.href = 'css/catalog-style-families.css?v=1'; link.dataset.sonictraceStyleFamilies = '1'; document.head.appendChild(link);
+    link.rel = 'stylesheet'; link.href = 'css/catalog-style-families.css?v=2'; link.dataset.sonictraceStyleFamilies = '1'; document.head.appendChild(link);
   }
   const assets = [
     ['js/catalog-memory.js?v=1', 'memory'],
     ['js/catalog-similarity.js?v=2', 'similarity'],
     ['js/catalog-ui.js?v=2', 'ui'],
-    ['js/catalog-style-families.js?v=1', 'styleFamilies'],
+    ['js/catalog-style-families.js?v=2', 'styleFamilies'],
+    ['js/catalog-style-families-build04.js?v=1', 'styleFamiliesBuild04'],
   ];
   const loadNext = index => {
     if (index >= assets.length) return;
