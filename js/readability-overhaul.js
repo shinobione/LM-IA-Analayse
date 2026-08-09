@@ -2,6 +2,7 @@
   'use strict';
 
   const BRAND = 'SonicTrace Audio Intelligence';
+  const RELEASE = Object.freeze({ version: 'V2-E', build: '01', display: 'V2-E · BUILD 01' });
   let scheduled = false;
 
   const exactTextMap = new Map([
@@ -45,6 +46,23 @@
     return (el?.textContent || '').replace(/\s+/g, ' ').trim();
   }
 
+  function installReleaseLabel() {
+    document.documentElement.dataset.sonictraceRelease = 'v2-e-build-01';
+    document.querySelectorAll('.brand-identity').forEach(identity => {
+      const copy = identity.querySelector('.brand-title')?.parentElement;
+      if (!copy) return;
+      let label = copy.querySelector('.brand-release');
+      if (!label) {
+        label = document.createElement('span');
+        label.className = 'brand-release';
+        copy.appendChild(label);
+      }
+      label.textContent = RELEASE.display;
+      label.title = `${BRAND} ${RELEASE.version} Build ${RELEASE.build}`;
+      label.setAttribute('aria-label', `${BRAND} version ${RELEASE.version}, build ${RELEASE.build}`);
+    });
+  }
+
   function retitle() {
     document.title = 'SonicTrace — Audio Intelligence';
 
@@ -57,6 +75,7 @@
     document.querySelectorAll('.brand-subtitle').forEach(el => {
       el.textContent = 'Analyse musicale locale • GPU • structure • paroles';
     });
+    installReleaseLabel();
 
     document.querySelectorAll('.artist-name').forEach(el => {
       if (/hybrid analysis engine/i.test(txt(el))) el.textContent = 'MOTEUR D’ANALYSE AUDIO';
