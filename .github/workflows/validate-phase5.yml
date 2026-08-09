@@ -32,3 +32,6 @@ jobs:
 
       - name: Catalog memory JavaScript syntax
         run: node --check js/catalog-memory.js
+
+      - name: SonicTrace release label syntax and contract
+        run: node --check js/readability-overhaul.js && node scripts/test-release-label.mjs
