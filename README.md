@@ -1,6 +1,14 @@
 # LMNotebook Neural Audio Analyzer
 
+> SonicTrace UI release: **V2-E · BUILD 01** — first explicit visible public build marker.
+
 Analyseur audio expérimental pour fichiers **MP3 / WAV**, construit comme un moteur hybride **Browser DSP V1 + Deep Audio V2**.
+
+## SonicTrace release identity
+
+The public interface is branded **SonicTrace Audio Intelligence** by the readability layer. Starting with **V2-E · BUILD 01**, the main brand block also exposes a compact release marker directly below the product subtitle so screenshots, smoke tests and bug reports can identify the deployed UI without opening source/devtools.
+
+The marker is frontend-only and does not change DSP, CUDA, catalog persistence, Studio integration or audio-retention behavior. See [`docs/RELEASE-V2E-BUILD01.md`](docs/RELEASE-V2E-BUILD01.md).
 
 ## SHINOBIWAN Studio Phase 5
 
