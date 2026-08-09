@@ -7,17 +7,18 @@ const unifiedJs = fs.readFileSync('js/unified-analysis.js', 'utf8');
 const unifiedCss = fs.readFileSync('css/unified-analysis.css', 'utf8');
 const loader = fs.readFileSync('js/loader.js', 'utf8');
 const readme = fs.readFileSync('README.md', 'utf8');
+const styles = fs.readFileSync('js/catalog-style-families.js', 'utf8');
 
 for (const marker of [
   "version: 'V2-E'",
-  "build: '02'",
-  "display: 'V2-E · BUILD 02'",
+  "build: '03'",
+  "display: 'V2-E · BUILD 03'",
   "label.className = 'brand-release'",
-  "dataset.sonictraceRelease = 'v2-e-build-02'",
+  "dataset.sonictraceRelease = 'v2-e-build-03'",
 ]) assert.ok(js.includes(marker), `SonicTrace release runtime is missing ${marker}.`);
 
 assert.ok(css.includes('.sonictrace-readable .brand-release{'), 'SonicTrace release label must have explicit readable header styling.');
-assert.ok(readme.includes('V2-E · BUILD 02'), 'README must document the visible SonicTrace release marker.');
+assert.ok(readme.includes('V2-E · BUILD 03'), 'README must document the visible SonicTrace release marker.');
 
 for (const marker of [
   "shell.dataset.layout = 'build-02-workflow'",
@@ -27,7 +28,7 @@ for (const marker of [
   'Choisis le niveau d’analyse',
   'audioSlot?.appendChild(choose)',
   'lyricsSlot?.appendChild(lyrics)',
-]) assert.ok(unifiedJs.includes(marker), `Build 02 unified workflow is missing ${marker}.`);
+]) assert.ok(unifiedJs.includes(marker), `Build 02 unified workflow ancestry is missing ${marker}.`);
 
 for (const marker of [
   '.unified-intake-row{',
@@ -40,11 +41,22 @@ for (const marker of [
 for (const marker of [
   "css/unified-analysis.css?v=2",
   "js/unified-analysis.js?v=2",
-  "css/readability-overhaul.css?v=2",
-  "js/readability-overhaul.js?v=2",
-]) assert.ok(loader.includes(marker), `Build 02 cache-bust is missing ${marker}.`);
+  "css/readability-overhaul.css?v=3",
+  "js/readability-overhaul.js?v=3",
+  "css/catalog-style-families.css?v=1",
+  "js/catalog-style-families.js?v=1",
+]) assert.ok(loader.includes(marker), `Build 03 cache-bust/runtime load is missing ${marker}.`);
+
+for (const marker of [
+  "label:'Hip-Hop / Trap'",
+  "label:'R&B / Soul'",
+  "label:'Bass / Dubstep'",
+  "label:'Pop / Electronic Pop'",
+  "label.textContent = 'Zones acoustiques'",
+  'Familles stylistiques',
+]) assert.ok(styles.includes(marker), `Build 03 catalog taxonomy is missing ${marker}.`);
 
 assert.ok(js.includes("actionRoot.querySelector('.st-toolbox')?.remove()"), 'Readability layer must yield toolbox ownership to the unified workflow.');
 assert.ok(js.includes("document.querySelector('#unified-analysis-shell .unified-expert-buttons')"), 'Readability layer must preserve unified advanced tools.');
 
-console.log('SonicTrace V2-E · BUILD 02 release marker and analysis workflow guard passed.');
+console.log('SonicTrace V2-E · BUILD 03 release marker, Build 02 workflow ancestry and style-family taxonomy guard passed.');

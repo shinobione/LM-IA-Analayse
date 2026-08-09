@@ -1,6 +1,6 @@
 # LMNotebook Neural Audio Analyzer
 
-> SonicTrace UI release: **V2-E · BUILD 02** — analysis workflow layout refinement.
+> SonicTrace UI release: **V2-E · BUILD 03** — Catalog stylistic families separated from acoustic CLAP zones.
 
 Analyseur audio expérimental pour fichiers **MP3 / WAV**, construit comme un moteur hybride **Browser DSP V1 + Deep Audio V2**.
 
@@ -8,9 +8,11 @@ Analyseur audio expérimental pour fichiers **MP3 / WAV**, construit comme un mo
 
 The public interface is branded **SonicTrace Audio Intelligence** by the readability layer. Starting with **V2-E · BUILD 01**, the main brand block exposes a compact release marker directly below the product subtitle so screenshots, smoke tests and bug reports can identify the deployed UI without opening source/devtools.
 
-**V2-E · BUILD 02** keeps the same engine and reorganizes the main action workflow only: audio selection and optional Lyrics/TXT context are grouped together first, the two primary analysis choices are presented as equal, prominent actions immediately below, and layer-specific tools remain in a single advanced toolbox. The layout moves the existing controls/handlers instead of creating a second analysis implementation. Mobile stacks the input/actions cleanly.
+**V2-E · BUILD 02** kept the same engine and reorganized the main action workflow only: audio selection and optional Lyrics/TXT context are grouped together first, the two primary analysis choices are presented as equal, prominent actions immediately below, and layer-specific tools remain in a single advanced toolbox. The layout moves the existing controls/handlers instead of creating a second analysis implementation. Mobile stacks the input/actions cleanly.
 
-Build 02 is frontend-only and does not change DSP, CUDA, catalog persistence, Studio integration, FFmpeg/mastering behavior or audio-retention behavior. See [`docs/RELEASE-V2E-BUILD01.md`](docs/RELEASE-V2E-BUILD01.md) and [`docs/RELEASE-V2E-BUILD02.md`](docs/RELEASE-V2E-BUILD02.md).
+**V2-E · BUILD 03** corrects the Catalog Intelligence vocabulary exposed by real-user review. The embedding/K-means result is now presented for what it actually represents: **Zones acoustiques** based on CLAP proximity. A separate frontend taxonomy derives **Familles stylistiques** from the saved Neural genre evidence, with canonical families such as `Hip-Hop / Trap`, `R&B / Soul`, `Bass / Dubstep`, `Pop / Electronic Pop` and `Electronic` when the catalog data supports them. A track can contribute to several style families when its saved genre evidence is genuinely hybrid. Mood labels are not used to manufacture genre families.
+
+Build 03 deliberately preserves the existing CLAP similarity/K-means ancestry, IndexedDB catalog data, import/export and project compatibility logic. It is frontend-only and does not change DSP, CUDA, FFmpeg/loudnorm, GPU workers, Studio integration or audio-retention behavior. See [`docs/RELEASE-V2E-BUILD01.md`](docs/RELEASE-V2E-BUILD01.md), [`docs/RELEASE-V2E-BUILD02.md`](docs/RELEASE-V2E-BUILD02.md) and [`docs/RELEASE-V2E-BUILD03.md`](docs/RELEASE-V2E-BUILD03.md).
 
 ## SHINOBIWAN Studio Phase 5
 
@@ -182,7 +184,8 @@ Voir `backend/README.md` pour la configuration complète du cluster RTX 3060 + R
 
 - index d'embeddings par track
 - carte de similarité réelle du catalogue
-- clusters sonores
+- zones acoustiques issues des embeddings CLAP
+- familles stylistiques dérivées des genres Neural sauvegardés
 - comparaison de versions / masters
 - historique d'analyse
 

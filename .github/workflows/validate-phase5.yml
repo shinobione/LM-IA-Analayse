@@ -31,7 +31,7 @@ jobs:
         run: python -m py_compile backend/app/studio_contract.py backend/app/entrypoint.py
 
       - name: Catalog memory JavaScript syntax
-        run: node --check js/catalog-memory.js
+        run: node --check js/catalog-memory.js && node --check js/catalog-style-families.js
 
       - name: SonicTrace release label and workflow contract
-        run: node --check js/readability-overhaul.js && node --check js/unified-analysis.js && node --check js/loader.js && node scripts/test-release-label.mjs
+        run: node --check js/readability-overhaul.js && node --check js/unified-analysis.js && node --check js/loader.js && node scripts/test-release-label.mjs && node scripts/test-catalog-style-families.mjs
