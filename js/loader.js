@@ -75,28 +75,34 @@ function loadHumanInsightAssets() {
 function loadReadabilityOverhaulAssets() {
   if (!document.querySelector('link[data-sonictrace-readability]')) {
     const link = document.createElement('link');
-    link.rel = 'stylesheet'; link.href = 'css/readability-overhaul.css?v=2'; link.dataset.sonictraceReadability = '1'; document.head.appendChild(link);
+    link.rel = 'stylesheet'; link.href = 'css/readability-overhaul.css?v=3'; link.dataset.sonictraceReadability = '1'; document.head.appendChild(link);
   }
   if (!document.querySelector('script[data-sonictrace-readability]')) {
     const script = document.createElement('script');
-    script.src = 'js/readability-overhaul.js?v=2'; script.dataset.sonictraceReadability = '1'; document.head.appendChild(script);
+    script.src = 'js/readability-overhaul.js?v=3'; script.dataset.sonictraceReadability = '1'; document.head.appendChild(script);
   }
 }
 
 function loadCatalogIntelligenceAssets() {
   if (!document.querySelector('link[data-sonictrace-catalog]')) {
     const link = document.createElement('link');
-    link.rel = 'stylesheet'; link.href = 'css/catalog.css?v=1'; link.dataset.sonictraceCatalog = '1'; document.head.appendChild(link);
+    link.rel = 'stylesheet'; link.href = 'css/catalog.css?v=2'; link.dataset.sonictraceCatalog = '1'; document.head.appendChild(link);
+  }
+  if (!document.querySelector('link[data-sonictrace-style-families]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet'; link.href = 'css/catalog-style-families.css?v=1'; link.dataset.sonictraceStyleFamilies = '1'; document.head.appendChild(link);
   }
   const assets = [
     ['js/catalog-memory.js?v=1', 'memory'],
-    ['js/catalog-similarity.js?v=1', 'similarity'],
-    ['js/catalog-ui.js?v=1', 'ui'],
+    ['js/catalog-similarity.js?v=2', 'similarity'],
+    ['js/catalog-ui.js?v=2', 'ui'],
+    ['js/catalog-style-families.js?v=1', 'styleFamilies'],
   ];
   const loadNext = index => {
     if (index >= assets.length) return;
     const [src, name] = assets[index];
-    const existing = document.querySelector(`script[data-sonictrace-catalog-${name}]`);
+    const attrName = `data-sonictrace-catalog-${name.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`)}`;
+    const existing = document.querySelector(`script[${attrName}]`);
     if (existing) {
       if (existing.dataset.loaded === '1') loadNext(index + 1);
       else existing.addEventListener('load', () => loadNext(index + 1), { once:true });
@@ -104,7 +110,7 @@ function loadCatalogIntelligenceAssets() {
     }
     const script = document.createElement('script');
     script.src = src; script.async = false;
-    script.dataset[`sonictraceCatalog${name[0].toUpperCase()}${name.slice(1)}`] = '1';
+    script.setAttribute(attrName, '1');
     script.addEventListener('load', () => { script.dataset.loaded = '1'; loadNext(index + 1); }, { once:true });
     script.addEventListener('error', () => console.error(`[SonicTrace] Catalog asset failed to load: ${src}`), { once:true });
     document.head.appendChild(script);
