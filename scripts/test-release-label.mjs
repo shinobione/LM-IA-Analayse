@@ -59,16 +59,18 @@ for (const marker of [
   "label:'Pop / Electronic Pop'",
   "label.textContent = 'Zones acoustiques'",
   'Familles stylistiques',
-]) assert.ok(styles.includes(marker), `Build 03 catalog taxonomy ancestry is missing ${marker}.`);
+]) assert.ok(styles.includes(marker), `Build 03 taxonomy ancestry is missing ${marker}.`);
 
 for (const marker of [
-  "statByLabel(root, 'Familles sonores')",
-  "label.textContent = 'Zones acoustiques'",
+  'function acousticStat(root)',
+  "setText(acoustic.querySelector('span'), 'Zones acoustiques')",
+  "setText(styleStat.querySelector('span'), 'Familles sonores')",
   'NS.styleFamilies.analyze(tracks)',
   'record.target',
   "target?.id === 'st-catalog-stats'",
-  'Familles stylistiques',
-]) assert.ok(durable.includes(marker), `Build 04 durable catalog render is missing ${marker}.`);
+  'function zoneName(index)',
+  'Zone acoustique ${name}',
+]) assert.ok(durable.includes(marker), `Build 04/05 durable catalog render is missing ${marker}.`);
 
 for (const marker of [
   'FAMILY_PALETTE',
@@ -77,9 +79,11 @@ for (const marker of [
   'Zones acoustiques = voisinages, pas genres',
   'data-family-id',
   'zones acoustiques',
+  'families.dataset.familySignature',
 ]) assert.ok(visual.includes(marker), `Build 05 visual-language runtime is missing ${marker}.`);
 
 assert.ok(js.includes("actionRoot.querySelector('.st-toolbox')?.remove()"), 'Readability layer must yield toolbox ownership to the unified workflow.');
 assert.ok(js.includes("document.querySelector('#unified-analysis-shell .unified-expert-buttons')"), 'Readability layer must preserve unified advanced tools.');
+assert.ok(!durable.includes('Zone acoustique ${index + 1} · ${raw}'), 'Build 05 must not reintroduce genre/mood-looking acoustic-zone labels.');
 
-console.log('SonicTrace V2-E · BUILD 05 release marker, workflow ancestry, and canonical family visual-language guards passed.');
+console.log('SonicTrace V2-E · BUILD 05 release marker, workflow ancestry, and convergent canonical family visual-language guards passed.');
