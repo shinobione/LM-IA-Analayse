@@ -1,6 +1,6 @@
 # LMNotebook Neural Audio Analyzer
 
-> SonicTrace UI release: **V2-E · BUILD 04** — durable Neural style families separated from acoustic CLAP zones.
+> SonicTrace UI release: **V2-E · BUILD 05** — canonical sonic-family colors across Catalog Intelligence; acoustic CLAP zones remain secondary neighborhoods.
 
 Analyseur audio expérimental pour fichiers **MP3 / WAV**, construit comme un moteur hybride **Browser DSP V1 + Deep Audio V2**.
 
@@ -10,11 +10,13 @@ The public interface is branded **SonicTrace Audio Intelligence** by the readabi
 
 **V2-E · BUILD 02** kept the same engine and reorganized the main action workflow only: audio selection and optional Lyrics/TXT context are grouped together first, the two primary analysis choices are presented as equal, prominent actions immediately below, and layer-specific tools remain in a single advanced toolbox. The layout moves the existing controls/handlers instead of creating a second analysis implementation. Mobile stacks the input/actions cleanly.
 
-**V2-E · BUILD 03** corrected the Catalog Intelligence vocabulary exposed by real-user review. The embedding/K-means result is presented for what it actually represents: **Zones acoustiques** based on CLAP proximity. A separate frontend taxonomy derives **Familles stylistiques** from the saved Neural genre evidence, with canonical families such as `Hip-Hop / Trap`, `R&B / Soul`, `Bass / Dubstep`, `Pop / Electronic Pop` and `Electronic` when the catalog data supports them. A track can contribute to several style families when its saved genre evidence is genuinely hybrid. Mood labels are not used to manufacture genre families.
+**V2-E · BUILD 03** corrected the Catalog Intelligence vocabulary exposed by real-user review. The embedding/K-means result is presented for what it actually represents: **Zones acoustiques** based on CLAP proximity. A separate frontend taxonomy derives style families from the saved Neural genre evidence, with canonical families such as `Hip-Hop / Trap`, `R&B / Soul`, `Bass / Dubstep`, `Pop / Electronic Pop` and `Electronic` when the catalog data supports them. A track can contribute to several style families when its saved genre evidence is genuinely hybrid. Mood labels are not used to manufacture genre families.
 
-Real-user smoke then exposed a Build 03 integration bug: the native `catalog-ui.js` render cycle replaces the existing stats content and could erase the taxonomy DOM after it was patched. **V2-E · BUILD 04** keeps the Build 03 taxonomy but adds a durable renderer that re-applies the separation after every native Catalog stats/legend rerender. The acoustic K-means count remains an acoustic-zone count; a separate `Familles stylistiques` count/panel is regenerated from the saved Neural genres. The renderer also labels cluster legend entries as `Zone acoustique N · …`, preventing acoustic proximity from being mistaken for the artist's only genres.
+Real-user smoke then exposed a Build 03 integration bug: the native `catalog-ui.js` render cycle replaces the existing stats content and could erase the taxonomy DOM after it was patched. **V2-E · BUILD 04** keeps the Build 03 taxonomy but adds a durable renderer that re-applies the separation after every native Catalog stats/legend rerender. The acoustic K-means count remains an acoustic-zone count; a separate family count/panel is regenerated from the saved Neural genres.
 
-Build 04 deliberately preserves the existing CLAP similarity/K-means ancestry, IndexedDB catalog data, import/export and project compatibility logic. It is frontend-only and does not change DSP, CUDA, FFmpeg/loudnorm, GPU workers, Studio integration or audio-retention behavior. See [`docs/RELEASE-V2E-BUILD01.md`](docs/RELEASE-V2E-BUILD01.md), [`docs/RELEASE-V2E-BUILD02.md`](docs/RELEASE-V2E-BUILD02.md), [`docs/RELEASE-V2E-BUILD03.md`](docs/RELEASE-V2E-BUILD03.md) and [`docs/RELEASE-V2E-BUILD04.md`](docs/RELEASE-V2E-BUILD04.md).
+**V2-E · BUILD 05** unifies the visible language. The Neural genre-derived taxonomy is presented as **Familles sonores** and receives stable family colors. The same primary family color now follows a track through the family cards, 2D map, Catalog track list and `Lecture du catalogue`. The 2D position still comes from CLAP proximity; the K-means result remains a separate **Zone acoustique A / B / …** layer with neutral labels. In short: **position = proximité, couleur = famille sonore, zone = voisinage acoustique**. No similarity, clustering, GPU, backend or catalog-storage algorithm is changed.
+
+Build 05 deliberately preserves the existing CLAP similarity/K-means ancestry, IndexedDB catalog data, import/export and project compatibility logic. It is frontend-only and does not change DSP, CUDA, FFmpeg/loudnorm, GPU workers, Studio integration or audio-retention behavior. See [`docs/RELEASE-V2E-BUILD01.md`](docs/RELEASE-V2E-BUILD01.md), [`docs/RELEASE-V2E-BUILD02.md`](docs/RELEASE-V2E-BUILD02.md), [`docs/RELEASE-V2E-BUILD03.md`](docs/RELEASE-V2E-BUILD03.md), [`docs/RELEASE-V2E-BUILD04.md`](docs/RELEASE-V2E-BUILD04.md) and [`docs/RELEASE-V2E-BUILD05.md`](docs/RELEASE-V2E-BUILD05.md).
 
 ## SHINOBIWAN Studio Phase 5
 
@@ -187,7 +189,8 @@ Voir `backend/README.md` pour la configuration complète du cluster RTX 3060 + R
 - index d'embeddings par track
 - carte de similarité réelle du catalogue
 - zones acoustiques issues des embeddings CLAP
-- familles stylistiques dérivées des genres Neural sauvegardés
+- familles sonores dérivées des genres Neural sauvegardés
+- couleurs de famille stables sur les différentes surfaces Catalog
 - comparaison de versions / masters
 - historique d'analyse
 
