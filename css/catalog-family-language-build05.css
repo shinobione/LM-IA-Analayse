@@ -1,0 +1,54 @@
+/* SonicTrace V2-E Build 05 — canonical family visual language.
+   Position = CLAP proximity. Color = primary sonic family. Acoustic zones stay secondary/neutral. */
+
+.st-style-family-card[data-family-id] i,
+.st-insight-groups .st-family-dot[data-family-id],
+.st-track-list .st-cluster-dot[data-family-id]{
+  background:var(--family-color)!important;
+  box-shadow:0 0 13px color-mix(in srgb,var(--family-color) 34%,transparent)!important;
+}
+
+.st-style-family-card[data-family-id]{
+  border-color:color-mix(in srgb,var(--family-color) 24%,rgba(110,151,164,.13));
+  background:linear-gradient(135deg,color-mix(in srgb,var(--family-color) 7%,rgba(255,255,255,.025)),rgba(255,255,255,.018));
+}
+
+.st-map-point[data-family-id] circle{
+  fill:var(--family-color)!important;
+  stroke:color-mix(in srgb,var(--family-color) 68%,white 32%)!important;
+  opacity:.82;
+}
+.st-map-point[data-family-id]:hover circle,
+.st-map-point[data-family-id].neighbor circle{opacity:1}
+.st-map-point[data-family-id].selected circle{stroke:#fff!important;stroke-width:2.2;opacity:1}
+
+.st-track-row[data-family-id].active{
+  background:linear-gradient(90deg,color-mix(in srgb,var(--family-color) 9%,transparent),rgba(38,215,183,.025));
+}
+
+#st-cluster-legend button[data-acoustic-zone]{
+  color:#aebfc4!important;
+  border-color:rgba(126,154,164,.20)!important;
+  background:rgba(255,255,255,.018)!important;
+}
+#st-cluster-legend button[data-acoustic-zone] i{
+  width:9px;height:9px;border-radius:3px;
+  background:transparent!important;
+  border:1px solid rgba(164,190,198,.52);
+  box-shadow:inset 0 0 0 2px rgba(7,14,18,.88)!important;
+}
+#st-cluster-legend button[data-acoustic-zone]:hover{
+  border-color:rgba(174,207,215,.34)!important;
+  background:rgba(255,255,255,.035)!important;
+}
+
+.st-insight-groups .st-family-dot{
+  width:8px;height:8px;border-radius:50%;flex:0 0 auto;
+}
+
+.st-map-panel .st-panel-head span{max-width:680px}
+
+@media(max-width:760px){
+  .st-map-panel .st-panel-head{align-items:flex-start;flex-direction:column}
+  .st-map-panel .st-panel-head small{max-width:none}
+}

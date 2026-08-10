@@ -12,20 +12,29 @@
     })[char]);
   }
 
+  function setText(node, value) {
+    if (node && node.textContent !== value) node.textContent = value;
+  }
+
   function statByLabel(root, label) {
     return [...root.children].find(card => card.querySelector('span')?.textContent?.trim().toLowerCase() === label.toLowerCase()) || null;
+  }
+
+  function acousticStat(root) {
+    return root.querySelector('[data-acoustic-zones="true"]')
+      || statByLabel(root, 'Zones acoustiques')
+      || [...root.children].find(card => !card.matches('[data-st-style-families-stat]') && card.querySelector('span')?.textContent?.trim().toLowerCase() === 'familles sonores')
+      || null;
   }
 
   function renderStats(result) {
     const root = document.getElementById('st-catalog-stats');
     if (!root) return false;
 
-    const acoustic = statByLabel(root, 'Familles sonores') || statByLabel(root, 'Zones acoustiques');
+    const acoustic = acousticStat(root);
     if (acoustic) {
-      const label = acoustic.querySelector('span');
-      const note = acoustic.querySelector('small');
-      if (label) label.textContent = 'Zones acoustiques';
-      if (note) note.textContent = 'clusters de proximité CLAP';
+      setText(acoustic.querySelector('span'), 'Zones acoustiques');
+      setText(acoustic.querySelector('small'), 'voisinages de proximité CLAP');
       acoustic.dataset.acousticZones = 'true';
     }
 
@@ -33,12 +42,13 @@
     if (!styleStat) {
       styleStat = document.createElement('div');
       styleStat.dataset.stStyleFamiliesStat = 'true';
-      styleStat.innerHTML = '<span>Familles stylistiques</span><strong>0</strong><small>genres Neural consolidés</small>';
+      styleStat.innerHTML = '<span>Familles sonores</span><strong>0</strong><small>genres Neural consolidés</small>';
       if (acoustic?.nextSibling) root.insertBefore(styleStat, acoustic.nextSibling);
       else root.appendChild(styleStat);
     }
-    const value = styleStat.querySelector('strong');
-    if (value) value.textContent = String(result.count);
+    setText(styleStat.querySelector('span'), 'Familles sonores');
+    setText(styleStat.querySelector('strong'), String(result.count));
+    setText(styleStat.querySelector('small'), 'genres Neural consolidés');
     return true;
   }
 
@@ -56,9 +66,16 @@
     }
 
     const trackById = new Map((tracks || []).map(track => [track.id, track]));
+    const signature = JSON.stringify(result.groups.map(group => [group.id, group.count, group.weight, group.trackIds]));
+    if (panel.dataset.familySignature === signature) {
+      setText(panel.querySelector('.st-style-family-head strong'), 'Familles sonores');
+      setText(panel.querySelector('.st-style-family-head span'), 'Genres Neural consolidés — distincts des zones acoustiques CLAP');
+      return true;
+    }
+
     panel.innerHTML = `
       <div class="st-style-family-head">
-        <div><strong>Familles stylistiques</strong><span>Genres Neural consolidés — indépendants des zones acoustiques CLAP</span></div>
+        <div><strong>Familles sonores</strong><span>Genres Neural consolidés — distincts des zones acoustiques CLAP</span></div>
         <b>${result.count}</b>
       </div>
       <div class="st-style-family-grid">
@@ -70,18 +87,27 @@
             <small>${esc(evidence || 'genre Neural')}</small>
             <p>${esc(names.join(' · ') || '—')}${group.trackIds.length > names.length ? ` · +${group.trackIds.length - names.length}` : ''}</p>
           </section>`;
-        }).join('') : '<p class="st-style-family-empty">Aucune famille stylistique exploitable dans les genres Neural mémorisés.</p>'}
+        }).join('') : '<p class="st-style-family-empty">Aucune famille sonore exploitable dans les genres Neural mémorisés.</p>'}
       </div>`;
+    panel.dataset.familySignature = signature;
     return true;
+  }
+
+  function zoneName(index) {
+    return String.fromCharCode(65 + Math.max(0, Math.min(25, index)));
   }
 
   function relabelLegend() {
     document.querySelectorAll('#st-cluster-legend button').forEach((button, index) => {
       const span = button.querySelector('span');
       if (!span) return;
-      const raw = span.dataset.rawAcousticLabel || span.textContent.trim().replace(/^Zone acoustique \d+\s*·\s*/i, '');
+      const raw = span.dataset.rawAcousticLabel
+        || span.textContent.trim().replace(/^Zone acoustique\s+(?:\d+|[A-Z])(?:\s*·\s*.*)?$/i, '')
+        || span.textContent.trim();
       span.dataset.rawAcousticLabel = raw;
-      span.textContent = `Zone acoustique ${index + 1} · ${raw}`;
+      const name = zoneName(index);
+      button.dataset.acousticZone = name;
+      setText(span, `Zone acoustique ${name}`);
     });
   }
 
@@ -97,7 +123,7 @@
       relabelLegend();
       document.documentElement.dataset.sonictraceStyleFamilies = String(result.count);
     } catch (error) {
-      console.error('[SonicTrace Build 04] durable style-family render failed:', error);
+      console.error('[SonicTrace Build 04/05] durable style-family render failed:', error);
     } finally {
       running = false;
     }
