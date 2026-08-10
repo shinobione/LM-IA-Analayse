@@ -54,12 +54,19 @@
     return [...root.children].find(card => accepted.includes(card.querySelector('span')?.textContent?.trim().toLowerCase())) || null;
   }
 
+  function acousticStat(root) {
+    return root.querySelector('[data-acoustic-zones="true"]')
+      || statByLabel(root, ['Zones acoustiques'])
+      || [...root.children].find(card => !card.matches('[data-st-style-families-stat]') && card.querySelector('span')?.textContent?.trim().toLowerCase() === 'familles sonores')
+      || null;
+  }
+
   function patchStats(result) {
     const root = document.getElementById('st-catalog-stats');
     if (!root) return;
 
-    const acoustic = statByLabel(root, ['Familles sonores', 'Zones acoustiques']);
-    if (acoustic && !acoustic.matches('[data-st-style-families-stat]')) {
+    const acoustic = acousticStat(root);
+    if (acoustic) {
       setText(acoustic.querySelector('span'), 'Zones acoustiques');
       setText(acoustic.querySelector('small'), 'voisinages de proximité CLAP');
       acoustic.dataset.acousticZones = 'true';
@@ -86,12 +93,13 @@
     cards.forEach((card, index) => {
       const group = result?.groups?.[index];
       if (!group) return;
+      const color = colorFor(group.id);
       card.dataset.familyId = group.id;
-      card.style.setProperty('--family-color', colorFor(group.id));
+      card.style.setProperty('--family-color', color);
       const dot = card.querySelector('i');
       if (dot) {
         dot.dataset.familyId = group.id;
-        dot.style.setProperty('--family-color', colorFor(group.id));
+        dot.style.setProperty('--family-color', color);
       }
     });
   }
@@ -107,8 +115,9 @@
     document.querySelectorAll('#st-catalog-map [data-track-id]').forEach(point => {
       const trackId = point.dataset.trackId;
       const familyId = primaryFamily(trackId, result);
+      const color = colorFor(familyId);
       point.dataset.familyId = familyId;
-      point.style.setProperty('--family-color', colorFor(familyId));
+      point.style.setProperty('--family-color', color);
       point.setAttribute('aria-label', `${point.textContent?.trim() || 'Morceau'} • ${familyLabel(familyId, result)}`);
     });
   }
@@ -116,11 +125,13 @@
   function patchTrackList(result) {
     document.querySelectorAll('#st-track-list [data-track-row]').forEach(row => {
       const familyId = primaryFamily(row.dataset.trackRow, result);
+      const color = colorFor(familyId);
       row.dataset.familyId = familyId;
+      row.style.setProperty('--family-color', color);
       const dot = row.querySelector('.st-cluster-dot');
       if (!dot) return;
       dot.dataset.familyId = familyId;
-      dot.style.setProperty('--family-color', colorFor(familyId));
+      dot.style.setProperty('--family-color', color);
       dot.title = familyLabel(familyId, result);
     });
   }
@@ -142,6 +153,10 @@
     });
   }
 
+  function familySignature(items) {
+    return JSON.stringify((items || []).map(group => [group.id, group.count, group.weight]));
+  }
+
   function patchInsights(result) {
     const root = document.getElementById('st-insights-panel');
     if (!root) return;
@@ -151,12 +166,16 @@
     const sections = [...root.querySelectorAll('.st-insight-groups > section')];
     const families = sections[0];
     if (families) {
-      setText(families.querySelector('h4'), 'Familles sonores');
       const items = result?.groups || [];
-      const html = items.length
-        ? `<h4>Familles sonores</h4>${items.map(group => `<p><i class="st-family-dot" data-family-id="${esc(group.id)}" style="--family-color:${esc(colorFor(group.id))}"></i><b>${esc(group.label)}</b><span>${group.count} titre${group.count > 1 ? 's' : ''}</span></p>`).join('')}`
-        : '<h4>Familles sonores</h4><small>—</small>';
-      if (families.innerHTML !== html) families.innerHTML = html;
+      const signature = familySignature(items);
+      if (families.dataset.familySignature !== signature) {
+        families.innerHTML = items.length
+          ? `<h4>Familles sonores</h4>${items.map(group => `<p><i class="st-family-dot" data-family-id="${esc(group.id)}" style="--family-color:${esc(colorFor(group.id))}"></i><b>${esc(group.label)}</b><span>${group.count} titre${group.count > 1 ? 's' : ''}</span></p>`).join('')}`
+          : '<h4>Familles sonores</h4><small>—</small>';
+        families.dataset.familySignature = signature;
+      } else {
+        setText(families.querySelector('h4'), 'Familles sonores');
+      }
     }
 
     const bridges = sections[3];
