@@ -3,7 +3,9 @@ import fs from 'node:fs';
 
 const source = fs.readFileSync('js/catalog-style-families.js', 'utf8');
 const durable = fs.readFileSync('js/catalog-style-families-build04.js', 'utf8');
+const visual = fs.readFileSync('js/catalog-family-language-build05.js', 'utf8');
 const css = fs.readFileSync('css/catalog-style-families.css', 'utf8');
+const visualCss = fs.readFileSync('css/catalog-family-language-build05.css', 'utf8');
 const loader = fs.readFileSync('js/loader.js', 'utf8');
 const similarity = fs.readFileSync('js/catalog-similarity.js', 'utf8');
 
@@ -37,6 +39,23 @@ for (const marker of [
 ]) assert.ok(durable.includes(marker), `Build 04 durable style-family renderer is missing ${marker}.`);
 
 for (const marker of [
+  "'hip-hop-trap': '#55e2b2'",
+  "'bass-dubstep': '#4caeff'",
+  "'genre-synthwave': '#9b6cff'",
+  "'rnb-soul': '#d85bd4'",
+  "'pop-electronic-pop': '#ff667f'",
+  'function primaryFamily(trackId, result)',
+  "setText(families.querySelector('span'), 'Familles sonores')",
+  "setText(head.querySelector('span'), 'Position = proximité CLAP • couleur = famille sonore')",
+  'point.dataset.familyId = familyId',
+  'dot.dataset.familyId = familyId',
+  'button.dataset.acousticZone = name',
+  'Zone acoustique ${name}',
+  'relie $1 zones acoustiques',
+  'NS.familyVisualLanguage = { colorFor',
+]) assert.ok(visual.includes(marker), `Build 05 family visual-language guard is missing ${marker}.`);
+
+for (const marker of [
   '.st-style-family-panel{',
   '.st-style-family-grid{',
   '.st-style-family-card{',
@@ -44,16 +63,27 @@ for (const marker of [
 ]) assert.ok(css.includes(marker), `Build 03/04 style-family presentation is missing ${marker}.`);
 
 for (const marker of [
+  '.st-map-point[data-family-id] circle{',
+  '.st-track-list .st-cluster-dot[data-family-id]',
+  '#st-cluster-legend button[data-acoustic-zone]',
+  'background:var(--family-color)!important',
+]) assert.ok(visualCss.includes(marker), `Build 05 family color CSS is missing ${marker}.`);
+
+for (const marker of [
   'css/catalog-style-families.css?v=2',
+  'css/catalog-family-language-build05.css?v=1',
   "['js/catalog-style-families.js?v=2', 'styleFamilies']",
   "['js/catalog-style-families-build04.js?v=1', 'styleFamiliesBuild04']",
+  "['js/catalog-family-language-build05.js?v=1', 'familyLanguageBuild05']",
   'js/catalog-similarity.js?v=2',
   'js/catalog-ui.js?v=2',
-]) assert.ok(loader.includes(marker), `Build 04 catalog loader is missing ${marker}.`);
+]) assert.ok(loader.includes(marker), `Build 05 catalog loader is missing ${marker}.`);
 
-assert.ok(similarity.includes('Math.round(Math.sqrt(n / 2))'), 'Build 04 must preserve the existing acoustic K-means ancestry instead of silently redefining clusters as styles.');
+assert.ok(similarity.includes('Math.round(Math.sqrt(n / 2))'), 'Build 05 must preserve the existing acoustic K-means ancestry instead of silently redefining acoustic zones as genres.');
 assert.ok(!source.includes('Math.round(Math.sqrt(n / 2))'), 'Style families must not reuse the acoustic K-means cluster-count heuristic.');
 assert.ok(!source.includes('moods'), 'Style-family taxonomy must be genre-derived, not mood-derived.');
 assert.ok(!durable.includes('moods'), 'Build 04 durable renderer must not manufacture style families from moods.');
+assert.ok(!visual.includes('analysis?.clusters?.assignments'), 'Build 05 family colors must not be derived from acoustic cluster assignments.');
+assert.ok(!visual.includes('moods'), 'Build 05 visual language must not manufacture family colors from moods.');
 
-console.log('SonicTrace Build 04 keeps acoustic CLAP zones and Neural style families distinct across native catalog rerenders.');
+console.log('SonicTrace Build 05 preserves CLAP acoustic zones while using stable Neural family colors across the catalog UI.');
