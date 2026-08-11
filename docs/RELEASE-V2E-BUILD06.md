@@ -1,6 +1,7 @@
 # SonicTrace V2-E · BUILD 06 — C3 Deep Audio resilience
 
 Date: 2026-08-11
+Post-pass checkpoint: `safety/c3-a-real-user-pass-20260811-1900`
 
 ## Scope
 
@@ -58,4 +59,30 @@ Build 06 does not:
 - change CLAP/K-means/catalog-family algorithms;
 - begin Phase 7.
 
-C3 real-user validation still requires the local coordinator to be updated/restarted and a canonical Studio scan to be run against an audio file that previously triggered the loudnorm failure.
+## Real-user acceptance — PASS
+
+Accepted on 2026-08-11 after the local RTX coordinator was updated and restarted from Build 06. SHINOBIWAN Studio `v0.13.3 · Build 41` then ran a real canonical-audio scan for **Stick to You** and reached `REVIEW / NOT SAVED` with a truthful FULL profile:
+
+```text
+DSP              ready
+MASTERING        ready
+NEURAL           ready
+EMBEDDING        ready
+STRUCTURE        ready
+SEMANTICSUMMARY  ready
+LUFS             -13.7
+True peak        -0.8 dBTP
+Browser RMS      -15.8 dBFS
+Sections         9
+```
+
+No new analysis draft was saved to R2 during this smoke.
+
+The exact historical audio that originally produced the loudnorm measurement-block error could not be reliably reidentified from the archived UI capture. The degraded branch remains explicitly protected by regression tests:
+
+- `backend/tests/test_ffmpeg_analysis.py` validates robust loudnorm extraction, no-measurement behavior, EBU R128 parsing and unavailable loudness shape;
+- `backend/tests/test_studio_contract.py::test_partial_mastering_warning_does_not_drop_other_deep_layers` validates that unavailable loudness does not discard Neural, the finite 512D embedding or structure and emits a durable warning.
+
+The validation workflow now runs both FFmpeg-analysis and Studio-contract regression suites so this C3-A behavior remains protected on future pull requests.
+
+C3-A is **COMPLETE — REAL USER PASS**. C3-B Studio V2-E parity is the next active PHASE UX slice; Phase 7 remains locked.
