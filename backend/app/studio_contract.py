@@ -74,6 +74,15 @@ def mastering_warnings(mastering: dict[str, Any] | None) -> list[str]:
     return warnings
 
 
+def normalize_mastering_provenance(mastering: dict[str, Any] | None, provenance: dict[str, Any]) -> None:
+    if not isinstance(mastering, dict):
+        return
+    for key in ('loudness', 'levels'):
+        payload = mastering.get(key)
+        if isinstance(payload, dict) and payload.get('provenance'):
+            provenance[f'mastering.{key}'] = str(payload['provenance'])
+
+
 def build_analysis_envelope(
     *,
     track_id: str,
@@ -95,6 +104,7 @@ def build_analysis_envelope(
             warnings.append('Neural embedding was omitted because it is not exactly 512-dimensional.')
             embedding = None
     warnings.extend(mastering_warnings(mastering))
+    normalize_mastering_provenance(mastering, provenance)
     return {
         'schemaVersion': CONTRACT_SCHEMA_VERSION,
         'analysisId': f'sta-{uuid4()}',
