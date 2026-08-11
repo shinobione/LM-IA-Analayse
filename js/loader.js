@@ -79,7 +79,7 @@ function loadReadabilityOverhaulAssets() {
   }
   if (!document.querySelector('script[data-sonictrace-readability]')) {
     const script = document.createElement('script');
-    script.src = 'js/readability-overhaul.js?v=5'; script.dataset.sonictraceReadability = '1'; document.head.appendChild(script);
+    script.src = 'js/readability-overhaul.js?v=6'; script.dataset.sonictraceReadability = '1'; document.head.appendChild(script);
   }
 }
 
