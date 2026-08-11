@@ -60,6 +60,29 @@ def semantic_summary(neural: dict[str, Any] | None, structure: dict[str, Any] | 
     }
 
 
+def mastering_warnings(mastering: dict[str, Any] | None) -> list[str]:
+    """Translate measurement-level degradation into durable, user-readable warnings."""
+    if not isinstance(mastering, dict):
+        return []
+    warnings: list[str] = []
+    for key, label in (('loudness', 'Mastering loudness'), ('levels', 'Mastering levels')):
+        payload = mastering.get(key)
+        if not isinstance(payload, dict) or payload.get('provenance') != 'unavailable':
+            continue
+        detail = str(payload.get('error') or 'measurement unavailable').strip()
+        warnings.append(f'{label} unavailable: {detail}')
+    return warnings
+
+
+def normalize_mastering_provenance(mastering: dict[str, Any] | None, provenance: dict[str, Any]) -> None:
+    if not isinstance(mastering, dict):
+        return
+    for key in ('loudness', 'levels'):
+        payload = mastering.get(key)
+        if isinstance(payload, dict) and payload.get('provenance'):
+            provenance[f'mastering.{key}'] = str(payload['provenance'])
+
+
 def build_analysis_envelope(
     *,
     track_id: str,
@@ -80,6 +103,8 @@ def build_analysis_envelope(
         if not isinstance(vector, list) or len(vector) != 512:
             warnings.append('Neural embedding was omitted because it is not exactly 512-dimensional.')
             embedding = None
+    warnings.extend(mastering_warnings(mastering))
+    normalize_mastering_provenance(mastering, provenance)
     return {
         'schemaVersion': CONTRACT_SCHEMA_VERSION,
         'analysisId': f'sta-{uuid4()}',

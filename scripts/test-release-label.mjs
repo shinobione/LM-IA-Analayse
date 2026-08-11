@@ -13,14 +13,14 @@ const visual = fs.readFileSync('js/catalog-family-language-build05.js', 'utf8');
 
 for (const marker of [
   "version: 'V2-E'",
-  "build: '05'",
-  "display: 'V2-E · BUILD 05'",
+  "build: '06'",
+  "display: 'V2-E · BUILD 06'",
   "label.className = 'brand-release'",
-  "dataset.sonictraceRelease = 'v2-e-build-05'",
+  "dataset.sonictraceRelease = 'v2-e-build-06'",
 ]) assert.ok(js.includes(marker), `SonicTrace release runtime is missing ${marker}.`);
 
 assert.ok(css.includes('.sonictrace-readable .brand-release{'), 'SonicTrace release label must have explicit readable header styling.');
-assert.ok(readme.includes('V2-E · BUILD 05'), 'README must document the visible SonicTrace release marker.');
+assert.ok(readme.includes('V2-E · BUILD 06'), 'README must document the visible SonicTrace release marker.');
 
 for (const marker of [
   "shell.dataset.layout = 'build-02-workflow'",
@@ -44,13 +44,13 @@ for (const marker of [
   "css/unified-analysis.css?v=2",
   "js/unified-analysis.js?v=2",
   "css/readability-overhaul.css?v=5",
-  "js/readability-overhaul.js?v=5",
+  "js/readability-overhaul.js?v=6",
   "css/catalog-style-families.css?v=2",
   "css/catalog-family-language-build05.css?v=1",
   "js/catalog-style-families.js?v=2",
   "js/catalog-style-families-build04.js?v=1",
   "js/catalog-family-language-build05.js?v=1",
-]) assert.ok(loader.includes(marker), `Build 05 cache-bust/runtime load is missing ${marker}.`);
+]) assert.ok(loader.includes(marker), `Build 06 cache-bust/runtime load is missing ${marker}.`);
 
 for (const marker of [
   "label:'Hip-Hop / Trap'",
@@ -86,4 +86,4 @@ assert.ok(js.includes("actionRoot.querySelector('.st-toolbox')?.remove()"), 'Rea
 assert.ok(js.includes("document.querySelector('#unified-analysis-shell .unified-expert-buttons')"), 'Readability layer must preserve unified advanced tools.');
 assert.ok(!durable.includes('Zone acoustique ${index + 1} · ${raw}'), 'Build 05 must not reintroduce genre/mood-looking acoustic-zone labels.');
 
-console.log('SonicTrace V2-E · BUILD 05 release marker, workflow ancestry, and convergent canonical family visual-language guards passed.');
+console.log('SonicTrace V2-E · BUILD 06 release marker, workflow ancestry, and C3 cache-bust guards passed.');
