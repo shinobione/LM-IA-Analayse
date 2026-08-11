@@ -57,7 +57,7 @@ def probe_audio(path: Path) -> dict[str, Any]:
 
 
 def analyze_loudness(path: Path) -> dict[str, Any]:
-    """Measure integrated LUFS, LRA and true peak with a resilient FFmpeg path."""
+    """Measure integrated LUFS, LRA and true peak without aborting later Deep Audio layers."""
     command = [
         settings.ffmpeg_bin,
         '-hide_banner',
@@ -82,8 +82,8 @@ def analyze_loudness(path: Path) -> dict[str, Any]:
         return fallback
 
     diagnostic = _diagnostic_tail(proc.stderr or proc.stdout or '')
-    raise RuntimeError(
-        'FFmpeg loudness measurement produced neither loudnorm JSON nor an EBU R128 summary'
+    return _unavailable_loudness(
+        'FFmpeg produced neither loudnorm JSON nor an EBU R128 summary'
         f' (loudnorm exit {proc.returncode}).{diagnostic}'
     )
 
@@ -107,9 +107,14 @@ def analyze_levels(path: Path) -> dict[str, Any]:
     stderr = proc.stderr or ''
     mean_match = re.search(r'mean_volume:\s*(-?inf|-?[0-9.]+) dB', stderr)
     max_match = re.search(r'max_volume:\s*(-?inf|-?[0-9.]+) dB', stderr)
-    if proc.returncode != 0 and not (mean_match or max_match):
-        diagnostic = _diagnostic_tail(stderr)
-        raise RuntimeError(f'FFmpeg volumedetect failed with exit {proc.returncode}.{diagnostic}')
+    if not (mean_match or max_match):
+        diagnostic = _diagnostic_tail(stderr or proc.stdout or '')
+        return {
+            'mean_volume_db': None,
+            'max_volume_db': None,
+            'provenance': 'unavailable',
+            'error': f'FFmpeg volumedetect returned no measurement (exit {proc.returncode}).{diagnostic}',
+        }
     return {
         'mean_volume_db': _db(mean_match.group(1)) if mean_match else None,
         'max_volume_db': _db(max_match.group(1)) if max_match else None,
@@ -141,6 +146,20 @@ def _loudnorm_result(payload: dict[str, Any]) -> dict[str, Any]:
         'normalization_type': payload.get('normalization_type'),
         'provenance': 'measured-loudnorm-json',
         'standard': 'ITU-R BS.1770 / EBU R128 via FFmpeg loudnorm',
+    }
+
+
+def _unavailable_loudness(error: str) -> dict[str, Any]:
+    return {
+        'integrated_lufs': None,
+        'loudness_range_lu': None,
+        'true_peak_dbtp': None,
+        'relative_threshold_lufs': None,
+        'target_offset_lu': None,
+        'normalization_type': None,
+        'provenance': 'unavailable',
+        'standard': 'ITU-R BS.1770 / EBU R128 via FFmpeg',
+        'error': error,
     }
 
 
