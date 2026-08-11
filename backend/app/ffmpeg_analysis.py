@@ -71,12 +71,22 @@ def analyze_loudness(path: Path) -> dict[str, Any]:
         '-f', 'null',
         '-',
     ]
-    proc = subprocess.run(command, capture_output=True, text=True, timeout=180)
+    try:
+        proc = subprocess.run(command, capture_output=True, text=True, timeout=180)
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        return _unavailable_loudness(f'FFmpeg loudnorm execution failed: {exc}')
+
     payload = _parse_loudnorm_payload(proc.stdout, proc.stderr)
     if payload is not None:
         return _loudnorm_result(payload)
 
-    fallback = _analyze_loudness_ebur128(path)
+    try:
+        fallback = _analyze_loudness_ebur128(path)
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        fallback = None
+        fallback_error = f' EBU R128 fallback failed: {exc}'
+    else:
+        fallback_error = ''
     if fallback is not None:
         fallback['fallback_reason'] = 'loudnorm JSON measurement block was unavailable'
         return fallback
@@ -84,7 +94,7 @@ def analyze_loudness(path: Path) -> dict[str, Any]:
     diagnostic = _diagnostic_tail(proc.stderr or proc.stdout or '')
     return _unavailable_loudness(
         'FFmpeg produced neither loudnorm JSON nor an EBU R128 summary'
-        f' (loudnorm exit {proc.returncode}).{diagnostic}'
+        f' (loudnorm exit {proc.returncode}).{fallback_error}{diagnostic}'
     )
 
 
@@ -103,7 +113,15 @@ def analyze_levels(path: Path) -> dict[str, Any]:
         '-f', 'null',
         '-',
     ]
-    proc = subprocess.run(command, capture_output=True, text=True, timeout=180)
+    try:
+        proc = subprocess.run(command, capture_output=True, text=True, timeout=180)
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        return {
+            'mean_volume_db': None,
+            'max_volume_db': None,
+            'provenance': 'unavailable',
+            'error': f'FFmpeg volumedetect execution failed: {exc}',
+        }
     stderr = proc.stderr or ''
     mean_match = re.search(r'mean_volume:\s*(-?inf|-?[0-9.]+) dB', stderr)
     max_match = re.search(r'max_volume:\s*(-?inf|-?[0-9.]+) dB', stderr)
