@@ -22,6 +22,11 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: FFmpeg analysis regression tests
+        env:
+          PYTHONPATH: backend
+        run: python backend/tests/test_ffmpeg_analysis.py
+
       - name: Studio contract tests
         env:
           PYTHONPATH: backend
