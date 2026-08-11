@@ -11,7 +11,8 @@ from typing import Any
 from .config import settings
 
 
-LOUDNORM_JSON_RE = re.compile(r'\{\s*"input_i".*?\}', re.DOTALL)
+LOUDNORM_KEYS = {'input_i', 'input_tp', 'input_lra', 'input_thresh'}
+JSON_OBJECT_RE = re.compile(r'\{(?:[^{}]|"(?:\\.|[^"\\])*")*\}', re.DOTALL)
 
 
 def check_ffmpeg() -> dict[str, bool]:
@@ -56,38 +57,35 @@ def probe_audio(path: Path) -> dict[str, Any]:
 
 
 def analyze_loudness(path: Path) -> dict[str, Any]:
-    """Measure integrated LUFS, LRA and true peak with FFmpeg loudnorm."""
+    """Measure integrated LUFS, LRA and true peak with a resilient FFmpeg path."""
     command = [
         settings.ffmpeg_bin,
         '-hide_banner',
         '-nostats',
         '-i', str(path),
+        '-map', '0:a:0',
+        '-vn',
+        '-sn',
+        '-dn',
         '-af', 'loudnorm=I=-14:LRA=11:TP=-1:print_format=json',
         '-f', 'null',
         '-',
     ]
     proc = subprocess.run(command, capture_output=True, text=True, timeout=180)
-    stderr = proc.stderr or ''
-    match = LOUDNORM_JSON_RE.search(stderr)
-    if not match:
-        raise RuntimeError('FFmpeg loudnorm did not return a measurement block.')
-    payload = json.loads(match.group(0))
+    payload = _parse_loudnorm_payload(proc.stdout, proc.stderr)
+    if payload is not None:
+        return _loudnorm_result(payload)
 
-    integrated = _float(payload.get('input_i'))
-    true_peak = _float(payload.get('input_tp'))
-    lra = _float(payload.get('input_lra'))
-    threshold = _float(payload.get('input_thresh'))
+    fallback = _analyze_loudness_ebur128(path)
+    if fallback is not None:
+        fallback['fallback_reason'] = 'loudnorm JSON measurement block was unavailable'
+        return fallback
 
-    return {
-        'integrated_lufs': integrated,
-        'loudness_range_lu': lra,
-        'true_peak_dbtp': true_peak,
-        'relative_threshold_lufs': threshold,
-        'target_offset_lu': _float(payload.get('target_offset')),
-        'normalization_type': payload.get('normalization_type'),
-        'provenance': 'measured',
-        'standard': 'ITU-R BS.1770 / EBU R128 via FFmpeg loudnorm',
-    }
+    diagnostic = _diagnostic_tail(proc.stderr or proc.stdout or '')
+    raise RuntimeError(
+        'FFmpeg loudness measurement produced neither loudnorm JSON nor an EBU R128 summary'
+        f' (loudnorm exit {proc.returncode}).{diagnostic}'
+    )
 
 
 def analyze_levels(path: Path) -> dict[str, Any]:
@@ -97,6 +95,10 @@ def analyze_levels(path: Path) -> dict[str, Any]:
         '-hide_banner',
         '-nostats',
         '-i', str(path),
+        '-map', '0:a:0',
+        '-vn',
+        '-sn',
+        '-dn',
         '-af', 'volumedetect',
         '-f', 'null',
         '-',
@@ -105,11 +107,90 @@ def analyze_levels(path: Path) -> dict[str, Any]:
     stderr = proc.stderr or ''
     mean_match = re.search(r'mean_volume:\s*(-?inf|-?[0-9.]+) dB', stderr)
     max_match = re.search(r'max_volume:\s*(-?inf|-?[0-9.]+) dB', stderr)
+    if proc.returncode != 0 and not (mean_match or max_match):
+        diagnostic = _diagnostic_tail(stderr)
+        raise RuntimeError(f'FFmpeg volumedetect failed with exit {proc.returncode}.{diagnostic}')
     return {
         'mean_volume_db': _db(mean_match.group(1)) if mean_match else None,
         'max_volume_db': _db(max_match.group(1)) if max_match else None,
         'provenance': 'measured',
     }
+
+
+def _parse_loudnorm_payload(*streams: str) -> dict[str, Any] | None:
+    """Find the actual loudnorm object without depending on FFmpeg log spacing/order."""
+    text = '\n'.join(stream for stream in streams if stream)
+    candidates = list(JSON_OBJECT_RE.finditer(text))
+    for match in reversed(candidates):
+        try:
+            payload = json.loads(match.group(0))
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict) and LOUDNORM_KEYS.issubset(payload):
+            return payload
+    return None
+
+
+def _loudnorm_result(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        'integrated_lufs': _float(payload.get('input_i')),
+        'loudness_range_lu': _float(payload.get('input_lra')),
+        'true_peak_dbtp': _float(payload.get('input_tp')),
+        'relative_threshold_lufs': _float(payload.get('input_thresh')),
+        'target_offset_lu': _float(payload.get('target_offset')),
+        'normalization_type': payload.get('normalization_type'),
+        'provenance': 'measured-loudnorm-json',
+        'standard': 'ITU-R BS.1770 / EBU R128 via FFmpeg loudnorm',
+    }
+
+
+def _analyze_loudness_ebur128(path: Path) -> dict[str, Any] | None:
+    """Fallback measurement when loudnorm ran but its JSON summary cannot be recovered."""
+    command = [
+        settings.ffmpeg_bin,
+        '-hide_banner',
+        '-nostats',
+        '-i', str(path),
+        '-map', '0:a:0',
+        '-vn',
+        '-sn',
+        '-dn',
+        '-af', 'ebur128=peak=true:framelog=verbose',
+        '-f', 'null',
+        '-',
+    ]
+    proc = subprocess.run(command, capture_output=True, text=True, timeout=180)
+    return _parse_ebur128_summary(proc.stderr or proc.stdout or '')
+
+
+def _parse_ebur128_summary(text: str) -> dict[str, Any] | None:
+    summaries = list(re.finditer(r'Summary:\s*(.*)', text, re.DOTALL | re.IGNORECASE))
+    if not summaries:
+        return None
+    summary = summaries[-1].group(1)
+    integrated = re.search(r'Integrated loudness:.*?\bI:\s*(-?inf|-?[0-9.]+)\s+LUFS', summary, re.DOTALL | re.IGNORECASE)
+    lra = re.search(r'Loudness range:.*?\bLRA:\s*(-?inf|-?[0-9.]+)\s+LU', summary, re.DOTALL | re.IGNORECASE)
+    threshold = re.search(r'Integrated loudness:.*?Threshold:\s*(-?inf|-?[0-9.]+)\s+LUFS', summary, re.DOTALL | re.IGNORECASE)
+    peak = re.search(r'True peak:.*?\bPeak:\s*(-?inf|-?[0-9.]+)\s+dB(?:FS|TP)', summary, re.DOTALL | re.IGNORECASE)
+    if not integrated:
+        return None
+    return {
+        'integrated_lufs': _db(integrated.group(1)),
+        'loudness_range_lu': _db(lra.group(1)) if lra else None,
+        'true_peak_dbtp': _db(peak.group(1)) if peak else None,
+        'relative_threshold_lufs': _db(threshold.group(1)) if threshold else None,
+        'target_offset_lu': None,
+        'normalization_type': 'measurement-only-fallback',
+        'provenance': 'measured-ebur128-fallback',
+        'standard': 'EBU R128 via FFmpeg ebur128 fallback',
+    }
+
+
+def _diagnostic_tail(value: str, limit: int = 900) -> str:
+    compact = ' '.join(str(value or '').split())
+    if not compact:
+        return ''
+    return f' FFmpeg tail: {compact[-limit:]}'
 
 
 def _db(value: str) -> float | None:
