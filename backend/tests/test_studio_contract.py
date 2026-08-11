@@ -64,6 +64,7 @@ class StudioContractTests(unittest.TestCase):
             },
             'levels': {'mean_volume_db': -15.0, 'max_volume_db': -0.8, 'provenance': 'measured'},
         }
+        provenance = {'mastering.loudness': 'measured', 'mastering.levels': 'measured', 'neural': 'neural', 'structure': 'signal-derived'}
         result = build_analysis_envelope(
             track_id='ghost-signal',
             source_version={'kind': 'r2-etag', 'value': 'abc', 'sizeBytes': 42},
@@ -72,12 +73,14 @@ class StudioContractTests(unittest.TestCase):
             neural=neural,
             structure=structure,
             stems_summary=None,
-            provenance={'neural': 'neural', 'structure': 'signal-derived'},
+            provenance=provenance,
             warnings=[],
         )
         self.assertIs(result['mastering'], mastering)
         self.assertEqual(result['embedding']['dimension'], 512)
         self.assertIs(result['structure'], structure)
+        self.assertEqual(result['provenance']['mastering.loudness'], 'unavailable')
+        self.assertEqual(result['provenance']['mastering.levels'], 'measured')
         self.assertTrue(any('Mastering loudness unavailable' in item for item in result['warnings']))
         self.assertTrue(any('fixture loudnorm failure' in item for item in result['warnings']))
 
