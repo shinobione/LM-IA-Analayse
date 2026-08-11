@@ -1,6 +1,6 @@
 # LMNotebook Neural Audio Analyzer
 
-> SonicTrace UI release: **V2-E · BUILD 05** — canonical sonic-family colors across Catalog Intelligence; acoustic CLAP zones remain secondary neighborhoods.
+> SonicTrace UI release: **V2-E · BUILD 06** — C3 Deep Audio resilience; a mastering measurement failure no longer aborts Neural / embedding / structure layers.
 
 Analyseur audio expérimental pour fichiers **MP3 / WAV**, construit comme un moteur hybride **Browser DSP V1 + Deep Audio V2**.
 
@@ -16,11 +16,13 @@ Real-user smoke then exposed a Build 03 integration bug: the native `catalog-ui.
 
 **V2-E · BUILD 05** unifies the visible language. The Neural genre-derived taxonomy is presented as **Familles sonores** and receives stable family colors. The same primary family color now follows a track through the family cards, 2D map, Catalog track list and `Lecture du catalogue`. The 2D position still comes from CLAP proximity; the K-means result remains a separate **Zone acoustique A / B / …** layer with neutral labels. In short: **position = proximité, couleur = famille sonore, zone = voisinage acoustique**. No similarity, clustering, GPU, backend or catalog-storage algorithm is changed.
 
-Build 05 deliberately preserves the existing CLAP similarity/K-means ancestry, IndexedDB catalog data, import/export and project compatibility logic. It is frontend-only and does not change DSP, CUDA, FFmpeg/loudnorm, GPU workers, Studio integration or audio-retention behavior. See [`docs/RELEASE-V2E-BUILD01.md`](docs/RELEASE-V2E-BUILD01.md), [`docs/RELEASE-V2E-BUILD02.md`](docs/RELEASE-V2E-BUILD02.md), [`docs/RELEASE-V2E-BUILD03.md`](docs/RELEASE-V2E-BUILD03.md), [`docs/RELEASE-V2E-BUILD04.md`](docs/RELEASE-V2E-BUILD04.md) and [`docs/RELEASE-V2E-BUILD05.md`](docs/RELEASE-V2E-BUILD05.md).
+**V2-E · BUILD 06** opens PHASE UX / C3. The coordinator's mastering path is now resilient to FFmpeg `loudnorm` output variations: loudnorm JSON parsing is order/spacing independent, a real `ebur128` measurement is used as fallback, and a measurement that is still unavailable becomes an explicit partial-layer diagnostic instead of aborting `/api/studio/analyze`. Neural, 512D embedding, Song Anatomy and optional stem fusion can therefore continue when only V2-A mastering degrades. The Deep Audio engine default version is `2.0.1-alpha`; Studio contract schema `1` and API schema `2.2` remain unchanged.
 
-## SHINOBIWAN Studio Phase 5
+Build 06 preserves the existing CLAP similarity/K-means ancestry, family visual language, IndexedDB catalog data, import/export and project compatibility logic. It does not change canonical persistence, audio retention, Track Manager, R2 or Phase 7. See [`docs/RELEASE-V2E-BUILD01.md`](docs/RELEASE-V2E-BUILD01.md), [`docs/RELEASE-V2E-BUILD02.md`](docs/RELEASE-V2E-BUILD02.md), [`docs/RELEASE-V2E-BUILD03.md`](docs/RELEASE-V2E-BUILD03.md), [`docs/RELEASE-V2E-BUILD04.md`](docs/RELEASE-V2E-BUILD04.md), [`docs/RELEASE-V2E-BUILD05.md`](docs/RELEASE-V2E-BUILD05.md) and [`docs/RELEASE-V2E-BUILD06.md`](docs/RELEASE-V2E-BUILD06.md).
 
-The coordinator now exposes `POST /api/studio/analyze`, a one-upload, temporary-audio endpoint that returns the versioned Studio analysis envelope while preserving partial-layer warnings. Canonical persistence remains in LaunchPAD/R2 through Track Manager; SonicTrace does not retain or own a competing production catalog. See [`docs/STUDIO_PHASE5_CONTRACT.md`](docs/STUDIO_PHASE5_CONTRACT.md).
+## SHINOBIWAN Studio Phase 5 / C3
+
+The coordinator exposes `POST /api/studio/analyze`, a one-upload, temporary-audio endpoint that returns the versioned Studio analysis envelope while preserving partial-layer warnings. Starting with Build 06, an unavailable mastering sub-layer no longer prevents other Deep Audio layers from being returned. Canonical persistence remains in LaunchPAD/R2 through Track Manager; SonicTrace does not retain or own a competing production catalog. See [`docs/STUDIO_PHASE5_CONTRACT.md`](docs/STUDIO_PHASE5_CONTRACT.md).
 
 ## Windows — mode zéro fatigue neuronale
 
@@ -89,17 +91,17 @@ GitHub Pages / navigateur
         FastAPI coordinator :8000
           │
           ├── FFmpeg / ffprobe / BS.1770
-          ├── futurs modèles neuraux lourds
+          ├── modèles neuraux lourds
           │
           └──── LAN ────> RTX 3070 Ti 8 GB worker :8001
-                          futurs stems / inférence parallèle
+                          stems / inférence parallèle
 ```
 
 Le frontend n'a besoin de connaître que l'adresse du **coordinator RTX 3060**. Le backend inspecte ensuite les workers configurés sur le réseau local.
 
-### V2-A — Mastering de référence — IMPLEMENTED FOUNDATION
+### V2-A — Mastering de référence — IMPLEMENTED
 
-`POST /api/analyze` mesure côté serveur :
+`POST /api/analyze` et le chemin Studio mesurent côté serveur :
 
 - métadonnées ffprobe : codec, conteneur, bitrate, sample rate, canaux, durée
 - Integrated Loudness (LUFS)
@@ -107,7 +109,7 @@ Le frontend n'a besoin de connaître que l'adresse du **coordinator RTX 3060**. 
 - True Peak (dBTP)
 - seuil loudness relatif
 - mean / max volume FFmpeg pour cross-check
-- provenance explicite `measured`
+- provenance explicite (`measured-loudnorm-json`, `measured-ebur128-fallback`, `measured` ou `unavailable`)
 - suppression du fichier temporaire après analyse
 
 Endpoints :
@@ -115,6 +117,7 @@ Endpoints :
 - `GET /api/health`
 - `GET /api/cluster`
 - `POST /api/analyze`
+- `POST /api/studio/analyze`
 - `/docs`
 
 Le dashboard contient un panneau **Deep Audio V2 node**, un bouton **Deep Scan V2** et une zone dédiée aux mesures mastering V2.
@@ -140,7 +143,7 @@ Rôle prévu :
 - transcription parallèle
 - batch / jobs concurrents
 
-Le routage futur privilégiera d'abord **la quantité de VRAM requise**, puis la vitesse et la charge du worker.
+Le routage privilégie d'abord **la quantité de VRAM requise**, puis la vitesse et la charge du worker.
 
 ## Lancement manuel — seulement pour debug
 
@@ -154,60 +157,62 @@ http://127.0.0.1:8000/docs
 http://127.0.0.1:8008
 ```
 
-Le site GitHub Pages public restera le frontend de production. Quand l'API locale sera validée, elle pourra être exposée proprement via un endpoint **HTTPS sécurisé / tunnel** sans louer immédiatement un GPU cloud.
+Le site GitHub Pages public reste le frontend publié. Le calcul Deep Audio reste assuré par le coordinator local/GPU.
 
 Voir `backend/README.md` pour la configuration complète du cluster RTX 3060 + RTX 3070 Ti.
 
-## V2-B — Neural Music Understanding — NEXT
+## V2-B — Neural Music Understanding — IMPLEMENTED
 
 - genre / sous-genre multi-label avec probabilités
 - mood, valence, arousal, danceability et energy estimés
 - détection d'instruments
-- embeddings audio
+- embeddings audio 512D
 - scores de confiance par modèle
 - exécution CUDA locale
 
-## V2-C — Song Anatomy
+## V2-C — Song Anatomy — IMPLEMENTED
 
 - segmentation Intro / Verse / Chorus / Drop / Bridge / Outro
-- self-similarity matrix
 - répétitions / hooks / climax
-- accords avec timestamps
-- changements de tonalité et tempo local
+- structure signal-derived avec labels heuristiques
+- exécution coordinator
 
-## V2-D — Stems & Vocals
+## V2-D — Stems & Vocals — IMPLEMENTED
 
 - Demucs : vocals / drums / bass / other
-- analyse DSP par stem
-- transcription lyrics + timestamps
-- langue détectée
-- activité vocale / densité / pitch approximatif
-- répartition des jobs entre les deux GPU
+- analyse par stem
+- routage coordinator / worker LAN
+- activité des sources
+- fusion V2-C × V2-D lorsque la route GPU est disponible
 
-## V2-E — Catalog Intelligence
+## V2-E — Catalog Intelligence — IMPLEMENTED / C3 PARITY IN PROGRESS
 
 - index d'embeddings par track
 - carte de similarité réelle du catalogue
 - zones acoustiques issues des embeddings CLAP
 - familles sonores dérivées des genres Neural sauvegardés
 - couleurs de famille stables sur les différentes surfaces Catalog
+- projection 2D, outliers, bridges et analyse de projet dans le standalone
 - comparaison de versions / masters
 - historique d'analyse
+
+C3 doit maintenant amener dans Studio la parité utile du standalone en s'appuyant sur les sidecars R2 canoniques, sans faire de l'IndexedDB standalone une nouvelle autorité.
 
 ## Principe de confiance des données
 
 Chaque métrique doit indiquer sa provenance :
 
-- `measured` : mesure DSP déterministe
+- `measured*` : mesure DSP déterministe
 - `estimated` : estimation algorithmique
 - `neural` : prédiction ML avec confiance
 - `heuristic` : score dérivé / expérimental
+- `unavailable` : couche tentée mais mesure non récupérable ; ne doit jamais être affichée comme zéro
 
 Les scores comme « commercial potential », « originality » ou « Spotify compatibility » ne doivent jamais être présentés comme des mesures objectives du fichier audio.
 
 ## Déploiement
 
 - **Frontend :** GitHub Pages
-- **V2 développement :** RTX 3060 locale + RTX 3070 Ti LAN
-- **V2 public :** endpoint HTTPS vers le coordinator local ou hébergement cloud ultérieur
+- **Deep Audio :** RTX 3060 locale + RTX 3070 Ti LAN
+- **Canonical catalog persistence :** Track Manager / Cloudflare R2
 - **GPU cloud :** inutile tant que les deux GPU locaux couvrent correctement la charge
