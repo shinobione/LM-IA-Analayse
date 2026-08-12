@@ -19,7 +19,7 @@ def _bool(value: str | None, default: bool = False) -> bool:
 @dataclass(frozen=True)
 class Settings:
     app_name: str = os.getenv('LMN_APP_NAME', 'LMNotebook Deep Audio API')
-    version: str = os.getenv('LMN_VERSION', '2.0.1-alpha')
+    version: str = os.getenv('LMN_VERSION', '2.0.2-alpha')
     node_name: str = os.getenv('LMN_NODE_NAME', 'RTX3060-PRIMARY')
     node_role: str = os.getenv('LMN_NODE_ROLE', 'coordinator')
     allowed_origins: tuple[str, ...] = tuple(
