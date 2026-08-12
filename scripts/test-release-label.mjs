@@ -7,6 +7,7 @@ const unifiedJs = fs.readFileSync('js/unified-analysis.js', 'utf8');
 const unifiedCss = fs.readFileSync('css/unified-analysis.css', 'utf8');
 const loader = fs.readFileSync('js/loader.js', 'utf8');
 const readme = fs.readFileSync('README.md', 'utf8');
+const releaseDoc = fs.readFileSync('docs/RELEASE-V2E-BUILD07.md', 'utf8');
 const styles = fs.readFileSync('js/catalog-style-families.js', 'utf8');
 const durable = fs.readFileSync('js/catalog-style-families-build04.js', 'utf8');
 const visual = fs.readFileSync('js/catalog-family-language-build05.js', 'utf8');
@@ -22,7 +23,9 @@ for (const marker of [
 ]) assert.ok(js.includes(marker), `SonicTrace release runtime is missing ${marker}.`);
 
 assert.ok(css.includes('.sonictrace-readable .brand-release{'), 'SonicTrace release label must have explicit readable header styling.');
-assert.ok(readme.includes('V2-E · BUILD 07'), 'README must document the visible SonicTrace release marker.');
+assert.ok(readme.includes('V2-E · BUILD 06'), 'README must preserve the last accepted SonicTrace baseline until Build 07 real-user validation.');
+assert.ok(releaseDoc.includes('V2-E · BUILD 07'), 'Build 07 candidate release documentation is missing its release marker.');
+assert.ok(releaseDoc.includes('SINGULARITY .:. OBLITERANT'), 'Build 07 candidate must record the real-user regression target.');
 assert.ok(config.includes("'2.0.2-alpha'"), 'Build 07 must expose Deep Audio engine 2.0.2-alpha.');
 
 for (const marker of [
@@ -96,4 +99,4 @@ assert.ok(js.includes("actionRoot.querySelector('.st-toolbox')?.remove()"), 'Rea
 assert.ok(js.includes("document.querySelector('#unified-analysis-shell .unified-expert-buttons')"), 'Readability layer must preserve unified advanced tools.');
 assert.ok(!durable.includes('Zone acoustique ${index + 1} · ${raw}'), 'Build 05 must not reintroduce genre/mood-looking acoustic-zone labels.');
 
-console.log('SonicTrace V2-E · BUILD 07 release marker, mastering fallbacks, workflow ancestry, and cache-bust guards passed.');
+console.log('SonicTrace V2-E · BUILD 07 candidate release marker, mastering fallbacks, workflow ancestry, and cache-bust guards passed.');
