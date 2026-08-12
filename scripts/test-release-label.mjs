@@ -7,26 +7,30 @@ const unifiedJs = fs.readFileSync('js/unified-analysis.js', 'utf8');
 const unifiedCss = fs.readFileSync('css/unified-analysis.css', 'utf8');
 const loader = fs.readFileSync('js/loader.js', 'utf8');
 const readme = fs.readFileSync('README.md', 'utf8');
-const releaseDoc = fs.readFileSync('docs/RELEASE-V2E-BUILD07.md', 'utf8');
+const releaseDoc = fs.readFileSync('docs/RELEASE-V2E-BUILD08.md', 'utf8');
 const styles = fs.readFileSync('js/catalog-style-families.js', 'utf8');
 const durable = fs.readFileSync('js/catalog-style-families-build04.js', 'utf8');
 const visual = fs.readFileSync('js/catalog-family-language-build05.js', 'utf8');
 const ffmpeg = fs.readFileSync('backend/app/ffmpeg_analysis.py', 'utf8');
 const config = fs.readFileSync('backend/app/config.py', 'utf8');
+const startCmd = fs.readFileSync('SONICTRACE_START.cmd', 'utf8');
+const updateStartCmd = fs.readFileSync('SONICTRACE_UPDATE_AND_START.cmd', 'utf8');
 
 for (const marker of [
   "version: 'V2-E'",
-  "build: '07'",
-  "display: 'V2-E · BUILD 07'",
+  "build: '08'",
+  "display: 'V2-E · BUILD 08'",
   "label.className = 'brand-release'",
-  "dataset.sonictraceRelease = 'v2-e-build-07'",
+  "dataset.sonictraceRelease = 'v2-e-build-08'",
 ]) assert.ok(js.includes(marker), `SonicTrace release runtime is missing ${marker}.`);
 
 assert.ok(css.includes('.sonictrace-readable .brand-release{'), 'SonicTrace release label must have explicit readable header styling.');
-assert.ok(readme.includes('V2-E · BUILD 06'), 'README must preserve the last accepted SonicTrace baseline until Build 07 real-user validation.');
-assert.ok(releaseDoc.includes('V2-E · BUILD 07'), 'Build 07 candidate release documentation is missing its release marker.');
-assert.ok(releaseDoc.includes('SINGULARITY .:. OBLITERANT'), 'Build 07 candidate must record the real-user regression target.');
-assert.ok(config.includes("'2.0.2-alpha'"), 'Build 07 must expose Deep Audio engine 2.0.2-alpha.');
+assert.ok(readme.includes('V2-E · BUILD 06'), 'README must preserve the last accepted SonicTrace baseline until Build 08 real-user validation.');
+assert.ok(releaseDoc.includes('V2-E · BUILD 08'), 'Build 08 candidate release documentation is missing its release marker.');
+assert.ok(releaseDoc.includes('SINGULARITY .:. OBLITERANT'), 'Build 08 candidate must record the real-user regression target.');
+assert.ok(config.includes("'2.0.3-alpha'"), 'Build 08 must expose Deep Audio engine 2.0.3-alpha.');
+assert.ok(startCmd.includes('set "LMN_VERSION=2.0.3-alpha"'), 'Build 08 start must pin the expected runtime engine identity.');
+assert.ok(updateStartCmd.includes('LMNotebook_STOP.cmd'), 'Build 08 update+start must force a clean managed stop before restart.');
 
 for (const marker of [
   "shell.dataset.layout = 'build-02-workflow'",
@@ -50,20 +54,23 @@ for (const marker of [
   "css/unified-analysis.css?v=2",
   "js/unified-analysis.js?v=2",
   "css/readability-overhaul.css?v=5",
-  "js/readability-overhaul.js?v=7",
+  "js/readability-overhaul.js?v=8",
   "css/catalog-style-families.css?v=2",
   "css/catalog-family-language-build05.css?v=1",
   "js/catalog-style-families.js?v=2",
   "js/catalog-style-families-build04.js?v=1",
   "js/catalog-family-language-build05.js?v=1",
-]) assert.ok(loader.includes(marker), `Build 07 cache-bust/runtime load is missing ${marker}.`);
+]) assert.ok(loader.includes(marker), `Build 08 cache-bust/runtime load is missing ${marker}.`);
 
 for (const marker of [
+  "'-loglevel', 'info'",
+  "env['AV_LOG_FORCE_NOCOLOR'] = '1'",
+  '_combined_output(proc)',
   '_analyze_loudness_ebur128(path)',
   '_analyze_levels_astats(path)',
   "'measured-astats-fallback'",
   "fallback['fallback_reason'] = primary_error",
-]) assert.ok(ffmpeg.includes(marker), `Build 07 mastering fallback contract is missing ${marker}.`);
+]) assert.ok(ffmpeg.includes(marker), `Build 08 FFmpeg capture/fallback contract is missing ${marker}.`);
 
 for (const marker of [
   "label:'Hip-Hop / Trap'",
@@ -99,4 +106,4 @@ assert.ok(js.includes("actionRoot.querySelector('.st-toolbox')?.remove()"), 'Rea
 assert.ok(js.includes("document.querySelector('#unified-analysis-shell .unified-expert-buttons')"), 'Readability layer must preserve unified advanced tools.');
 assert.ok(!durable.includes('Zone acoustique ${index + 1} · ${raw}'), 'Build 05 must not reintroduce genre/mood-looking acoustic-zone labels.');
 
-console.log('SonicTrace V2-E · BUILD 07 candidate release marker, mastering fallbacks, workflow ancestry, and cache-bust guards passed.');
+console.log('SonicTrace V2-E · BUILD 08 candidate runtime freshness, FFmpeg capture, workflow ancestry, and cache-bust guards passed.');
