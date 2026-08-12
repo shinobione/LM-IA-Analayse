@@ -12,6 +12,10 @@ if errorlevel 1 (
   exit /b 1
 )
 
+rem Build updates can preserve a schema-compatible API process from an older engine.
+rem Force a clean managed stop after the pull so the new code is guaranteed to boot.
+if exist "%~dp0LMNotebook_STOP.cmd" call "%~dp0LMNotebook_STOP.cmd"
+
 set "SONICTRACE_NO_PAUSE="
 call "%~dp0SONICTRACE_START.cmd"
 exit /b %errorlevel%
