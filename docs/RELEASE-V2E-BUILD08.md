@@ -2,7 +2,7 @@
 
 Date: 2026-08-12
 
-Status: **CANDIDATE — CI required, real-user SINGULARITY smoke required after local UPDATE & START**.
+Status: **COMPLETE — REAL USER PASS**.
 
 ## Why
 
@@ -63,21 +63,35 @@ Rollback checkpoint:
 
 `safety/pre-build08-runtime-ffmpeg-capture-20260812`
 
-## Real-user acceptance gate
+Accepted checkpoint:
 
-After merge:
+`safety/build08-real-user-pass-20260812`
 
-1. run `SONICTRACE_UPDATE_AND_START.cmd`;
-2. re-scan `SINGULARITY .:. OBLITERANT` from Studio;
-3. confirm the new analysis reports engine `2.0.3-alpha`;
-4. expected healthy state:
+## Real-user acceptance — PASS
+
+Accepted on 2026-08-12 from SHINOBIWAN Studio after the local coordinator was updated and restarted through `SONICTRACE_UPDATE_AND_START.cmd` and `SINGULARITY .:. OBLITERANT` was re-scanned.
+
+The fresh review reached a truthful FULL profile with all Deep Audio layers available, then the user explicitly saved the analysis. Studio subsequently displayed the Phase 7-B receipt:
+
+```text
+SONICTRACE / ANALYSIS SAVED
+Canonical reread verified
+```
+
+The durable canonical profile reread from R2 then showed:
 
 ```text
 Profile      FULL
 Audio match  Current
-Embedding    512D
-LUFS         numeric
-True Peak    numeric
+History      4 scans
+LUFS         -15.1 LUFS
+True Peak    0.2 dBTP
 ```
 
-If mastering remains unavailable, preserve the exact warning including the new FFmpeg tail. Build 08 must remain truthful rather than manufacture values.
+This validates the complete path:
+
+`fresh Build 08 runtime → deterministic FFmpeg measurement capture → FULL analysis → explicit save → Track Manager private canonical reread → durable FULL R2 profile`.
+
+No Browser DSP value was promoted to mastering truth, no source audio was retained, and no Track Manager/R2 authority boundary changed.
+
+**SonicTrace V2-E · BUILD 08 is COMPLETE — REAL USER PASS.**

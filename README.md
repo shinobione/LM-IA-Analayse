@@ -1,6 +1,6 @@
 # LMNotebook Neural Audio Analyzer
 
-> SonicTrace UI release: **V2-E · BUILD 06** — C3 Deep Audio resilience; a mastering measurement failure no longer aborts Neural / embedding / structure layers.
+> SonicTrace UI release: **V2-E · BUILD 08** — COMPLETE · REAL USER PASS. Fresh-runtime enforcement plus deterministic FFmpeg mastering capture now recover the full Studio analysis path without changing canonical authority.
 
 Analyseur audio expérimental pour fichiers **MP3 / WAV**, construit comme un moteur hybride **Browser DSP V1 + Deep Audio V2**.
 
@@ -16,21 +16,28 @@ Real-user smoke then exposed a Build 03 integration bug: the native `catalog-ui.
 
 **V2-E · BUILD 05** unifies the visible language. The Neural genre-derived taxonomy is presented as **Familles sonores** and receives stable family colors. The same primary family color now follows a track through the family cards, 2D map, Catalog track list and `Lecture du catalogue`. The 2D position still comes from CLAP proximity; the K-means result remains a separate **Zone acoustique A / B / …** layer with neutral labels. In short: **position = proximité, couleur = famille sonore, zone = voisinage acoustique**. No similarity, clustering, GPU, backend or catalog-storage algorithm is changed.
 
-**V2-E · BUILD 06** opens PHASE UX / C3. The coordinator's mastering path is now resilient to FFmpeg `loudnorm` output variations: loudnorm JSON parsing is order/spacing independent, a real `ebur128` measurement is used as fallback, and a measurement that is still unavailable becomes an explicit partial-layer diagnostic instead of aborting `/api/studio/analyze`. Neural, 512D embedding, Song Anatomy and optional stem fusion can therefore continue when only V2-A mastering degrades. The Deep Audio engine default version is `2.0.1-alpha`; Studio contract schema `1` and API schema `2.2` remain unchanged.
+**V2-E · BUILD 06** opened PHASE UX / C3. The coordinator mastering path became resilient to FFmpeg `loudnorm` output variations: loudnorm JSON parsing is order/spacing independent, a real `ebur128` measurement is used as fallback, and a measurement that is still unavailable becomes an explicit partial-layer diagnostic instead of aborting `/api/studio/analyze`. Neural, 512D embedding, Song Anatomy and optional stem fusion therefore remain available when only V2-A mastering degrades. Build 06 was accepted through a real-user FULL Studio scan.
 
-Build 06 preserves the existing CLAP similarity/K-means ancestry, family visual language, IndexedDB catalog data, import/export and project compatibility logic. It does not change canonical persistence, audio retention, Track Manager, R2 or Phase 7. See [`docs/RELEASE-V2E-BUILD01.md`](docs/RELEASE-V2E-BUILD01.md), [`docs/RELEASE-V2E-BUILD02.md`](docs/RELEASE-V2E-BUILD02.md), [`docs/RELEASE-V2E-BUILD03.md`](docs/RELEASE-V2E-BUILD03.md), [`docs/RELEASE-V2E-BUILD04.md`](docs/RELEASE-V2E-BUILD04.md), [`docs/RELEASE-V2E-BUILD05.md`](docs/RELEASE-V2E-BUILD05.md) and [`docs/RELEASE-V2E-BUILD06.md`](docs/RELEASE-V2E-BUILD06.md).
+**V2-E · BUILD 07** hardened the measurement layer after a fresh `SINGULARITY .:. OBLITERANT` scan exposed a remaining PARTIAL mastering state. `loudnorm` failure/timeout/no-JSON now still attempts EBU R128, while `volumedetect` failure/timeout/no-measurement attempts FFmpeg `astats`. All recovered values keep explicit measured provenance and Browser DSP is never promoted to server mastering truth.
+
+**V2-E · BUILD 08** closes the remaining real-machine seam. `SONICTRACE_UPDATE_AND_START.cmd` now guarantees a managed stop before restarting updated code, `SONICTRACE_START.cmd` pins Deep Audio engine identity `2.0.3-alpha`, and FFmpeg mastering commands explicitly capture plain `info` logs from combined stdout/stderr with UTF-8 replacement. A real-user `SINGULARITY .:. OBLITERANT` scan reached FULL, was explicitly saved, and Studio then confirmed `Canonical reread verified`; the durable R2 profile remained FULL with `-15.1 LUFS` and `0.2 dBTP`. Build 08 is **COMPLETE — REAL USER PASS**.
+
+Build 08 preserves the existing CLAP similarity/K-means ancestry, family visual language, IndexedDB catalog data, import/export and project compatibility logic. It does not change canonical persistence authority, source-audio retention, Track Manager/R2 ownership, Neural/CLAP semantics, Song Anatomy/Demucs semantics, Studio Focus runtime or Phase 7-C.
+
+Release docs: [`BUILD 01`](docs/RELEASE-V2E-BUILD01.md), [`BUILD 02`](docs/RELEASE-V2E-BUILD02.md), [`BUILD 03`](docs/RELEASE-V2E-BUILD03.md), [`BUILD 04`](docs/RELEASE-V2E-BUILD04.md), [`BUILD 05`](docs/RELEASE-V2E-BUILD05.md), [`BUILD 06`](docs/RELEASE-V2E-BUILD06.md), [`BUILD 07`](docs/RELEASE-V2E-BUILD07.md), [`BUILD 08`](docs/RELEASE-V2E-BUILD08.md).
 
 ## SHINOBIWAN Studio Phase 5 / C3
 
-The coordinator exposes `POST /api/studio/analyze`, a one-upload, temporary-audio endpoint that returns the versioned Studio analysis envelope while preserving partial-layer warnings. Starting with Build 06, an unavailable mastering sub-layer no longer prevents other Deep Audio layers from being returned. Canonical persistence remains in LaunchPAD/R2 through Track Manager; SonicTrace does not retain or own a competing production catalog. See [`docs/STUDIO_PHASE5_CONTRACT.md`](docs/STUDIO_PHASE5_CONTRACT.md).
+The coordinator exposes `POST /api/studio/analyze`, a one-upload, temporary-audio endpoint that returns the versioned Studio analysis envelope while preserving partial-layer warnings. Starting with Build 06, an unavailable mastering sub-layer no longer prevents other Deep Audio layers from being returned. Build 08 adds fresh-runtime enforcement and deterministic FFmpeg capture around that same contract. Canonical persistence remains in LaunchPAD/R2 through Track Manager; SonicTrace does not retain or own a competing production catalog. See [`docs/STUDIO_PHASE5_CONTRACT.md`](docs/STUDIO_PHASE5_CONTRACT.md).
 
 ## Windows — mode zéro fatigue neuronale
 
 Sur la machine RTX 3060, l’usage normal est désormais :
 
 1. **Première installation si le repo n’est pas encore présent :** lancer `LMNotebook_INSTALL.cmd`.
-2. **Tous les jours :** double-cliquer `LMNotebook_START.cmd`.
-3. **Pour arrêter :** double-cliquer `LMNotebook_STOP.cmd`.
+2. **Mise à jour + démarrage sûr :** lancer `SONICTRACE_UPDATE_AND_START.cmd`.
+3. **Démarrage quotidien sans update :** lancer `SONICTRACE_START.cmd` ou `LMNotebook_START.cmd`.
+4. **Pour arrêter :** lancer `SONICTRACE_STOP.cmd` ou `LMNotebook_STOP.cmd`.
 
 ### Runtime isolé avec uv
 
@@ -109,7 +116,7 @@ Le frontend n'a besoin de connaître que l'adresse du **coordinator RTX 3060**. 
 - True Peak (dBTP)
 - seuil loudness relatif
 - mean / max volume FFmpeg pour cross-check
-- provenance explicite (`measured-loudnorm-json`, `measured-ebur128-fallback`, `measured` ou `unavailable`)
+- provenance explicite (`measured-loudnorm-json`, `measured-ebur128-fallback`, `measured`, `measured-astats-fallback` ou `unavailable`)
 - suppression du fichier temporaire après analyse
 
 Endpoints :
@@ -185,7 +192,7 @@ Voir `backend/README.md` pour la configuration complète du cluster RTX 3060 + R
 - activité des sources
 - fusion V2-C × V2-D lorsque la route GPU est disponible
 
-## V2-E — Catalog Intelligence — IMPLEMENTED / C3 PARITY IN PROGRESS
+## V2-E — Catalog Intelligence — IMPLEMENTED / STUDIO PARITY AVAILABLE
 
 - index d'embeddings par track
 - carte de similarité réelle du catalogue
@@ -196,7 +203,7 @@ Voir `backend/README.md` pour la configuration complète du cluster RTX 3060 + R
 - comparaison de versions / masters
 - historique d'analyse
 
-C3 doit maintenant amener dans Studio la parité utile du standalone en s'appuyant sur les sidecars R2 canoniques, sans faire de l'IndexedDB standalone une nouvelle autorité.
+Studio s'appuie sur les sidecars R2 canoniques pour la parité utile et ne fait pas de l'IndexedDB standalone une nouvelle autorité.
 
 ## Principe de confiance des données
 
