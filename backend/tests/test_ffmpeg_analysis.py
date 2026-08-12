@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app.ffmpeg_analysis import (
+    _measurement_env,
     _parse_astats_levels,
     _parse_ebur128_summary,
     _parse_loudnorm_payload,
@@ -80,6 +81,42 @@ more noise
         self.assertEqual(payload['max_volume_db'], -0.7)
         self.assertEqual(payload['provenance'], 'measured-astats-fallback')
 
+    def test_measurement_env_forces_plain_ffmpeg_logs(self) -> None:
+        env = _measurement_env()
+        self.assertEqual(env['AV_LOG_FORCE_NOCOLOR'], '1')
+        self.assertNotIn('AV_LOG_FORCE_COLOR', env)
+
+    def test_loudnorm_measurement_can_be_parsed_from_stdout(self) -> None:
+        proc = subprocess.CompletedProcess(
+            ['ffmpeg'],
+            0,
+            stdout='''{
+  "input_i" : "-12.8",
+  "input_tp" : "-0.4",
+  "input_lra" : "4.2",
+  "input_thresh" : "-22.1"
+}''',
+            stderr='',
+        )
+        with patch('app.ffmpeg_analysis._run_ffmpeg', return_value=proc):
+            payload = analyze_loudness(Path('fixture.wav'))
+        self.assertEqual(payload['integrated_lufs'], -12.8)
+        self.assertEqual(payload['true_peak_dbtp'], -0.4)
+        self.assertEqual(payload['provenance'], 'measured-loudnorm-json')
+
+    def test_volumedetect_measurement_can_be_parsed_from_stdout(self) -> None:
+        proc = subprocess.CompletedProcess(
+            ['ffmpeg'],
+            0,
+            stdout='[Parsed_volumedetect_0] mean_volume: -15.2 dB\n[Parsed_volumedetect_0] max_volume: -0.7 dB',
+            stderr='',
+        )
+        with patch('app.ffmpeg_analysis._run_ffmpeg', return_value=proc):
+            payload = analyze_levels(Path('fixture.wav'))
+        self.assertEqual(payload['mean_volume_db'], -15.2)
+        self.assertEqual(payload['max_volume_db'], -0.7)
+        self.assertEqual(payload['provenance'], 'measured')
+
     def test_loudnorm_timeout_still_attempts_ebur128(self) -> None:
         fallback = {
             'integrated_lufs': -13.2,
@@ -91,7 +128,7 @@ more noise
             'provenance': 'measured-ebur128-fallback',
             'standard': 'EBU R128 via FFmpeg ebur128 fallback',
         }
-        with patch('app.ffmpeg_analysis.subprocess.run', side_effect=subprocess.TimeoutExpired(cmd='ffmpeg', timeout=180)), patch(
+        with patch('app.ffmpeg_analysis._run_ffmpeg', side_effect=subprocess.TimeoutExpired(cmd='ffmpeg', timeout=180)), patch(
             'app.ffmpeg_analysis._analyze_loudness_ebur128', return_value=fallback.copy()
         ):
             payload = analyze_loudness(Path('fixture.wav'))
@@ -105,7 +142,7 @@ more noise
             'max_volume_db': -0.5,
             'provenance': 'measured-astats-fallback',
         }
-        with patch('app.ffmpeg_analysis.subprocess.run', side_effect=subprocess.TimeoutExpired(cmd='ffmpeg', timeout=180)), patch(
+        with patch('app.ffmpeg_analysis._run_ffmpeg', side_effect=subprocess.TimeoutExpired(cmd='ffmpeg', timeout=180)), patch(
             'app.ffmpeg_analysis._analyze_levels_astats', return_value=fallback.copy()
         ):
             payload = analyze_levels(Path('fixture.wav'))

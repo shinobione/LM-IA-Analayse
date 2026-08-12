@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import re
 import shutil
 import subprocess
@@ -56,11 +57,36 @@ def probe_audio(path: Path) -> dict[str, Any]:
     }
 
 
+def _measurement_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env['AV_LOG_FORCE_NOCOLOR'] = '1'
+    env.pop('AV_LOG_FORCE_COLOR', None)
+    return env
+
+
+def _run_ffmpeg(command: list[str], timeout: int = 180) -> subprocess.CompletedProcess[str]:
+    """Run a measurement command with deterministic readable FFmpeg logging on Windows."""
+    return subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        encoding='utf-8',
+        errors='replace',
+        timeout=timeout,
+        env=_measurement_env(),
+    )
+
+
+def _combined_output(proc: subprocess.CompletedProcess[str]) -> str:
+    return '\n'.join(part for part in (proc.stdout or '', proc.stderr or '') if part)
+
+
 def analyze_loudness(path: Path) -> dict[str, Any]:
     """Measure integrated LUFS/LRA/true peak and recover with EBU R128 when loudnorm degrades."""
     command = [
         settings.ffmpeg_bin,
         '-hide_banner',
+        '-loglevel', 'info',
         '-nostats',
         '-i', str(path),
         '-map', '0:a:0',
@@ -74,14 +100,15 @@ def analyze_loudness(path: Path) -> dict[str, Any]:
 
     primary_error = ''
     try:
-        proc = subprocess.run(command, capture_output=True, text=True, timeout=180)
+        proc = _run_ffmpeg(command)
     except (subprocess.TimeoutExpired, OSError) as exc:
         primary_error = f'FFmpeg loudnorm execution failed: {exc}'
     else:
-        payload = _parse_loudnorm_payload(proc.stdout, proc.stderr)
+        output = _combined_output(proc)
+        payload = _parse_loudnorm_payload(output)
         if payload is not None:
             return _loudnorm_result(payload)
-        diagnostic = _diagnostic_tail(proc.stderr or proc.stdout or '')
+        diagnostic = _diagnostic_tail(output)
         primary_error = (
             'FFmpeg produced no loudnorm JSON measurement block'
             f' (loudnorm exit {proc.returncode}).{diagnostic}'
@@ -104,6 +131,7 @@ def analyze_levels(path: Path) -> dict[str, Any]:
     command = [
         settings.ffmpeg_bin,
         '-hide_banner',
+        '-loglevel', 'info',
         '-nostats',
         '-i', str(path),
         '-map', '0:a:0',
@@ -117,20 +145,20 @@ def analyze_levels(path: Path) -> dict[str, Any]:
 
     primary_error = ''
     try:
-        proc = subprocess.run(command, capture_output=True, text=True, timeout=180)
+        proc = _run_ffmpeg(command)
     except (subprocess.TimeoutExpired, OSError) as exc:
         primary_error = f'FFmpeg volumedetect execution failed: {exc}'
     else:
-        stderr = proc.stderr or ''
-        mean_match = re.search(r'mean_volume:\s*(-?inf|-?[0-9.]+) dB', stderr)
-        max_match = re.search(r'max_volume:\s*(-?inf|-?[0-9.]+) dB', stderr)
+        output = _combined_output(proc)
+        mean_match = re.search(r'mean_volume:\s*(-?inf|-?[0-9.]+)\s*dB', output, re.IGNORECASE)
+        max_match = re.search(r'max_volume:\s*(-?inf|-?[0-9.]+)\s*dB', output, re.IGNORECASE)
         if mean_match or max_match:
             return {
                 'mean_volume_db': _db(mean_match.group(1)) if mean_match else None,
                 'max_volume_db': _db(max_match.group(1)) if max_match else None,
                 'provenance': 'measured',
             }
-        diagnostic = _diagnostic_tail(stderr or proc.stdout or '')
+        diagnostic = _diagnostic_tail(output)
         primary_error = f'FFmpeg volumedetect returned no measurement (exit {proc.returncode}).{diagnostic}'
 
     try:
@@ -199,6 +227,7 @@ def _analyze_loudness_ebur128(path: Path) -> dict[str, Any] | None:
     command = [
         settings.ffmpeg_bin,
         '-hide_banner',
+        '-loglevel', 'info',
         '-nostats',
         '-i', str(path),
         '-map', '0:a:0',
@@ -209,8 +238,8 @@ def _analyze_loudness_ebur128(path: Path) -> dict[str, Any] | None:
         '-f', 'null',
         '-',
     ]
-    proc = subprocess.run(command, capture_output=True, text=True, timeout=180)
-    return _parse_ebur128_summary(proc.stderr or proc.stdout or '')
+    proc = _run_ffmpeg(command)
+    return _parse_ebur128_summary(_combined_output(proc))
 
 
 def _parse_ebur128_summary(text: str) -> dict[str, Any] | None:
@@ -241,6 +270,7 @@ def _analyze_levels_astats(path: Path) -> dict[str, Any] | None:
     command = [
         settings.ffmpeg_bin,
         '-hide_banner',
+        '-loglevel', 'info',
         '-nostats',
         '-i', str(path),
         '-map', '0:a:0',
@@ -251,8 +281,8 @@ def _analyze_levels_astats(path: Path) -> dict[str, Any] | None:
         '-f', 'null',
         '-',
     ]
-    proc = subprocess.run(command, capture_output=True, text=True, timeout=180)
-    return _parse_astats_levels(proc.stderr or proc.stdout or '')
+    proc = _run_ffmpeg(command)
+    return _parse_astats_levels(_combined_output(proc))
 
 
 def _parse_astats_levels(text: str) -> dict[str, Any] | None:
