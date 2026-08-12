@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import subprocess
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 from app.ffmpeg_analysis import (
+    _parse_astats_levels,
     _parse_ebur128_summary,
     _parse_loudnorm_payload,
     _unavailable_loudness,
+    analyze_levels,
+    analyze_loudness,
 )
 
 
@@ -59,6 +65,54 @@ more noise
         self.assertEqual(payload['relative_threshold_lufs'], -23.7)
         self.assertEqual(payload['true_peak_dbtp'], -0.8)
         self.assertEqual(payload['provenance'], 'measured-ebur128-fallback')
+
+    def test_astats_parser_uses_final_overall_rms_and_peak(self) -> None:
+        stderr = '''
+[Parsed_astats_0 @ 1] RMS level dB: -15.8
+[Parsed_astats_0 @ 1] Peak level dB: -1.2
+[Parsed_astats_0 @ 1] RMS level dB: -14.6
+[Parsed_astats_0 @ 1] Peak level dB: -0.7
+'''
+        payload = _parse_astats_levels(stderr)
+        self.assertIsNotNone(payload)
+        assert payload is not None
+        self.assertEqual(payload['mean_volume_db'], -14.6)
+        self.assertEqual(payload['max_volume_db'], -0.7)
+        self.assertEqual(payload['provenance'], 'measured-astats-fallback')
+
+    def test_loudnorm_timeout_still_attempts_ebur128(self) -> None:
+        fallback = {
+            'integrated_lufs': -13.2,
+            'loudness_range_lu': 5.1,
+            'true_peak_dbtp': -0.6,
+            'relative_threshold_lufs': -23.0,
+            'target_offset_lu': None,
+            'normalization_type': 'measurement-only-fallback',
+            'provenance': 'measured-ebur128-fallback',
+            'standard': 'EBU R128 via FFmpeg ebur128 fallback',
+        }
+        with patch('app.ffmpeg_analysis.subprocess.run', side_effect=subprocess.TimeoutExpired(cmd='ffmpeg', timeout=180)), patch(
+            'app.ffmpeg_analysis._analyze_loudness_ebur128', return_value=fallback.copy()
+        ):
+            payload = analyze_loudness(Path('fixture.wav'))
+        self.assertEqual(payload['integrated_lufs'], -13.2)
+        self.assertEqual(payload['provenance'], 'measured-ebur128-fallback')
+        self.assertIn('loudnorm execution failed', payload['fallback_reason'])
+
+    def test_volumedetect_timeout_still_attempts_astats(self) -> None:
+        fallback = {
+            'mean_volume_db': -15.1,
+            'max_volume_db': -0.5,
+            'provenance': 'measured-astats-fallback',
+        }
+        with patch('app.ffmpeg_analysis.subprocess.run', side_effect=subprocess.TimeoutExpired(cmd='ffmpeg', timeout=180)), patch(
+            'app.ffmpeg_analysis._analyze_levels_astats', return_value=fallback.copy()
+        ):
+            payload = analyze_levels(Path('fixture.wav'))
+        self.assertEqual(payload['mean_volume_db'], -15.1)
+        self.assertEqual(payload['max_volume_db'], -0.5)
+        self.assertEqual(payload['provenance'], 'measured-astats-fallback')
+        self.assertIn('volumedetect execution failed', payload['fallback_reason'])
 
     def test_unavailable_loudness_keeps_contract_shape(self) -> None:
         payload = _unavailable_loudness('fixture failure')

@@ -57,7 +57,7 @@ def probe_audio(path: Path) -> dict[str, Any]:
 
 
 def analyze_loudness(path: Path) -> dict[str, Any]:
-    """Measure integrated LUFS, LRA and true peak without aborting later Deep Audio layers."""
+    """Measure integrated LUFS/LRA/true peak and recover with EBU R128 when loudnorm degrades."""
     command = [
         settings.ffmpeg_bin,
         '-hide_banner',
@@ -71,35 +71,36 @@ def analyze_loudness(path: Path) -> dict[str, Any]:
         '-f', 'null',
         '-',
     ]
+
+    primary_error = ''
     try:
         proc = subprocess.run(command, capture_output=True, text=True, timeout=180)
     except (subprocess.TimeoutExpired, OSError) as exc:
-        return _unavailable_loudness(f'FFmpeg loudnorm execution failed: {exc}')
-
-    payload = _parse_loudnorm_payload(proc.stdout, proc.stderr)
-    if payload is not None:
-        return _loudnorm_result(payload)
+        primary_error = f'FFmpeg loudnorm execution failed: {exc}'
+    else:
+        payload = _parse_loudnorm_payload(proc.stdout, proc.stderr)
+        if payload is not None:
+            return _loudnorm_result(payload)
+        diagnostic = _diagnostic_tail(proc.stderr or proc.stdout or '')
+        primary_error = (
+            'FFmpeg produced no loudnorm JSON measurement block'
+            f' (loudnorm exit {proc.returncode}).{diagnostic}'
+        )
 
     try:
         fallback = _analyze_loudness_ebur128(path)
     except (subprocess.TimeoutExpired, OSError) as exc:
-        fallback = None
-        fallback_error = f' EBU R128 fallback failed: {exc}'
-    else:
-        fallback_error = ''
+        return _unavailable_loudness(f'{primary_error} EBU R128 fallback failed: {exc}')
+
     if fallback is not None:
-        fallback['fallback_reason'] = 'loudnorm JSON measurement block was unavailable'
+        fallback['fallback_reason'] = primary_error
         return fallback
 
-    diagnostic = _diagnostic_tail(proc.stderr or proc.stdout or '')
-    return _unavailable_loudness(
-        'FFmpeg produced neither loudnorm JSON nor an EBU R128 summary'
-        f' (loudnorm exit {proc.returncode}).{fallback_error}{diagnostic}'
-    )
+    return _unavailable_loudness(f'{primary_error} EBU R128 fallback returned no measurement summary.')
 
 
 def analyze_levels(path: Path) -> dict[str, Any]:
-    """Get simple mean/max level measurements for cross-checking browser DSP."""
+    """Measure mean/max level and recover with FFmpeg astats when volumedetect degrades."""
     command = [
         settings.ffmpeg_bin,
         '-hide_banner',
@@ -113,30 +114,42 @@ def analyze_levels(path: Path) -> dict[str, Any]:
         '-f', 'null',
         '-',
     ]
+
+    primary_error = ''
     try:
         proc = subprocess.run(command, capture_output=True, text=True, timeout=180)
     except (subprocess.TimeoutExpired, OSError) as exc:
-        return {
-            'mean_volume_db': None,
-            'max_volume_db': None,
-            'provenance': 'unavailable',
-            'error': f'FFmpeg volumedetect execution failed: {exc}',
-        }
-    stderr = proc.stderr or ''
-    mean_match = re.search(r'mean_volume:\s*(-?inf|-?[0-9.]+) dB', stderr)
-    max_match = re.search(r'max_volume:\s*(-?inf|-?[0-9.]+) dB', stderr)
-    if not (mean_match or max_match):
+        primary_error = f'FFmpeg volumedetect execution failed: {exc}'
+    else:
+        stderr = proc.stderr or ''
+        mean_match = re.search(r'mean_volume:\s*(-?inf|-?[0-9.]+) dB', stderr)
+        max_match = re.search(r'max_volume:\s*(-?inf|-?[0-9.]+) dB', stderr)
+        if mean_match or max_match:
+            return {
+                'mean_volume_db': _db(mean_match.group(1)) if mean_match else None,
+                'max_volume_db': _db(max_match.group(1)) if max_match else None,
+                'provenance': 'measured',
+            }
         diagnostic = _diagnostic_tail(stderr or proc.stdout or '')
-        return {
-            'mean_volume_db': None,
-            'max_volume_db': None,
-            'provenance': 'unavailable',
-            'error': f'FFmpeg volumedetect returned no measurement (exit {proc.returncode}).{diagnostic}',
-        }
+        primary_error = f'FFmpeg volumedetect returned no measurement (exit {proc.returncode}).{diagnostic}'
+
+    try:
+        fallback = _analyze_levels_astats(path)
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        fallback = None
+        fallback_error = f' FFmpeg astats fallback failed: {exc}'
+    else:
+        fallback_error = ''
+
+    if fallback is not None:
+        fallback['fallback_reason'] = primary_error
+        return fallback
+
     return {
-        'mean_volume_db': _db(mean_match.group(1)) if mean_match else None,
-        'max_volume_db': _db(max_match.group(1)) if max_match else None,
-        'provenance': 'measured',
+        'mean_volume_db': None,
+        'max_volume_db': None,
+        'provenance': 'unavailable',
+        'error': f'{primary_error}{fallback_error or " FFmpeg astats fallback returned no measurement."}',
     }
 
 
@@ -182,7 +195,7 @@ def _unavailable_loudness(error: str) -> dict[str, Any]:
 
 
 def _analyze_loudness_ebur128(path: Path) -> dict[str, Any] | None:
-    """Fallback measurement when loudnorm ran but its JSON summary cannot be recovered."""
+    """Fallback measurement when loudnorm output or execution cannot be used."""
     command = [
         settings.ffmpeg_bin,
         '-hide_banner',
@@ -220,6 +233,38 @@ def _parse_ebur128_summary(text: str) -> dict[str, Any] | None:
         'normalization_type': 'measurement-only-fallback',
         'provenance': 'measured-ebur128-fallback',
         'standard': 'EBU R128 via FFmpeg ebur128 fallback',
+    }
+
+
+def _analyze_levels_astats(path: Path) -> dict[str, Any] | None:
+    """Second deterministic FFmpeg path for level measurements when volumedetect fails."""
+    command = [
+        settings.ffmpeg_bin,
+        '-hide_banner',
+        '-nostats',
+        '-i', str(path),
+        '-map', '0:a:0',
+        '-vn',
+        '-sn',
+        '-dn',
+        '-af', 'astats=metadata=0:reset=0',
+        '-f', 'null',
+        '-',
+    ]
+    proc = subprocess.run(command, capture_output=True, text=True, timeout=180)
+    return _parse_astats_levels(proc.stderr or proc.stdout or '')
+
+
+def _parse_astats_levels(text: str) -> dict[str, Any] | None:
+    """Prefer the final astats values, which correspond to the Overall summary."""
+    rms_values = re.findall(r'RMS level dB:\s*(-?inf|-?[0-9.]+)', text, re.IGNORECASE)
+    peak_values = re.findall(r'Peak level dB:\s*(-?inf|-?[0-9.]+)', text, re.IGNORECASE)
+    if not (rms_values or peak_values):
+        return None
+    return {
+        'mean_volume_db': _db(rms_values[-1]) if rms_values else None,
+        'max_volume_db': _db(peak_values[-1]) if peak_values else None,
+        'provenance': 'measured-astats-fallback',
     }
 
 
