@@ -48,6 +48,33 @@ class StudioContractTests(unittest.TestCase):
         self.assertFalse(result['privacy']['audioStored'])
         self.assertTrue(result['analysisId'].startswith('sta-'))
 
+    def test_v3_genre_analysis_is_additive_and_studio_ready(self) -> None:
+        genre_analysis = {
+            'version': '3.0',
+            'primary': {'label': 'Vietnamese Bolero'},
+            'confidence': {'level': 'high', 'is_unknown': False},
+        }
+        neural = {
+            'embedding': {'model': 'clap', 'dimension': 512, 'vector': [0.0] * 512},
+            'genres': [{'label': 'Vietnamese Bolero', 'score': 0.31}],
+            'genre_analysis': genre_analysis,
+        }
+        result = build_analysis_envelope(
+            track_id='tinh-bolero-cho-tran',
+            source_version={'kind': 'r2-etag', 'value': 'bolero-v1', 'sizeBytes': 42},
+            engine_version={'apiSchema': '2.2'},
+            mastering={},
+            neural=neural,
+            structure={},
+            stems_summary=None,
+            provenance={},
+            warnings=[],
+        )
+        self.assertIs(result['neural']['genre_analysis'], genre_analysis)
+        self.assertIs(result['semanticSummary']['genreAnalysis'], genre_analysis)
+        self.assertEqual(result['semanticSummary']['topGenres'][0]['label'], 'Vietnamese Bolero')
+        self.assertEqual(result['schemaVersion'], 1)
+
     def test_partial_mastering_warning_does_not_drop_other_deep_layers(self) -> None:
         neural = {
             'embedding': {'model': 'clap', 'dimension': 512, 'vector': [0.0] * 512},
