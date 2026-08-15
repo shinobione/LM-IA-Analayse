@@ -2,24 +2,35 @@
   'use strict';
 
   async function loadOptionalHelper() {
+    if (window.LMNSemanticV32) return true;
     try {
-      const response = await fetch('js/semantic-v32.js?v=3.2', { cache: 'no-store' });
+      const response = await fetch('js/semantic-v32.js?v=3.2.1', { cache: 'no-store' });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const source = await response.text();
-      (0, eval)(`${source}\n//# sourceURL=semantic-v32.js?v=3.2`);
+      (0, eval)(`${source}\n//# sourceURL=semantic-v32.js?v=3.2.1`);
+      return Boolean(window.LMNSemanticV32);
     } catch (error) {
-      // V3.2 is additive. If the helper cannot load, the existing semantic
-      // client still boots with its V3.1-safe behaviour instead of failing.
-      console.warn('[SonicTrace] Semantic V3.2 helper unavailable; using base semantic client:', error);
+      console.error('[SonicTrace] Semantic V3.2 helper failed to load:', error);
+      return false;
     }
   }
 
   async function bootSemantic() {
-    if (document.getElementById('semantic-arrangement-btn')) return;
+    // V3.2.1: helper availability is independent from client/button creation.
+    // The human/unified UI may create the semantic button before this bootstrap
+    // runs. Previously that early button made us return before loading V3.2,
+    // silently falling back to V3.1 genre authority + generic arrangement.
+    const helperReady = await loadOptionalHelper();
+
+    if (document.getElementById('semantic-arrangement-btn')) {
+      if (!helperReady) {
+        console.error('[SonicTrace] Semantic client exists but V3.2 helper is unavailable; V3.2 interpretation is not active.');
+      }
+      return;
+    }
 
     try {
-      await loadOptionalHelper();
-      const response = await fetch('js/semantic-client.js?v=3.2', { cache: 'no-store' });
+      const response = await fetch('js/semantic-client.js?v=3.2.1', { cache: 'no-store' });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const source = await response.text();
 
@@ -37,7 +48,7 @@
       }
 
       try {
-        (0, eval)(`${source}\n//# sourceURL=semantic-client.js?v=3.2`);
+        (0, eval)(`${source}\n//# sourceURL=semantic-client.js?v=3.2.1`);
       } finally {
         if (domAlreadyReady) document.addEventListener = originalAddEventListener;
       }
