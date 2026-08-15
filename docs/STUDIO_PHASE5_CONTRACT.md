@@ -43,6 +43,33 @@ privacy.audioStored = false
 
 SonicTrace does not save this envelope to its local IndexedDB on behalf of Studio. Studio reviews it and the Track Manager Worker validates/persists it to canonical private R2 sidecars.
 
+## Neural Accuracy V3 compatibility
+
+Neural Accuracy V3 is deliberately **additive** to the existing schema-v1 envelope so Studio does not need a breaking migration.
+
+Existing consumers may continue reading:
+
+```text
+neural.genres
+neural.moods
+neural.instruments
+neural.traits
+neural.embedding
+```
+
+V3 additionally exposes:
+
+```text
+neural.genre_analysis
+semanticSummary.genreAnalysis
+```
+
+`neural.genre_analysis` contains the richer hierarchical genre result: primary style, broad families, regional candidates, confidence/UNKNOWN state, temporal consensus and per-segment evidence. `semanticSummary.genreAnalysis` mirrors that payload for consumers that primarily use the durable summary.
+
+The legacy 512D CLAP track embedding remains unchanged for Catalog Intelligence compatibility. `schemaVersion` remains `1`.
+
+**This contract preparation does not modify the Studio repository or Studio UI.** Studio can explicitly adopt the richer field later while older clients continue to operate against the compatibility fields.
+
 ## Identity
 
 The standalone V2-E IndexedDB now distinguishes:
