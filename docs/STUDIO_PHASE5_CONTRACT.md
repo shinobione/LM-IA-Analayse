@@ -43,9 +43,9 @@ privacy.audioStored = false
 
 SonicTrace does not save this envelope to its local IndexedDB on behalf of Studio. Studio reviews it and the Track Manager Worker validates/persists it to canonical private R2 sidecars.
 
-## Neural Accuracy V3.1 compatibility
+## Neural Accuracy V3.2 compatibility
 
-Neural Accuracy V3.1 is deliberately **additive** to the existing schema-v1 envelope so Studio does not need a breaking migration.
+Neural Accuracy V3 is deliberately **additive** to the existing schema-v1 envelope so Studio does not need a breaking migration.
 
 Existing consumers may continue reading:
 
@@ -64,7 +64,7 @@ neural.genre_analysis
 semanticSummary.genreAnalysis
 ```
 
-`neural.genre_analysis` contains the richer hierarchical genre result: primary style, broad families, regional candidates, confidence/UNKNOWN state, temporal consensus, per-segment evidence and the optional specialist ensemble evidence. `semanticSummary.genreAnalysis` mirrors that payload for consumers that primarily use the durable summary.
+`neural.genre_analysis` contains the richer genre result: raw/ensemble primary evidence, broad families, regional candidates, confidence/UNKNOWN state, temporal consensus, per-segment evidence and the optional specialist ensemble evidence. `semanticSummary.genreAnalysis` mirrors that payload for consumers that primarily use the durable summary.
 
 V3.1 may additionally expose the Discogs400 specialist under:
 
@@ -74,6 +74,36 @@ neural.genre_analysis.experts.discogs400.embedding.dimension = 1280
 neural.genre_analysis.ensemble
 ```
 
+V3.2 adds role-aware semantic dimensions under:
+
+```text
+neural.genre_analysis.dimensions.version = "3.2"
+neural.genre_analysis.dimensions.family
+neural.genre_analysis.dimensions.style.primary
+neural.genre_analysis.dimensions.style.alternatives
+neural.genre_analysis.dimensions.tradition.primary
+neural.genre_analysis.dimensions.tradition.alternatives
+neural.genre_analysis.dimensions.form.primary
+neural.genre_analysis.dimensions.form.alternatives
+neural.genre_analysis.dimensions.region
+neural.genre_analysis.dimensions.influences
+neural.genre_analysis.dimensions.unknown
+```
+
+The dimensions are **semantic interpretation of existing neural evidence**, not a replacement for the raw evidence. A consumer that needs the specific musical style should prefer `dimensions.style.primary`; a consumer auditing model evidence may still inspect `primary`, `styles`, `ensemble`, per-segment evidence and confidence.
+
+Example intent for a Vietnamese Bolero result:
+
+```text
+family.label              Vietnamese / Asian
+style.primary.label       Vietnamese Bolero
+tradition.primary.label   Nhạc Vàng
+form.primary.label        Sentimental Ballad
+region.label              Vietnam
+```
+
+If `dimensions.unknown = true`, `style.primary` can still expose the closest style with `authority = evidence-only`; consumers must not present that as a high-confidence resolved genre.
+
 ### Dual-embedding boundary
 
 The two embeddings have different roles and **must not be silently substituted**:
@@ -82,15 +112,21 @@ The two embeddings have different roles and **must not be silently substituted**
 - the optional **Discogs-EffNet 1280D** music-first embedding stays nested inside `neural.genre_analysis.experts.discogs400.embedding`;
 - a future Studio feature may explicitly consume the 1280D expert embedding, but doing so must be a deliberate versioned feature rather than changing the meaning or dimension of the existing top-level embedding field.
 
-If the Discogs expert is unavailable, the V3.1 scan remains valid through CLAP and `genre_analysis.ensemble.status` can degrade to the CLAP-only path. The absence of the expert must not invalidate an otherwise successful Studio analysis.
+If the Discogs expert is unavailable, the V3 scan remains valid through CLAP and `genre_analysis.ensemble.status` can degrade to the CLAP-only path. The absence of the expert must not invalidate an otherwise successful Studio analysis.
 
 The legacy 512D CLAP track embedding therefore remains unchanged for Catalog Intelligence compatibility. `schemaVersion` remains `1`.
 
-**This contract preparation does not modify the Studio repository or Studio UI.** Studio can explicitly adopt the richer field later while older clients continue to operate against the compatibility fields.
+### Arrangement grammar boundary
+
+V3.2 also improves SonicTrace's standalone semantic-arrangement reading with style-aware grammar and an `Interlude` section label. That UI/interpretation change is **not a Studio migration** and does not redefine the Studio schema-v1 `structure` contract.
+
+A future Studio adoption may explicitly consume the V3.2 genre dimensions or arrangement grammar, but that is a separate integration step.
+
+**This contract preparation does not modify the Studio repository or Studio UI.** Studio can explicitly adopt the richer fields later while older clients continue to operate against the compatibility fields.
 
 ## Identity
 
-The standalone V2-E IndexedDB now distinguishes:
+The standalone V2-E IndexedDB distinguishes:
 
 - canonical Studio context: `trackId` is reused as `id`;
 - standalone analysis: `trackId: null`, `localOnly: true`, local storage key only.
