@@ -1,6 +1,6 @@
 # SonicTrace Neural Accuracy V3
 
-Status: **V3.1 implementation candidate**
+Status: **V3.1 MERGED — CI + REAL ONNX SMOKE GREEN**
 
 ## Why this exists
 
@@ -80,6 +80,20 @@ The richer result remains under:
 - `neural.genre_analysis.ensemble`
 
 The expert 1280D embedding remains nested inside the expert payload. The canonical top-level Catalog embedding remains the established 512D CLAP vector.
+
+## Validation
+
+The merged V3.1 path is protected by:
+
+- existing FFmpeg regression tests;
+- Studio contract tests;
+- Neural V3 taxonomy tests;
+- ensemble tests for regional safety, expert agreement, family conflict and fail-safe fallback;
+- SHINOBIWAN benchmark tests;
+- Python syntax and existing Catalog/JS guards;
+- a **real Discogs-EffNet ONNX smoke test** that downloads the official model, builds 128×96 input patches, runs inference through ONNX Runtime and verifies 400 style outputs plus a 1280D embedding.
+
+The CI smoke validates the real ONNX path on CPU. The actual RTX 3060 CUDA execution provider remains a real-machine acceptance check; if CUDA EP is unavailable, the expert falls back to CPU and CLAP remains available.
 
 ## Compatibility contract
 
