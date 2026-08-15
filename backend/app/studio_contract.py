@@ -49,10 +49,12 @@ def semantic_summary(neural: dict[str, Any] | None, structure: dict[str, Any] | 
         return list(values[:limit]) if isinstance(values, list) else []
 
     summary = structure.get('summary') if isinstance(structure.get('summary'), dict) else {}
+    genre_analysis = neural.get('genre_analysis') if isinstance(neural.get('genre_analysis'), dict) else None
     return {
         'topGenres': ranked('genres', 5),
         'topMoods': ranked('moods', 5),
         'topInstruments': ranked('instruments', 6),
+        'genreAnalysis': genre_analysis,
         'traits': neural.get('traits') if isinstance(neural.get('traits'), dict) else {},
         'arrangement': summary,
         'hookCount': len(structure.get('hooks') or []),
