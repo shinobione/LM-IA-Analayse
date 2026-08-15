@@ -43,9 +43,9 @@ privacy.audioStored = false
 
 SonicTrace does not save this envelope to its local IndexedDB on behalf of Studio. Studio reviews it and the Track Manager Worker validates/persists it to canonical private R2 sidecars.
 
-## Neural Accuracy V3 compatibility
+## Neural Accuracy V3.1 compatibility
 
-Neural Accuracy V3 is deliberately **additive** to the existing schema-v1 envelope so Studio does not need a breaking migration.
+Neural Accuracy V3.1 is deliberately **additive** to the existing schema-v1 envelope so Studio does not need a breaking migration.
 
 Existing consumers may continue reading:
 
@@ -64,9 +64,27 @@ neural.genre_analysis
 semanticSummary.genreAnalysis
 ```
 
-`neural.genre_analysis` contains the richer hierarchical genre result: primary style, broad families, regional candidates, confidence/UNKNOWN state, temporal consensus and per-segment evidence. `semanticSummary.genreAnalysis` mirrors that payload for consumers that primarily use the durable summary.
+`neural.genre_analysis` contains the richer hierarchical genre result: primary style, broad families, regional candidates, confidence/UNKNOWN state, temporal consensus, per-segment evidence and the optional specialist ensemble evidence. `semanticSummary.genreAnalysis` mirrors that payload for consumers that primarily use the durable summary.
 
-The legacy 512D CLAP track embedding remains unchanged for Catalog Intelligence compatibility. `schemaVersion` remains `1`.
+V3.1 may additionally expose the Discogs400 specialist under:
+
+```text
+neural.genre_analysis.experts.discogs400
+neural.genre_analysis.experts.discogs400.embedding.dimension = 1280
+neural.genre_analysis.ensemble
+```
+
+### Dual-embedding boundary
+
+The two embeddings have different roles and **must not be silently substituted**:
+
+- top-level `embedding` / `neural.embedding` remains the established **CLAP 512D** vector used by the current Catalog Intelligence and Studio schema-v1 compatibility path;
+- the optional **Discogs-EffNet 1280D** music-first embedding stays nested inside `neural.genre_analysis.experts.discogs400.embedding`;
+- a future Studio feature may explicitly consume the 1280D expert embedding, but doing so must be a deliberate versioned feature rather than changing the meaning or dimension of the existing top-level embedding field.
+
+If the Discogs expert is unavailable, the V3.1 scan remains valid through CLAP and `genre_analysis.ensemble.status` can degrade to the CLAP-only path. The absence of the expert must not invalidate an otherwise successful Studio analysis.
+
+The legacy 512D CLAP track embedding therefore remains unchanged for Catalog Intelligence compatibility. `schemaVersion` remains `1`.
 
 **This contract preparation does not modify the Studio repository or Studio UI.** Studio can explicitly adopt the richer field later while older clients continue to operate against the compatibility fields.
 

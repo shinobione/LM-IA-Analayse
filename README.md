@@ -2,7 +2,7 @@
 
 > SonicTrace UI release: **V2-E · BUILD 08** — COMPLETE · REAL USER PASS. Fresh-runtime enforcement plus deterministic FFmpeg mastering capture now recover the full Studio analysis path without changing canonical authority.
 >
-> Neural analysis engine: **V3.0 · ACCURACY FOUNDATION** — merged 2026-08-15. The standalone UI remains V2-E Build 08; V3 changes the backend understanding layer and prepares an additive Studio contract without modifying Studio itself.
+> Neural analysis engine: **V3.1 · MUSIC EXPERT ENSEMBLE** — merged 2026-08-15. The standalone UI remains V2-E Build 08; V3.1 upgrades the backend understanding layer with CLAP segment consensus + an optional Discogs400 music expert while keeping the Studio contract additive and Studio itself untouched.
 
 Analyseur audio expérimental pour fichiers **MP3 / WAV**, construit comme un moteur hybride **Browser DSP V1 + Deep Audio V2**.
 
@@ -26,9 +26,9 @@ Real-user smoke then exposed a Build 03 integration bug: the native `catalog-ui.
 
 Build 08 itself preserves the existing CLAP similarity/K-means ancestry, family visual language, IndexedDB catalog data, import/export and project compatibility logic. It does not change canonical persistence authority, source-audio retention, Track Manager/R2 ownership, Song Anatomy/Demucs semantics, Studio Focus runtime or Phase 7-C.
 
-### Neural Accuracy V3.0 — ACCURACY FOUNDATION
+### Neural Accuracy V3.1 — MUSIC EXPERT ENSEMBLE
 
-V3.0 changes the **backend music-understanding architecture**, not the V2-E Build 08 UI.
+V3.1 changes the **backend music-understanding architecture**, not the V2-E Build 08 UI.
 
 The old V2-B genre path used a small closed candidate list and a softmax that necessarily produced a winner even when the correct style was absent. V3 replaces that failure mode with:
 
@@ -44,9 +44,19 @@ The old V2-B genre path used a small closed candidate list and a softmax that ne
 - an additive `neural.genre_analysis` payload and `semanticSummary.genreAnalysis` mirror for future Studio adoption;
 - a SHINOBIWAN benchmark harness seeded with the artist-confirmed `Tinh Bolero Cho Trân → Vietnamese Bolero / Vietnamese / Asian` regression case.
 
-Legacy `neural.genres`, `neural.moods`, `neural.instruments`, `neural.traits` and the 512D `neural.embedding` remain available for current consumers. Genre relevance/confidence is explicitly treated as model evidence rather than an absolute probability.
+V3.1 adds a second, music-first expert rather than trusting CLAP alone:
 
-The next specialist layer may fuse a dedicated music-taxonomy model such as Discogs400 through a Windows-safe ONNX/worker path; it is **not** a hidden dependency of V3.0.
+- the official **Discogs-EffNet / Discogs400** ONNX model predicts 400 style labels;
+- it produces a separate **1280D music embedding** kept inside the expert payload;
+- the existing **512D CLAP embedding remains the canonical Catalog Intelligence embedding**;
+- ONNX Runtime prefers CUDA when available and falls back to CPU;
+- the expert model/metadata are cached locally under the gitignored `backend/models/` directory;
+- any expert download/dependency/inference failure falls back to CLAP V3 instead of breaking the scan;
+- a conservative ensemble cross-checks direct style agreement and broad-family disagreement before changing confidence or allowing an override;
+- `Latin---Bolero` may support a bolero-like musical structure but **cannot rewrite `Vietnamese Bolero` into a Latin regional label**;
+- a real CI smoke test downloads and runs the official ONNX model, verifies 128×96 patches, 400 style outputs and the 1280D embedding.
+
+Legacy `neural.genres`, `neural.moods`, `neural.instruments`, `neural.traits` and the 512D `neural.embedding` remain available for current consumers. Genre relevance/confidence is explicitly treated as model evidence rather than an absolute probability.
 
 See [`docs/V3_NEURAL_ACCURACY.md`](docs/V3_NEURAL_ACCURACY.md) and [`docs/STUDIO_PHASE5_CONTRACT.md`](docs/STUDIO_PHASE5_CONTRACT.md).
 
@@ -54,7 +64,7 @@ Release docs: [`BUILD 01`](docs/RELEASE-V2E-BUILD01.md), [`BUILD 02`](docs/RELEA
 
 ## SHINOBIWAN Studio Phase 5 / C3
 
-The coordinator exposes `POST /api/studio/analyze`, a one-upload, temporary-audio endpoint that returns the versioned Studio analysis envelope while preserving partial-layer warnings. Starting with Build 06, an unavailable mastering sub-layer no longer prevents other Deep Audio layers from being returned. Build 08 adds fresh-runtime enforcement and deterministic FFmpeg capture around that same contract. Neural Accuracy V3 keeps the envelope at schema version 1 and adds `neural.genre_analysis` plus `semanticSummary.genreAnalysis` without removing the existing compatibility fields. Canonical persistence remains in LaunchPAD/R2 through Track Manager; SonicTrace does not retain or own a competing production catalog. **No Studio repository or Studio UI change is part of Neural Accuracy V3.** See [`docs/STUDIO_PHASE5_CONTRACT.md`](docs/STUDIO_PHASE5_CONTRACT.md).
+The coordinator exposes `POST /api/studio/analyze`, a one-upload, temporary-audio endpoint that returns the versioned Studio analysis envelope while preserving partial-layer warnings. Starting with Build 06, an unavailable mastering sub-layer no longer prevents other Deep Audio layers from being returned. Build 08 adds fresh-runtime enforcement and deterministic FFmpeg capture around that same contract. Neural Accuracy V3.1 keeps the envelope at schema version 1 and adds richer evidence under `neural.genre_analysis` plus `semanticSummary.genreAnalysis` without removing the existing compatibility fields. The optional Discogs expert remains nested inside that additive neural payload; the top-level 512D embedding contract is unchanged. Canonical persistence remains in LaunchPAD/R2 through Track Manager; SonicTrace does not retain or own a competing production catalog. **No Studio repository or Studio UI change is part of Neural Accuracy V3.1.** See [`docs/STUDIO_PHASE5_CONTRACT.md`](docs/STUDIO_PHASE5_CONTRACT.md).
 
 ## Windows — mode zéro fatigue neuronale
 
@@ -194,18 +204,21 @@ Le site GitHub Pages public reste le frontend publié. Le calcul Deep Audio rest
 
 Voir `backend/README.md` pour la configuration complète du cluster RTX 3060 + RTX 3070 Ti.
 
-## V2-B → V3 — Neural Music Understanding — IMPLEMENTED
+## V2-B → V3.1 — Neural Music Understanding — IMPLEMENTED
 
 - classification genre / sous-genre **open-vocabulary et hiérarchique** avec familles, styles et régionalité ;
 - classification de chaque segment représentatif avant consensus morceau ;
 - confiance fondée sur stabilité temporelle + marge de similarité, avec `Unknown / hybrid` lorsque les preuves sont insuffisantes ;
+- second expert **Discogs400 / EffNet ONNX** pour validation music-first ;
+- ensemble conservateur CLAP + Discogs avec garde de régionalité ;
 - vocabulaire mood élargi ;
 - détection d'instruments élargie ;
 - embeddings audio CLAP 512D conservés pour Catalog Intelligence ;
+- embedding music-first Discogs 1280D conservé séparément dans l'expert ;
 - compatibilité maintenue via `neural.genres`, `neural.moods`, `neural.instruments`, `neural.traits` et `neural.embedding` ;
 - sortie V3 additive via `neural.genre_analysis` ;
-- scores de genre exposés comme **similarité/relevance de modèle**, jamais comme probabilités absolues ;
-- exécution CUDA locale.
+- scores de genre exposés comme **evidence/relevance de modèle**, jamais comme probabilités absolues ;
+- exécution CUDA locale quand disponible, fallback expert CPU/CLAP fail-safe.
 
 ## V2-C — Song Anatomy — IMPLEMENTED
 
