@@ -2,7 +2,7 @@
   'use strict';
 
   const API = 'http://127.0.0.1:8000';
-  const LABELS = ['Intro', 'Verse', 'Pre-Chorus', 'Chorus', 'Bridge', 'Drop', 'Instrumental', 'Outro'];
+  const LABELS = ['Intro', 'Verse', 'Pre-Chorus', 'Chorus', 'Bridge', 'Interlude', 'Drop', 'Instrumental', 'Outro'];
   let selectedAudio = null;
   let selectedLyrics = null;
   let semanticReady = false;
@@ -101,9 +101,9 @@
   async function runSemantic(ui) {
     if (!selectedAudio || !semanticReady) return;
     setBusy(true, ui.button);
-    setV2Status('V2-CD.1 SEMANTIC', selectedLyrics
-      ? `Fusion + Neural + lecture de ${selectedLyrics.name}…`
-      : 'Fusion + Neural + grammaire d’arrangement…');
+    setV2Status('V3.2 SEMANTIC', selectedLyrics
+      ? `Fusion + Neural V3.2 + lecture de ${selectedLyrics.name}…`
+      : 'Fusion + Neural V3.2 + grammaire d’arrangement…');
     setProgress(8);
 
     try {
@@ -130,10 +130,10 @@
       const semantic = buildSemanticArrangement(fusionPayload, neuralPayload, lyrics);
       renderSemantic(semantic, fusionPayload, lyrics);
       setProgress(100);
-      setV2Status('V2-CD.1 SEMANTIC', `${selectedAudio.name} • ${semantic.arrangement.length} blocs finaux • ${semantic.genre.display} • lyrics ${lyrics.mode}`);
+      setV2Status('V3.2 SEMANTIC', `${selectedAudio.name} • ${semantic.arrangement.length} blocs finaux • ${semantic.genre.display} • lyrics ${lyrics.mode}`);
     } catch (error) {
       setProgress(0);
-      setV2Status('V2-CD.1 ERROR', error.message || 'Semantic Arrangement failed', true);
+      setV2Status('V3.2 ERROR', error.message || 'Semantic Arrangement failed', true);
     } finally {
       setBusy(false, ui.button);
       sync(ui);
@@ -213,7 +213,7 @@
     const merged = mergeAdjacent(semanticSections);
 
     return {
-      version: '2.5',
+      version: '2.6-v3.2',
       genre,
       lyrics: {
         mode: lyrics.mode,
@@ -238,11 +238,16 @@
     const labels = collectNeuralLabels(neural);
     const structured = structuredGenreContext(neural.genre_analysis);
     if (structured) return { ...structured, top: labels.slice(0, 5) };
-    return { ...legacyGenreContext(labels[0]), top: labels.slice(0, 5) };
+    const legacy = legacyGenreContext(labels[0]);
+    return { ...legacy, top: labels.slice(0, 5) };
   }
 
   function structuredGenreContext(analysis) {
     if (!analysis || typeof analysis !== 'object') return null;
+
+    const dimensional = window.LMNSemanticV32?.contextFromDimensions?.(analysis.dimensions, analysis);
+    if (dimensional) return dimensional;
+
     const ensemble = analysis.ensemble && typeof analysis.ensemble === 'object' ? analysis.ensemble : null;
     const primary = ensemble?.primary && typeof ensemble.primary === 'object'
       ? ensemble.primary
@@ -261,14 +266,20 @@
       ? 'Hybride / incertain'
       : (rawLabel || candidateLabel || broadFamily || 'Style non déterminé');
 
-    return {
+    const context = {
       family: arrangementFamily(broadFamily, candidateLabel || rawLabel),
       broadFamily: broadFamily || 'Général',
       display,
       primary: rawLabel || candidateLabel || '',
+      primaryStyle: rawLabel || candidateLabel || '',
+      tradition: '',
+      form: '',
+      region: String(candidate?.region || primary.region || '').trim(),
       unknown,
       source: 'neural-v3.1-structured',
     };
+    context.grammar = window.LMNSemanticV32?.arrangementGrammar?.(context) || 'general';
+    return context;
   }
 
   function legacyGenreContext(primary) {
@@ -278,20 +289,31 @@
         broadFamily: 'Général',
         display: 'Style non déterminé',
         primary: '',
+        primaryStyle: '',
+        tradition: '',
+        form: '',
+        region: '',
         unknown: true,
+        grammar: 'general',
         source: 'legacy-empty',
       };
     }
     const label = String(primary.label || '').trim();
     const broadFamily = broadFamilyFromLabel(label);
-    return {
+    const context = {
       family: arrangementFamily(broadFamily, label),
       broadFamily,
       display: label || broadFamily,
       primary: label,
+      primaryStyle: label,
+      tradition: '',
+      form: '',
+      region: '',
       unknown: false,
       source: 'legacy-top-label-only',
     };
+    context.grammar = window.LMNSemanticV32?.arrangementGrammar?.(context) || 'general';
+    return context;
   }
 
   function broadFamilyFromLabel(label) {
@@ -311,6 +333,9 @@
   }
 
   function arrangementFamily(broadFamily, label) {
+    const helper = window.LMNSemanticV32?.arrangementFamily;
+    if (typeof helper === 'function') return helper(broadFamily, label);
+
     const family = normalizeGenreText(broadFamily);
     const style = normalizeGenreText(label);
     if (/hip.?hop|\brap\b/.test(family)) return 'hip-hop';
@@ -427,6 +452,7 @@
     base.Verse += 0.20 * v + 0.15 * lyric.density + 0.08 * (1 - lyric.hook_score) + 0.08 * (1 - repeat) + 0.07 * rhythm + 0.05 * (duration >= 15 && duration <= 45 ? 1 : 0);
     base['Pre-Chorus'] += 0.11 * v + 0.08 * lyric.density + 0.06 * hook + 0.07 * rhythm + 0.08 * (duration >= 6 && duration <= 24 ? 1 : 0);
     base.Bridge += 0.12 * v + 0.13 * (1 - repeat) + 0.12 * (position > 0.45 && position < 0.88 ? 1 : 0) + 0.09 * Math.abs(o - d);
+    base.Interlude += 0.18 * (1 - v) + 0.10 * o + 0.07 * (1 - lyric.density) + 0.05 * (1 - repeat) + 0.04 * (duration >= 6 && duration <= 40 ? 1 : 0);
     base.Drop += 0.22 * d + 0.18 * b + 0.16 * energy + 0.10 * rhythm + 0.08 * (1 - v) + 0.06 * hook;
     base.Instrumental += 0.30 * (1 - v) + 0.14 * o + 0.08 * (1 - lyric.density);
 
@@ -456,6 +482,16 @@
       base.Verse += 0.06 * lyric.density * (1 - lyric.repeated_ratio);
     }
 
+    window.LMNSemanticV32?.applySectionGrammar?.(base, {
+      section,
+      index,
+      sections,
+      genre,
+      lyrics,
+      position,
+      repeat,
+    });
+
     LABELS.forEach(label => { base[label] = clamp(base[label], 0.001, 1.45); });
     return base;
   }
@@ -475,6 +511,8 @@
         if (i > sections.length * 0.4) scores[i].Bridge += 0.10 * Math.min(1, (contrastPrev + contrastNext) / 1.2);
       }
       if (genre.family !== 'edm' && i > 0 && i < sections.length - 1 && stem(current, 'vocals') > 0.55) scores[i].Drop *= 0.72;
+      window.LMNSemanticV32?.applyContextGrammar?.(scores[i], current, prev, next, genre);
+      LABELS.forEach(label => { scores[i][label] = clamp(scores[i][label], 0.001, 1.45); });
     }
   }
 
@@ -508,21 +546,22 @@
   }
 
   function transition(a, b, genre, i, n) {
-    if (a === b) return 0.18;
     const map = {
-      Intro: { Verse: 0.35, Chorus: 0.12, Instrumental: 0.15, 'Pre-Chorus': 0.05 },
-      Verse: { 'Pre-Chorus': 0.34, Chorus: 0.30, Verse: 0.10, Bridge: 0.06, Outro: -0.10 },
-      'Pre-Chorus': { Chorus: 0.48, Drop: genre.family === 'edm' ? 0.34 : -0.18 },
-      Chorus: { Verse: 0.30, Bridge: 0.18, Chorus: 0.06, Outro: 0.16, Drop: genre.family === 'edm' ? 0.12 : -0.16 },
-      Bridge: { Chorus: 0.34, Verse: 0.08, Outro: 0.15 },
-      Drop: { Verse: 0.12, Chorus: 0.18, Bridge: 0.05, Drop: 0.04, Outro: 0.08 },
-      Instrumental: { Verse: 0.14, Chorus: 0.10, Drop: genre.family === 'edm' ? 0.16 : 0.02, Outro: 0.12 },
+      Intro: { Verse: 0.35, Chorus: 0.12, Instrumental: 0.15, Interlude: 0.08, 'Pre-Chorus': 0.05 },
+      Verse: { 'Pre-Chorus': 0.34, Chorus: 0.30, Verse: 0.10, Bridge: 0.06, Interlude: 0.07, Outro: -0.10 },
+      'Pre-Chorus': { Chorus: 0.48, Drop: genre.family === 'edm' ? 0.34 : -0.18, Interlude: -0.04 },
+      Chorus: { Verse: 0.30, Bridge: 0.18, Interlude: 0.12, Chorus: 0.06, Outro: 0.16, Drop: genre.family === 'edm' ? 0.12 : -0.16 },
+      Bridge: { Chorus: 0.34, Verse: 0.08, Interlude: 0.10, Outro: 0.15 },
+      Interlude: { Verse: 0.18, Chorus: 0.20, Bridge: 0.12, Instrumental: 0.10, Outro: 0.14 },
+      Drop: { Verse: 0.12, Chorus: 0.18, Bridge: 0.05, Interlude: 0.02, Drop: 0.04, Outro: 0.08 },
+      Instrumental: { Verse: 0.14, Chorus: 0.10, Interlude: 0.12, Drop: genre.family === 'edm' ? 0.16 : 0.02, Outro: 0.12 },
       Outro: { Outro: 0.25 },
     };
-    let value = map[a]?.[b] ?? -0.08;
+    let value = a === b ? 0.18 : (map[a]?.[b] ?? -0.08);
     if (b === 'Outro' && i < n - 2) value -= 0.35;
     if (b === 'Intro' && i > 0) value -= 0.75;
     if (genre.family !== 'edm' && b === 'Drop') value -= 0.18;
+    value += Number(window.LMNSemanticV32?.transitionAdjustment?.(a, b, genre, i, n) || 0);
     return value;
   }
 
@@ -530,6 +569,7 @@
     if (label === 'Intro') return 0.55;
     if (label === 'Verse') return 0.18;
     if (label === 'Instrumental') return 0.05;
+    if (label === 'Interlude') return -0.02;
     return -0.15;
   }
 
@@ -545,6 +585,8 @@
     if (lyric.repeated_ratio >= 0.45) evidence.push(`lyrics répétées ${Math.round(lyric.repeated_ratio * 100)}%`);
     if (lyric.hook_score >= 0.55) evidence.push(`hook textuel ${Math.round(lyric.hook_score * 100)}%`);
     if (genre.family !== 'general') evidence.push(`contexte ${genre.family}`);
+    if (genre.grammar === 'sentimental-song') evidence.push('grammaire chanson sentimentale');
+    else if (genre.grammar === 'electronic-drop') evidence.push('grammaire électronique / drops');
     return {
       ...section,
       semantic_type: chosen,
@@ -574,7 +616,7 @@
     const counts = {};
     out.forEach(item => {
       counts[item.semantic_type] = (counts[item.semantic_type] || 0) + 1;
-      item.semantic_label = ['Verse', 'Chorus', 'Pre-Chorus', 'Drop'].includes(item.semantic_type)
+      item.semantic_label = ['Verse', 'Chorus', 'Pre-Chorus', 'Interlude', 'Drop'].includes(item.semantic_type)
         ? `${item.semantic_type} ${counts[item.semantic_type]}`
         : item.semantic_type;
     });
@@ -610,8 +652,8 @@
 
     root.innerHTML = `
       <div class="semantic-head">
-        <div><div class="semantic-title"><i data-lucide="brain-circuit"></i> Semantic Arrangement V2-CD.1</div>
-        <div class="semantic-sub">V2-B genre/mood + V2-C structure + V2-D stems + ${lyrics.mode === 'none' ? 'grammaire' : `lyrics ${lyrics.mode}`}</div></div>
+        <div><div class="semantic-title"><i data-lucide="brain-circuit"></i> Semantic Arrangement V3.2</div>
+        <div class="semantic-sub">Neural V3.2 + structure V2-C + stems V2-D + ${lyrics.mode === 'none' ? 'grammaire musicale' : `lyrics ${lyrics.mode}`}</div></div>
         <div class="semantic-badge">${esc(String(genreBadge).toUpperCase())}<span>${esc(route)}</span></div>
       </div>
       <div class="semantic-summary">
@@ -622,13 +664,13 @@
         ${summaryCard('STEMS ROUTE', esc(route), esc(semantic.compute.stems_device))}
       </div>
       <div class="semantic-panel">
-        <div class="semantic-panel-head"><strong>Final Arrangement</strong><span>séquence optimisée + merges contextuels</span></div>
+        <div class="semantic-panel-head"><strong>Final Arrangement</strong><span>séquence optimisée + grammaire V3.2 + merges contextuels</span></div>
         <div class="semantic-timeline">${arrangement.map((item, index) => timelineBlock(item, duration, index)).join('')}</div>
         <div id="semantic-detail" class="semantic-detail"></div>
       </div>
       <div class="semantic-grid">
         <div class="semantic-panel"><div class="semantic-panel-head"><strong>Arrangement Evidence</strong><span>pourquoi ce label</span></div><div class="semantic-evidence-list">${arrangement.map((item, index) => evidenceRow(item, index)).join('')}</div></div>
-        <div class="semantic-panel"><div class="semantic-panel-head"><strong>Lyrics / Neural Context</strong><span>indices ajoutés à V2-CD</span></div>${contextPanel(semantic)}</div>
+        <div class="semantic-panel"><div class="semantic-panel-head"><strong>Lyrics / Neural Context</strong><span>dimensions V3.2 + indices Neural</span></div>${contextPanel(semantic)}</div>
       </div>`;
 
     root.classList.remove('hidden');
@@ -673,13 +715,30 @@
 
   function contextPanel(semantic) {
     const top = semantic.genre.top.length ? semantic.genre.top.map(item => `<span>${esc(item.label)} <b>${Math.round((item.score || 0) * 100)}%</b></span>`).join('') : '<span>Aucun label neural exploitable.</span>';
-    return `<div class="semantic-context"><h4>Neural Genre Context</h4><div class="semantic-context-tags">${top}</div><h4>Lyrics</h4><div class="semantic-context-stats"><span>Mode <b>${esc(semantic.lyrics.mode)}</b></span><span>Lignes <b>${semantic.lyrics.line_count}</b></span><span>Répétées <b>${semantic.lyrics.repeated_line_count}</b></span><span>Coverage <b>${semantic.lyrics.timed_coverage}%</b></span></div><p>Les lyrics servent de preuve supplémentaire ; elles ne remplacent jamais les frontières audio V2-C.</p></div>`;
+    const dimensions = window.LMNSemanticV32?.dimensionRows?.(semantic.genre) || [];
+    const dimensionHtml = dimensions.length
+      ? `<h4>Lecture V3.2</h4><div class="semantic-context-stats">${dimensions.map(item => `<span>${esc(item.label)} <b>${esc(item.value)}</b></span>`).join('')}<span>Grammaire <b>${esc(friendlyGrammar(semantic.genre.grammar))}</b></span></div>`
+      : '';
+    return `<div class="semantic-context">${dimensionHtml}<h4>Neural Genre Context</h4><div class="semantic-context-tags">${top}</div><h4>Lyrics</h4><div class="semantic-context-stats"><span>Mode <b>${esc(semantic.lyrics.mode)}</b></span><span>Lignes <b>${semantic.lyrics.line_count}</b></span><span>Répétées <b>${semantic.lyrics.repeated_line_count}</b></span><span>Coverage <b>${semantic.lyrics.timed_coverage}%</b></span></div><p>Les lyrics servent de preuve supplémentaire ; elles ne remplacent jamais les frontières audio V2-C.</p></div>`;
+  }
+
+  function friendlyGrammar(value) {
+    const labels = {
+      'sentimental-song': 'chanson sentimentale',
+      'electronic-drop': 'électronique / drops',
+      'hip-hop': 'hip-hop',
+      'rnb-song': 'R&B / chanson',
+      'pop-song': 'pop',
+      'rock-song': 'rock',
+      general: 'générale',
+    };
+    return labels[value] || String(value || 'générale');
   }
 
   function summaryCard(label, value, sub) { return `<div><span>${label}</span><strong>${value}</strong><small>${sub}</small></div>`; }
   function stemBar(name, score) { return `<div><span>${name}</span><i><b style="width:${clamp(Number(score),0,100)}%"></b></i><strong>${Math.round(Number(score))}%</strong></div>`; }
   function countLabels(items) { const out = {}; items.forEach(x => { out[x.semantic_type] = (out[x.semantic_type] || 0) + 1; }); return out; }
-  function canonicalType(value) { const t = String(value || '').toLowerCase(); if (t.includes('pre-chorus') || t.includes('pre chorus')) return 'Pre-Chorus'; if (t.includes('chorus')) return 'Chorus'; if (t.includes('verse')) return 'Verse'; if (t.includes('bridge')) return 'Bridge'; if (t.includes('drop')) return 'Drop'; if (t.includes('intro')) return 'Intro'; if (t.includes('outro')) return 'Outro'; if (t.includes('instrument')) return 'Instrumental'; return 'Instrumental'; }
+  function canonicalType(value) { const t = String(value || '').toLowerCase(); if (t.includes('pre-chorus') || t.includes('pre chorus')) return 'Pre-Chorus'; if (t.includes('chorus')) return 'Chorus'; if (t.includes('verse')) return 'Verse'; if (t.includes('bridge')) return 'Bridge'; if (t.includes('interlude')) return 'Interlude'; if (t.includes('drop')) return 'Drop'; if (t.includes('intro')) return 'Intro'; if (t.includes('outro')) return 'Outro'; if (t.includes('instrument')) return 'Instrumental'; return 'Instrumental'; }
   function stem(section, name) { return clamp(Number(section.stem_activity?.[name]?.score || 0) / 100, 0, 1); }
   function profileDistance(a, b) { return Math.sqrt(['vocals','drums','bass','other'].reduce((sum, name) => sum + Math.pow(stem(a,name)-stem(b,name),2),0) / 4); }
   function normalizeScore(v) { return clamp(Number(v || 0) / 1.35, 0, 1); }
@@ -687,7 +746,7 @@
   function looksLikeTimestampOnly(line) { return /^\[?\d{1,2}:\d{2}(?:[.:]\d{1,3})?\]?$/.test(line.trim()); }
   function stripTimestamp(line) { return String(line).replace(/^\[?(?:\d{1,2}:)?\d{1,2}:\d{2}(?:[.:]\d{1,3})?\]?\s*/, ''); }
   function normalizeLyric(line) { return stripTimestamp(String(line || '')).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9' ]+/g,' ').replace(/\s+/g,' ').trim(); }
-  function setBusy(busy, ownButton) { if (ownButton) { ownButton.disabled = busy; ownButton.classList.toggle('is-loading', busy); ownButton.innerHTML = busy ? '<i data-lucide="loader-circle"></i> Semantic scan…' : '<i data-lucide="brain"></i> Semantic Arrangement V2-CD.1'; window.lucide?.createIcons?.(); } }
+  function setBusy(busy, ownButton) { if (ownButton) { ownButton.disabled = busy; ownButton.classList.toggle('is-loading', busy); ownButton.innerHTML = busy ? '<i data-lucide="loader-circle"></i> Semantic scan…' : '<i data-lucide="brain"></i> Semantic Arrangement V3.2'; window.lucide?.createIcons?.(); } }
   function setV2Status(tag, text, error = false) { const tagEl = document.getElementById('v2-status-tag'); const textEl = document.getElementById('v2-status-text'); if (tagEl) { tagEl.textContent = tag; tagEl.classList.toggle('is-error', error); } if (textEl) textEl.textContent = text; }
   function setProgress(value) { const fill = document.getElementById('v2-progress-fill'); if (fill) fill.style.width = `${clamp(value,0,100)}%`; }
   async function responseError(response) { try { const p = await response.json(); return p.detail || p.error || `HTTP ${response.status}`; } catch (_) { return `HTTP ${response.status}`; } }
@@ -700,8 +759,12 @@
 
   window.LMNSemanticGenreContext = Object.freeze({
     inferGenre,
+    structuredGenreContext,
     collectNeuralLabels,
     broadFamilyFromLabel,
     arrangementFamily,
+    scoreSection,
+    transition,
+    labels: [...LABELS],
   });
 })();
