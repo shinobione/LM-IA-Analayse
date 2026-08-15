@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [codex/phase5-sonictrace]
+    branches: [codex/phase5-sonictrace, agent/neural-accuracy-v3-foundation]
 
 permissions:
   contents: read
@@ -32,8 +32,13 @@ jobs:
           PYTHONPATH: backend
         run: python backend/tests/test_studio_contract.py
 
+      - name: Neural V3 taxonomy tests
+        env:
+          PYTHONPATH: backend
+        run: python backend/tests/test_neural_taxonomy.py
+
       - name: Python syntax
-        run: python -m py_compile backend/app/studio_contract.py backend/app/entrypoint.py
+        run: python -m py_compile backend/app/studio_contract.py backend/app/entrypoint.py backend/app/neural.py backend/app/neural_taxonomy.py
 
       - name: Catalog memory JavaScript syntax
         run: node --check js/catalog-memory.js && node --check js/catalog-style-families.js && node --check js/catalog-style-families-build04.js && node --check js/catalog-family-language-build05.js
