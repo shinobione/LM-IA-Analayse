@@ -130,7 +130,7 @@
       const semantic = buildSemanticArrangement(fusionPayload, neuralPayload, lyrics);
       renderSemantic(semantic, fusionPayload, lyrics);
       setProgress(100);
-      setV2Status('V2-CD.1 SEMANTIC', `${selectedAudio.name} • ${semantic.arrangement.length} blocs finaux • ${semantic.genre.family} • lyrics ${lyrics.mode}`);
+      setV2Status('V2-CD.1 SEMANTIC', `${selectedAudio.name} • ${semantic.arrangement.length} blocs finaux • ${semantic.genre.display} • lyrics ${lyrics.mode}`);
     } catch (error) {
       setProgress(0);
       setV2Status('V2-CD.1 ERROR', error.message || 'Semantic Arrangement failed', true);
@@ -234,16 +234,106 @@
   }
 
   function inferGenre(neuralPayload) {
-    const neural = neuralPayload.neural || {};
+    const neural = neuralPayload?.neural || {};
     const labels = collectNeuralLabels(neural);
-    const text = labels.map(item => item.label.toLowerCase()).join(' ');
-    let family = 'general';
-    if (/hip.?hop|rap|trap|drill|boom bap/.test(text)) family = 'hip-hop';
-    else if (/dubstep|edm|house|techno|trance|drum.?and.?bass|dnb|future bass|electronic/.test(text)) family = 'edm';
-    else if (/r&b|rnb|soul|neo soul/.test(text)) family = 'r&b';
-    else if (/pop|synthpop|electropop/.test(text)) family = 'pop';
-    else if (/rock|metal|punk/.test(text)) family = 'rock';
-    return { family, top: labels.slice(0, 5) };
+    const structured = structuredGenreContext(neural.genre_analysis);
+    if (structured) return { ...structured, top: labels.slice(0, 5) };
+    return { ...legacyGenreContext(labels[0]), top: labels.slice(0, 5) };
+  }
+
+  function structuredGenreContext(analysis) {
+    if (!analysis || typeof analysis !== 'object') return null;
+    const ensemble = analysis.ensemble && typeof analysis.ensemble === 'object' ? analysis.ensemble : null;
+    const primary = ensemble?.primary && typeof ensemble.primary === 'object'
+      ? ensemble.primary
+      : analysis.primary;
+    if (!primary || typeof primary !== 'object') return null;
+
+    const rawLabel = String(primary.label || '').trim();
+    const unknown = rawLabel.toLowerCase() === 'unknown / hybrid';
+    const candidate = unknown && primary.candidate && typeof primary.candidate === 'object'
+      ? primary.candidate
+      : primary;
+    const candidateLabel = String(candidate?.label || '').trim();
+    const familyLabel = String(candidate?.family || primary.family || '').trim();
+    const broadFamily = familyLabel || broadFamilyFromLabel(candidateLabel || rawLabel);
+    const display = unknown
+      ? 'Hybride / incertain'
+      : (rawLabel || candidateLabel || broadFamily || 'Style non déterminé');
+
+    return {
+      family: arrangementFamily(broadFamily, candidateLabel || rawLabel),
+      broadFamily: broadFamily || 'Général',
+      display,
+      primary: rawLabel || candidateLabel || '',
+      unknown,
+      source: 'neural-v3.1-structured',
+    };
+  }
+
+  function legacyGenreContext(primary) {
+    if (!primary) {
+      return {
+        family: 'general',
+        broadFamily: 'Général',
+        display: 'Style non déterminé',
+        primary: '',
+        unknown: true,
+        source: 'legacy-empty',
+      };
+    }
+    const label = String(primary.label || '').trim();
+    const broadFamily = broadFamilyFromLabel(label);
+    return {
+      family: arrangementFamily(broadFamily, label),
+      broadFamily,
+      display: label || broadFamily,
+      primary: label,
+      unknown: false,
+      source: 'legacy-top-label-only',
+    };
+  }
+
+  function broadFamilyFromLabel(label) {
+    const text = normalizeGenreText(label);
+    if (/vietnam|nhac vang|nhac tru tinh|v-pop|asian ballad/.test(text)) return 'Vietnamese / Asian';
+    if (/hip.?hop|\brap\b|trap|drill|boom bap|phonk|g-funk|cloud rap|grime/.test(text)) return 'Hip-Hop / Rap';
+    if (/r&b|\brnb\b|soul|funk|new jack swing|quiet storm/.test(text)) return 'R&B / Soul / Funk';
+    if (/dubstep|\bedm\b|house|techno|trance|drum.?and.?bass|\bdnb\b|future bass|electronic|synthwave|ambient|jungle|glitch|idm/.test(text)) return 'Electronic';
+    if (/reggae|dancehall|dub|lovers rock|ska|soca/.test(text)) return 'Reggae / Caribbean';
+    if (/latin|reggaeton|salsa|cumbia|bachata|tango|samba|bossa nova/.test(text)) return 'Latin';
+    if (/rock|metal|punk|shoegaze|post-rock/.test(text)) return 'Rock / Metal';
+    if (/folk|world|fado|zouk|highlife|afrobeat|indian classical/.test(text)) return 'Folk / World';
+    if (/jazz/.test(text)) return 'Jazz';
+    if (/classical|neo-classical|soundtrack|score|cinematic/.test(text)) return 'Classical / Screen';
+    if (/\bpop\b|synthpop|synth-pop|electropop|city pop|j-pop|k-pop|chanson|europop/.test(text)) return 'Pop';
+    return 'Général';
+  }
+
+  function arrangementFamily(broadFamily, label) {
+    const family = normalizeGenreText(broadFamily);
+    const style = normalizeGenreText(label);
+    if (/hip.?hop|\brap\b/.test(family)) return 'hip-hop';
+    if (/r&b|soul|funk/.test(family)) return 'r&b';
+    if (/electronic|\bedm\b/.test(family)) return 'edm';
+    if (family === 'pop') return 'pop';
+    if (/rock|metal/.test(family)) return 'rock';
+    if (!broadFamily || family === 'general') {
+      if (/hip.?hop|\brap\b|trap|drill|boom bap/.test(style)) return 'hip-hop';
+      if (/r&b|\brnb\b|soul|neo soul/.test(style)) return 'r&b';
+      if (/dubstep|\bedm\b|house|techno|trance|drum.?and.?bass|\bdnb\b|future bass|electronic/.test(style)) return 'edm';
+      if (/\bpop\b|synthpop|electropop/.test(style)) return 'pop';
+      if (/rock|metal|punk/.test(style)) return 'rock';
+    }
+    return 'general';
+  }
+
+  function normalizeGenreText(value) {
+    return String(value || '')
+      .toLowerCase()
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[’']/g, "'");
   }
 
   function collectNeuralLabels(neural) {
@@ -515,16 +605,18 @@
     const duration = Number(arrangement.at(-1)?.end || 1);
     const genreTop = semantic.genre.top.slice(0, 4).map(x => `${esc(x.label)} ${Math.round((x.score || 0) * 100)}%`).join(' • ') || 'aucun contexte neural';
     const route = semantic.compute.stems_route;
+    const genreDisplay = semantic.genre.display || semantic.genre.primary || semantic.genre.broadFamily || semantic.genre.family;
+    const genreBadge = semantic.genre.broadFamily || genreDisplay || semantic.genre.family;
 
     root.innerHTML = `
       <div class="semantic-head">
         <div><div class="semantic-title"><i data-lucide="brain-circuit"></i> Semantic Arrangement V2-CD.1</div>
         <div class="semantic-sub">V2-B genre/mood + V2-C structure + V2-D stems + ${lyrics.mode === 'none' ? 'grammaire' : `lyrics ${lyrics.mode}`}</div></div>
-        <div class="semantic-badge">${esc(semantic.genre.family.toUpperCase())}<span>${esc(route)}</span></div>
+        <div class="semantic-badge">${esc(String(genreBadge).toUpperCase())}<span>${esc(route)}</span></div>
       </div>
       <div class="semantic-summary">
         ${summaryCard('FINAL BLOCKS', arrangement.length, `${(fusionPayload.fusion?.sections || []).length} sections source`)}
-        ${summaryCard('GENRE CONTEXT', esc(semantic.genre.family), genreTop)}
+        ${summaryCard('GENRE CONTEXT', esc(genreDisplay), genreTop)}
         ${summaryCard('LYRICS', esc(semantic.lyrics.mode), `${semantic.lyrics.line_count} lignes • ${semantic.lyrics.repeated_line_count} répétées`)}
         ${summaryCard('TIMED COVERAGE', `${semantic.lyrics.timed_coverage}%`, semantic.lyrics.mode === 'timed' ? 'alignement temporel actif' : 'mapping approximatif / absent')}
         ${summaryCard('STEMS ROUTE', esc(route), esc(semantic.compute.stems_device))}
@@ -605,4 +697,11 @@
   function clamp(v,min,max) { return Math.max(min, Math.min(max, Number(v) || 0)); }
   function round(v,n=3) { const p = 10 ** n; return Math.round(Number(v) * p) / p; }
   function esc(value) { return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+
+  window.LMNSemanticGenreContext = Object.freeze({
+    inferGenre,
+    collectNeuralLabels,
+    broadFamilyFromLabel,
+    arrangementFamily,
+  });
 })();
