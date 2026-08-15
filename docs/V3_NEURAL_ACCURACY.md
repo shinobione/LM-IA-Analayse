@@ -1,6 +1,6 @@
 # SonicTrace Neural Accuracy V3
 
-Status: **foundation candidate**
+Status: **V3.1 implementation candidate**
 
 ## Why this exists
 
@@ -10,7 +10,7 @@ V3 changes the classification architecture before any deeper Studio integration.
 
 ## V3-A — Hierarchical open-vocabulary taxonomy
 
-`backend/app/neural_taxonomy.py` is the canonical taxonomy source.
+`backend/app/neural_taxonomy.py` is the canonical CLAP taxonomy source.
 
 The taxonomy now distinguishes broad families, styles and regional vocabulary. In particular:
 
@@ -38,11 +38,48 @@ The 512D CLAP track embedding remains unchanged for Catalog Intelligence compati
 
 ## V3-C — UNKNOWN / hybrid policy
 
-Genre scores are no longer presented as softmax probabilities.
+Genre scores are no longer presented as closed-set softmax probabilities.
 
-The V3 genre payload uses CLAP cosine relevance plus temporal consensus. If evidence is weak or unstable, `primary.label` becomes `Unknown / hybrid` while the closest candidate is still exposed.
+The CLAP V3 genre payload uses cosine relevance plus temporal consensus. If evidence is weak or unstable, `primary.label` becomes `Unknown / hybrid` while the closest candidate is still exposed.
 
 This is intentional: an honest unknown is preferable to a confident wrong genre.
+
+## V3-D — Discogs400 music-specialist expert
+
+V3.1 adds the official Discogs-EffNet music-style model as an **optional, fail-safe ONNX expert**.
+
+The expert:
+
+- predicts 400 Discogs styles with multi-label sigmoid scores;
+- produces a separate 1280D music-first embedding;
+- uses the documented MusiCNN/EffNet input geometry: 16 kHz audio, 512-sample frames, 256-sample hop, 96 mel bands, 128-frame patches and 62-frame patch hop;
+- downloads the official ONNX model + metadata from the Essentia model host on first use and caches them under the gitignored `backend/models/` directory;
+- prefers ONNX Runtime CUDA and falls back to CPU;
+- never becomes mandatory for a valid CLAP scan: model/dependency/download/inference failure leaves CLAP V3 active.
+
+`onnxruntime-gpu` is constrained below 1.27 because the SonicTrace neural runtime is CUDA 12.8, while current ORT 1.27+ PyPI GPU packages default to CUDA 13.
+
+## V3-E — Conservative ensemble
+
+`backend/app/genre_ensemble.py` cross-checks CLAP with Discogs400 instead of blindly replacing one model with the other.
+
+Important rules:
+
+- direct style agreement can raise confidence;
+- strong broad-family disagreement reduces confidence;
+- a specialist override requires a strong **direct** mapped match and a clear ensemble margin;
+- the Discogs expert cannot invent cultural/regional facts that do not exist in its taxonomy;
+- specifically, `Latin---Bolero` may support a **bolero-like musical structure** for a CLAP `Vietnamese Bolero` result, but it can never rewrite that result to `Latin Bolero` by itself.
+
+The compatibility `neural.genres` list is re-ranked by ensemble evidence only when Discogs is ready. Otherwise it remains the CLAP V3 list.
+
+The richer result remains under:
+
+- `neural.genre_analysis.primary`
+- `neural.genre_analysis.experts`
+- `neural.genre_analysis.ensemble`
+
+The expert 1280D embedding remains nested inside the expert payload. The canonical top-level Catalog embedding remains the established 512D CLAP vector.
 
 ## Compatibility contract
 
@@ -62,20 +99,14 @@ The Studio-facing SonicTrace envelope remains schema version 1. `semanticSummary
 
 **No Studio repository or Studio UI is modified by this phase.** Studio can adopt the richer field later without breaking existing consumers.
 
-## Music-specialist expert model — next layer
-
-The preferred specialist complement remains Discogs400 / Discogs-EffNet because the official model predicts 400 Discogs styles and exposes a 1280D music embedding.
-
-Native Essentia Python bindings are not currently a good fit for the Windows SonicTrace runtime. The expert layer should therefore be integrated through a Windows-safe ONNX preprocessing/inference path or a separate worker, without making the current CLAP runtime fragile.
-
-The V3 output contract is intentionally shaped so a future `genre_experts` section can be fused without replacing `genre_analysis`.
-
 ## SHINOBIWAN benchmark
 
-The next acceptance gate is not visual polish. It is a reference set of known tracks with declared expected family/style labels and regression scoring across engine versions.
+The acceptance gate is a reference set of known tracks with artist-confirmed expected family/style labels and regression scoring across engine versions.
 
 Initial mandatory case:
 
 - `Tinh Bolero Cho Trân` → Vietnamese Bolero / Vietnamese-Asian family, not R&B/Soul as forced primary.
+
+The ensemble regression tests additionally assert that Discogs `Latin---Bolero` evidence cannot rewrite an artist-confirmed Vietnamese Bolero result into a Latin regional label.
 
 Additional catalog references should be added only when the expected labels are artist-confirmed.
