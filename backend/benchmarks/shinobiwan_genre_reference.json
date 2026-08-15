@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "name": "SHINOBIWAN genre reference",
+  "tracks": [
+    {
+      "trackId": "tinh-bolero-cho-tran",
+      "expectedPrimaryStyle": "Vietnamese Bolero",
+      "expectedFamily": "Vietnamese / Asian",
+      "forbiddenPrimaryStyles": [
+        "Contemporary R&B",
+        "Alternative R&B",
+        "Soul"
+      ],
+      "note": "Artist-confirmed Vietnamese Bolero. This is the regression case that exposed the V2 forced-label failure."
+    }
+  ]
+}
