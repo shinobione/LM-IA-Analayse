@@ -9,22 +9,38 @@ def evaluate_genre_reference(reference: dict[str, Any], genre_analysis: dict[str
     forbidden = {str(item).strip() for item in reference.get('forbiddenPrimaryStyles') or [] if str(item).strip()}
 
     primary = genre_analysis.get('primary') if isinstance(genre_analysis.get('primary'), dict) else {}
-    actual_style = str(primary.get('label') or '').strip()
-    if actual_style == 'Unknown / hybrid':
+    raw_primary_style = str(primary.get('label') or '').strip()
+    if raw_primary_style == 'Unknown / hybrid':
         candidate = primary.get('candidate') if isinstance(primary.get('candidate'), dict) else {}
         candidate_style = str(candidate.get('label') or '').strip()
     else:
-        candidate_style = actual_style
+        candidate_style = raw_primary_style
+
+    dimensions = genre_analysis.get('dimensions') if isinstance(genre_analysis.get('dimensions'), dict) else {}
+    style_dimension = dimensions.get('style') if isinstance(dimensions.get('style'), dict) else {}
+    dimension_primary = style_dimension.get('primary') if isinstance(style_dimension.get('primary'), dict) else {}
+    dimension_style = str(dimension_primary.get('label') or '').strip()
+    dimension_family = dimensions.get('family') if isinstance(dimensions.get('family'), dict) else {}
+
+    # V3.2 separates cultural/tradition labels from the actual primary musical
+    # style. The benchmark therefore prefers the explicit style dimension while
+    # preserving the old V3 path for older payloads.
+    actual_style = dimension_style or raw_primary_style
 
     consensus = genre_analysis.get('consensus') if isinstance(genre_analysis.get('consensus'), dict) else {}
-    actual_family = str(consensus.get('primary_family') or '').strip()
+    actual_family = str(dimension_family.get('label') or consensus.get('primary_family') or '').strip()
     confidence = genre_analysis.get('confidence') if isinstance(genre_analysis.get('confidence'), dict) else {}
+    is_unknown = bool(dimensions.get('unknown')) if dimensions else raw_primary_style == 'Unknown / hybrid'
+
+    relevant_labels = {actual_style, raw_primary_style, candidate_style}
+    relevant_labels.discard('')
+    relevant_labels.discard('Unknown / hybrid')
 
     checks = {
         'primary_style': bool(expected_style) and actual_style == expected_style,
         'family': bool(expected_family) and actual_family == expected_family,
-        'not_forbidden': actual_style not in forbidden and candidate_style not in forbidden,
-        'not_unknown': actual_style != 'Unknown / hybrid',
+        'not_forbidden': not bool(relevant_labels & forbidden),
+        'not_unknown': not is_unknown,
     }
     passed = all(checks.values())
     return {
@@ -38,8 +54,10 @@ def evaluate_genre_reference(reference: dict[str, Any], genre_analysis: dict[str
         },
         'actual': {
             'primaryStyle': actual_style,
+            'rawPrimaryLabel': raw_primary_style,
             'candidateStyle': candidate_style,
             'family': actual_family,
+            'dimensionVersion': dimensions.get('version') if dimensions else None,
             'confidenceLevel': confidence.get('level'),
             'confidencePercent': confidence.get('percent'),
         },

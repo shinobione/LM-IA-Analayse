@@ -24,6 +24,26 @@ class AnalysisBenchmarkTests(unittest.TestCase):
         self.assertTrue(result['passed'])
         self.assertTrue(all(result['checks'].values()))
 
+    def test_v32_can_keep_nhac_vang_as_raw_context_but_bolero_as_style(self) -> None:
+        analysis = {
+            'primary': {'label': 'Nhạc Vàng', 'family': 'Vietnamese / Asian'},
+            'consensus': {'primary_family': 'Vietnamese / Asian'},
+            'dimensions': {
+                'version': '3.2',
+                'unknown': False,
+                'family': {'label': 'Vietnamese / Asian'},
+                'style': {'primary': {'label': 'Vietnamese Bolero'}},
+                'tradition': {'primary': {'label': 'Nhạc Vàng'}},
+            },
+            'confidence': {'level': 'high', 'percent': 78.0},
+        }
+        result = evaluate_genre_reference(REFERENCE, analysis)
+        self.assertTrue(result['passed'])
+        self.assertTrue(all(result['checks'].values()))
+        self.assertEqual(result['actual']['primaryStyle'], 'Vietnamese Bolero')
+        self.assertEqual(result['actual']['rawPrimaryLabel'], 'Nhạc Vàng')
+        self.assertEqual(result['actual']['dimensionVersion'], '3.2')
+
     def test_old_rnb_failure_mode_is_rejected(self) -> None:
         analysis = {
             'primary': {'label': 'Contemporary R&B'},
@@ -45,6 +65,23 @@ class AnalysisBenchmarkTests(unittest.TestCase):
         self.assertFalse(result['passed'])
         self.assertFalse(result['checks']['not_unknown'])
         self.assertTrue(result['checks']['not_forbidden'])
+
+    def test_unknown_dimension_still_fails_strict_reference(self) -> None:
+        analysis = {
+            'primary': {'label': 'Unknown / hybrid', 'candidate': {'label': 'Vietnamese Bolero'}},
+            'consensus': {'primary_family': 'Vietnamese / Asian'},
+            'dimensions': {
+                'version': '3.2',
+                'unknown': True,
+                'family': {'label': 'Vietnamese / Asian'},
+                'style': {'primary': {'label': 'Vietnamese Bolero', 'authority': 'evidence-only'}},
+            },
+            'confidence': {'level': 'low', 'percent': 31.0},
+        }
+        result = evaluate_genre_reference(REFERENCE, analysis)
+        self.assertFalse(result['passed'])
+        self.assertTrue(result['checks']['primary_style'])
+        self.assertFalse(result['checks']['not_unknown'])
 
     def test_summary_marks_missing_analysis_as_failure(self) -> None:
         result = summarize_benchmark({'name': 'fixture', 'tracks': [REFERENCE]}, {})
