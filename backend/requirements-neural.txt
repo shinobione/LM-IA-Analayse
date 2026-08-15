@@ -1,10 +1,14 @@
-# V2-B — optional neural music layer.
+# Neural music layer.
 # Kept deliberately separate from the stable V2-A runtime.
 # PyTorch CUDA is installed explicitly by the launcher from the official
 # PyTorch cu128 wheel index; do not add torch or torchaudio here.
 #
 # CLAP integration is pinned to the Transformers API used by backend/app/neural.py.
 # Transformers 4.56.x requires the pre-1.0 Hugging Face Hub API.
+#
+# Discogs-EffNet runs through ONNX Runtime. Keep ORT below 1.27 because current
+# PyPI 1.27+ GPU packages default to CUDA 13, while SonicTrace's PyTorch runtime
+# is intentionally CUDA 12.8. ORT falls back to CPU when CUDA EP is unavailable.
 
 transformers==4.56.2
 librosa==0.11.0
@@ -12,3 +16,4 @@ numpy>=1.26,<3
 soundfile>=0.12,<1
 safetensors>=0.6,<1
 huggingface-hub>=0.34,<1.0
+onnxruntime-gpu>=1.22,<1.27
