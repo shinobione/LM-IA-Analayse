@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .config import settings
+from .genre_ensemble import fuse_genre_analysis
+from .music_expert import analyze_music_expert, runtime_status as music_expert_runtime_status
 from .neural_taxonomy import (
     GENRE_CANDIDATES,
     INSTRUMENT_LABELS,
@@ -21,7 +23,7 @@ SAMPLE_RATE = 48_000
 SEGMENT_SECONDS = float(os.getenv('LMN_NEURAL_SEGMENT_SECONDS', '10'))
 MAX_SEGMENTS = int(os.getenv('LMN_NEURAL_MAX_SEGMENTS', '5'))
 UNKNOWN_MIN_SIMILARITY = float(os.getenv('LMN_NEURAL_UNKNOWN_MIN_SIMILARITY', '0.10'))
-NEURAL_ANALYSIS_VERSION = '3.0'
+NEURAL_ANALYSIS_VERSION = '3.1'
 
 TRAIT_AXES = {
     'electronic': ('electronic production', 'acoustic production'),
@@ -54,6 +56,7 @@ def runtime_status() -> dict[str, Any]:
         'genre_candidate_count': len(GENRE_CANDIDATES),
         'supports_unknown_genre': True,
         'segment_consensus': True,
+        'music_expert': music_expert_runtime_status(),
     }
     try:
         import torch
@@ -104,7 +107,19 @@ def analyze_neural(path: Path, duration_seconds: float | None = None) -> dict[st
         audio_features = F.normalize(audio_features.float(), dim=-1)
         track_embedding = F.normalize(audio_features.mean(dim=0, keepdim=True), dim=-1)
 
-    genre_analysis = _analyze_genres_v3(model, processor, audio_features, offsets, device)
+    clap_genre_analysis = _analyze_genres_v3(model, processor, audio_features, offsets, device)
+    try:
+        expert = analyze_music_expert(segments, offsets, input_sample_rate=SAMPLE_RATE)
+    except Exception as exc:  # noqa: BLE001
+        expert = {
+            'status': 'unavailable',
+            'engine': {'name': 'Discogs-EffNet', 'version': '3.1'},
+            'error': f'{type(exc).__name__}: {exc}',
+            'fallback': 'CLAP V3 remains active for this scan.',
+        }
+    genre_analysis = fuse_genre_analysis(clap_genre_analysis, expert)
+    genres = _compat_genre_rows(genre_analysis)
+
     moods = _rank_open_labels(model, processor, track_embedding, MOOD_LABELS, device, 'music with a {} mood')
     instruments = _rank_open_labels(model, processor, track_embedding, INSTRUMENT_LABELS, device, 'music featuring {}')
     traits = _score_traits(model, processor, track_embedding, device)
@@ -116,10 +131,11 @@ def analyze_neural(path: Path, duration_seconds: float | None = None) -> dict[st
     else:
         allocated = reserved = 0
 
+    expert_engine = expert.get('engine') if isinstance(expert, dict) else None
     return {
         'engine': {
             'model': MODEL_ID,
-            'model_family': 'CLAP',
+            'model_family': 'CLAP + optional Discogs-EffNet ensemble',
             'analysis_version': NEURAL_ANALYSIS_VERSION,
             'taxonomy_version': TAXONOMY_VERSION,
             'device': device,
@@ -129,17 +145,18 @@ def analyze_neural(path: Path, duration_seconds: float | None = None) -> dict[st
             'segment_count': len(segments),
             'segment_seconds': SEGMENT_SECONDS,
             'segment_offsets_seconds': offsets,
+            'music_expert_status': expert.get('status') if isinstance(expert, dict) else 'unavailable',
+            'music_expert_provider': expert_engine.get('provider') if isinstance(expert_engine, dict) else None,
             'gpu_memory_allocated_mb': round(allocated / (1024 ** 2), 1),
             'gpu_memory_reserved_mb': round(reserved / (1024 ** 2), 1),
         },
-        # Compatibility fields remain in place for SonicTrace UI, Catalog and
-        # the current Studio envelope. They now come from the V3 taxonomy rather
-        # than the old forced 24-way softmax.
-        'genres': genre_analysis['styles'][:8],
+        # Compatibility fields remain stable for SonicTrace UI, Catalog and the
+        # current Studio schema. When the expert is ready, `genres` is reordered
+        # by the conservative ensemble score; otherwise CLAP V3 is unchanged.
+        'genres': genres[:8],
         'moods': moods[:8],
         'instruments': instruments[:10],
         'traits': traits,
-        # Additive V3 payload for future Studio integration.
         'genre_analysis': genre_analysis,
         'embedding': {
             'model': MODEL_ID,
@@ -148,12 +165,32 @@ def analyze_neural(path: Path, duration_seconds: float | None = None) -> dict[st
         },
         'provenance': {
             'type': 'neural',
-            'method': 'CLAP open-vocabulary audio/text similarity with per-segment hierarchical consensus',
-            'calibration': 'cosine relevance + temporal consensus; scores are not Spotify metrics or absolute probabilities',
+            'method': 'CLAP open-vocabulary segment consensus cross-checked by optional Discogs400 music-specialist ONNX inference',
+            'calibration': 'evidence ensemble; scores are not Spotify metrics or absolute genre probabilities',
             'genre_taxonomy': TAXONOMY_VERSION,
             'unknown_policy': 'low-evidence or unstable classifications can resolve to Unknown / hybrid',
+            'music_expert_status': expert.get('status') if isinstance(expert, dict) else 'unavailable',
         },
     }
+
+
+def _compat_genre_rows(genre_analysis: dict[str, Any]) -> list[dict[str, Any]]:
+    ensemble = genre_analysis.get('ensemble') if isinstance(genre_analysis.get('ensemble'), dict) else {}
+    if ensemble.get('status') == 'ready' and isinstance(ensemble.get('styles'), list):
+        rows: list[dict[str, Any]] = []
+        for source in ensemble['styles']:
+            if not isinstance(source, dict):
+                continue
+            row = dict(source)
+            if row.get('ensemble_score') is not None:
+                row['clap_score'] = row.get('score')
+                row['clap_percent'] = row.get('percent')
+                row['score'] = row.get('ensemble_score')
+                row['percent'] = row.get('ensemble_percent')
+                row['score_kind'] = 'clap-discogs400-ensemble-evidence'
+            rows.append(row)
+        return rows
+    return [dict(item) for item in genre_analysis.get('styles') or [] if isinstance(item, dict)]
 
 
 def _analyze_genres_v3(
@@ -192,11 +229,7 @@ def _analyze_genres_v3(
         sum(segment[candidate_index] for segment in candidate_segment_scores) / max(1, len(candidate_segment_scores))
         for candidate_index in range(len(GENRE_CANDIDATES))
     ]
-    ranked_indices = sorted(
-        range(len(GENRE_CANDIDATES)),
-        key=lambda index: candidate_track_scores[index],
-        reverse=True,
-    )
+    ranked_indices = sorted(range(len(GENRE_CANDIDATES)), key=lambda index: candidate_track_scores[index], reverse=True)
 
     def style_row(index: int) -> dict[str, Any]:
         candidate = GENRE_CANDIDATES[index]
@@ -276,12 +309,7 @@ def _analyze_genres_v3(
         for family, (score, index) in sorted(family_best.items(), key=lambda item: item[1][0], reverse=True)
     ]
 
-    regional_rows = [
-        style_row(index)
-        for index in ranked_indices
-        if GENRE_CANDIDATES[index].region
-    ][:8]
-
+    regional_rows = [style_row(index) for index in ranked_indices if GENRE_CANDIDATES[index].region][:8]
     candidate_primary = style_row(primary_index)
     if confidence['is_unknown']:
         primary = {
@@ -326,20 +354,16 @@ def _load_model() -> tuple[Any, Any, str]:
     global _model, _processor, _device
     if _model is not None and _processor is not None and _device is not None:
         return _model, _processor, _device
-
     with _load_lock:
         if _model is not None and _processor is not None and _device is not None:
             return _model, _processor, _device
-
         import torch
         from transformers import ClapModel, ClapProcessor
-
         device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
         processor = ClapProcessor.from_pretrained(MODEL_ID)
         model = ClapModel.from_pretrained(MODEL_ID)
         model.eval()
         model.to(device)
-
         _model = model
         _processor = processor
         _device = device
@@ -347,7 +371,6 @@ def _load_model() -> tuple[Any, Any, str]:
 
 
 def _feature_tensor(value: Any) -> Any:
-    """Normalize Transformers 4/5 feature return shapes to a projected tensor."""
     if hasattr(value, 'audio_embeds') and value.audio_embeds is not None:
         return value.audio_embeds
     if hasattr(value, 'text_embeds') and value.text_embeds is not None:
@@ -359,27 +382,19 @@ def _feature_tensor(value: Any) -> Any:
     return value
 
 
-def _cached_text_features(
-    model: Any,
-    processor: Any,
-    prompts: Iterable[str],
-    device: str,
-) -> Any:
+def _cached_text_features(model: Any, processor: Any, prompts: Iterable[str], device: str) -> Any:
     import torch
     import torch.nn.functional as F
-
     key = tuple(str(prompt) for prompt in prompts)
     with _text_cache_lock:
         cached = _text_feature_cache.get(key)
     if cached is not None:
         return cached
-
     text_inputs = processor(text=list(key), return_tensors='pt', padding=True)
     text_inputs = {name: value.to(device) if hasattr(value, 'to') else value for name, value in text_inputs.items()}
     with torch.inference_mode():
         text_features = _feature_tensor(model.get_text_features(**text_inputs))
         text_features = F.normalize(text_features.float(), dim=-1)
-
     with _text_cache_lock:
         _text_feature_cache[key] = text_features
     return text_features
@@ -413,7 +428,6 @@ def _rank_open_labels(
 
 def _score_traits(model: Any, processor: Any, track_embedding: Any, device: str) -> dict[str, Any]:
     import torch
-
     result: dict[str, Any] = {}
     for trait, pair in TRAIT_AXES.items():
         text_features = _cached_text_features(model, processor, pair, device)
@@ -444,11 +458,8 @@ def _logit_scale(model: Any) -> float:
 
 def _decode_segments(path: Path, duration_seconds: float | None) -> tuple[list[Any], list[float]]:
     import numpy as np
-
     duration = float(duration_seconds or 0.0)
-    if duration <= 0:
-        offsets = [0.0]
-    elif duration <= SEGMENT_SECONDS * 1.25:
+    if duration <= 0 or duration <= SEGMENT_SECONDS * 1.25:
         offsets = [0.0]
     else:
         fractions = [0.12, 0.32, 0.52, 0.72, 0.88][: max(1, MAX_SEGMENTS)]
