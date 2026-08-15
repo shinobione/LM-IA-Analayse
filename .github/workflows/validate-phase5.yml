@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [codex/phase5-sonictrace, agent/neural-accuracy-v3-foundation]
+    branches: [codex/phase5-sonictrace, agent/neural-accuracy-v3-foundation, agent/neural-v3-music-expert]
 
 permissions:
   contents: read
@@ -37,16 +37,42 @@ jobs:
           PYTHONPATH: backend
         run: python backend/tests/test_neural_taxonomy.py
 
+      - name: Neural V3 ensemble tests
+        env:
+          PYTHONPATH: backend
+        run: python backend/tests/test_genre_ensemble.py
+
       - name: SHINOBIWAN analysis benchmark tests
         env:
           PYTHONPATH: backend
         run: python backend/tests/test_analysis_benchmark.py
 
       - name: Python syntax
-        run: python -m py_compile backend/app/studio_contract.py backend/app/entrypoint.py backend/app/neural.py backend/app/neural_taxonomy.py backend/app/analysis_benchmark.py
+        run: python -m py_compile backend/app/studio_contract.py backend/app/entrypoint.py backend/app/neural.py backend/app/neural_taxonomy.py backend/app/music_expert.py backend/app/genre_ensemble.py backend/app/analysis_benchmark.py backend/tests/smoke_music_expert.py
 
       - name: Catalog memory JavaScript syntax
         run: node --check js/catalog-memory.js && node --check js/catalog-style-families.js && node --check js/catalog-style-families-build04.js && node --check js/catalog-family-language-build05.js
 
       - name: SonicTrace release label and workflow contract
         run: node --check js/readability-overhaul.js && node --check js/unified-analysis.js && node --check js/loader.js && node scripts/test-release-label.mjs && node scripts/test-catalog-style-families.mjs
+
+  music-expert-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install CPU smoke dependencies
+        run: python -m pip install --disable-pip-version-check "numpy>=1.26,<3" "librosa==0.11.0" "onnxruntime>=1.22,<1.27" "pydantic-settings>=2,<3"
+
+      - name: Real Discogs-EffNet ONNX smoke
+        env:
+          PYTHONPATH: backend
+          LMN_MUSIC_EXPERT: auto
+        run: python backend/tests/smoke_music_expert.py
