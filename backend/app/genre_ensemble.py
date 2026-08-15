@@ -3,6 +3,8 @@ from __future__ import annotations
 import copy
 from typing import Any
 
+from .genre_dimensions import attach_genre_dimensions
+
 ENSEMBLE_VERSION = '3.1'
 
 # Direct bridges only where the two taxonomies genuinely mean roughly the same
@@ -114,12 +116,12 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
             'styles': copy.deepcopy(result.get('styles') or []),
             'reason': f"Discogs expert {expert.get('status') or 'unavailable'}; CLAP V3 remains authoritative for this scan.",
         }
-        return result
+        return attach_genre_dimensions(result)
 
     clap_styles = [item for item in result.get('styles') or [] if isinstance(item, dict) and item.get('label')]
     if not clap_styles:
         result['ensemble'] = {'version': ENSEMBLE_VERSION, 'status': 'clap-only', 'primary': original_primary, 'styles': []}
-        return result
+        return attach_genre_dimensions(result)
 
     expert_styles = [item for item in expert.get('top_styles') or [] if isinstance(item, dict)]
     expert_by_discogs = {str(item.get('label')): float(item.get('score') or 0.0) for item in expert_styles}
@@ -189,7 +191,6 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
     clap_primary_label, clap_primary_row = _primary_label_and_row(original_primary)
     winner_label = str(winner.get('label') or '')
     winner_direct = float(winner.get('discogs_direct_match') or 0.0)
-    winner_structural = float(winner.get('discogs_structural_support') or 0.0)
 
     final_label = clap_primary_label
     decision = 'kept-clap-primary'
@@ -269,7 +270,7 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
         'expert_top_family': expert_top_family,
         'regional_guard': 'Discogs400 cannot establish Vietnamese geography; Latin---Bolero may support bolero structure but never rewrites Vietnamese Bolero to Latin Bolero by itself.',
     }
-    return result
+    return attach_genre_dimensions(result)
 
 
 def _primary_label_and_row(primary: Any) -> tuple[str, dict[str, Any] | None]:
