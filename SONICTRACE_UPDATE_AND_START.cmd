@@ -12,9 +12,18 @@ if errorlevel 1 (
   exit /b 1
 )
 
-rem Build updates can preserve a schema-compatible API process from an older engine.
-rem Force a clean managed stop after the pull so the new code is guaranteed to boot.
-if exist "%~dp0LMNotebook_STOP.cmd" call "%~dp0LMNotebook_STOP.cmd"
+rem Engine updates must never reuse a stale schema-compatible Python process.
+rem Stop tracked PIDs AND any orphan listener still owning SonicTrace fixed ports.
+if exist "%~dp0LMNotebook_STOP.cmd" (
+  call "%~dp0LMNotebook_STOP.cmd"
+  if errorlevel 1 (
+    echo.
+    echo [ERREUR] L'ancien runtime SonicTrace n'a pas pu etre arrete completement.
+    echo Ferme les anciennes fenetres SonicTrace puis relance ce fichier.
+    pause
+    exit /b 1
+  )
+)
 
 set "SONICTRACE_NO_PAUSE="
 call "%~dp0SONICTRACE_START.cmd"
