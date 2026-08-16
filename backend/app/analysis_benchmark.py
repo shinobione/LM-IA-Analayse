@@ -4,7 +4,8 @@ from typing import Any
 
 
 def evaluate_genre_reference(reference: dict[str, Any], genre_analysis: dict[str, Any]) -> dict[str, Any]:
-    expected_style = str(reference.get('expectedPrimaryStyle') or '').strip()
+    expected_styles = _expected_primary_styles(reference)
+    expected_style = expected_styles[0] if expected_styles else ''
     expected_family = str(reference.get('expectedFamily') or '').strip()
     forbidden = {str(item).strip() for item in reference.get('forbiddenPrimaryStyles') or [] if str(item).strip()}
 
@@ -37,7 +38,7 @@ def evaluate_genre_reference(reference: dict[str, Any], genre_analysis: dict[str
     relevant_labels.discard('Unknown / hybrid')
 
     checks = {
-        'primary_style': bool(expected_style) and actual_style == expected_style,
+        'primary_style': bool(expected_styles) and actual_style in expected_styles,
         'family': bool(expected_family) and actual_family == expected_family,
         'not_forbidden': not bool(relevant_labels & forbidden),
         'not_unknown': not is_unknown,
@@ -48,7 +49,11 @@ def evaluate_genre_reference(reference: dict[str, Any], genre_analysis: dict[str
         'passed': passed,
         'checks': checks,
         'expected': {
+            # `primaryStyle` is retained for older consumers; V3.5.1 additionally
+            # supports an artist-confirmed cluster when a track is intentionally
+            # hybrid and more than one neighbouring primary label is defensible.
             'primaryStyle': expected_style,
+            'primaryStyles': expected_styles,
             'family': expected_family,
             'forbiddenPrimaryStyles': sorted(forbidden),
         },
@@ -62,6 +67,16 @@ def evaluate_genre_reference(reference: dict[str, Any], genre_analysis: dict[str
             'confidencePercent': confidence.get('percent'),
         },
     }
+
+
+def _expected_primary_styles(reference: dict[str, Any]) -> list[str]:
+    multi = reference.get('expectedPrimaryStyles')
+    if isinstance(multi, (list, tuple)):
+        styles = [str(item).strip() for item in multi if str(item).strip()]
+        if styles:
+            return list(dict.fromkeys(styles))
+    single = str(reference.get('expectedPrimaryStyle') or '').strip()
+    return [single] if single else []
 
 
 def summarize_benchmark(reference_set: dict[str, Any], analyses: dict[str, Any]) -> dict[str, Any]:
