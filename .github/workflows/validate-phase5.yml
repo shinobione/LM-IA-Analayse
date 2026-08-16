@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [codex/phase5-sonictrace, agent/neural-accuracy-v3-foundation, agent/neural-v3-music-expert, agent/semantic-v31-genre-authority-fix, agent/neural-v32-semantic-taxonomy, agent/neural-v321-bootstrap-hardening, agent/neural-v33-structure-intelligence, agent/v331-runtime-cache-catalog]
+    branches: [codex/phase5-sonictrace, agent/neural-accuracy-v3-foundation, agent/neural-v3-music-expert, agent/semantic-v31-genre-authority-fix, agent/neural-v32-semantic-taxonomy, agent/neural-v321-bootstrap-hardening, agent/neural-v33-structure-intelligence, agent/v331-runtime-cache-catalog, agent/neural-v34-generalization]
 
 permissions:
   contents: read
@@ -58,11 +58,14 @@ jobs:
       - name: Semantic V3.2 genre and arrangement regression
         run: node --check js/semantic-v32.js && node --check js/semantic-bootstrap.js && node --check js/semantic-client.js && node scripts/test-semantic-genre-context.mjs
 
-      - name: Semantic V3.3.1 bootstrap regression
+      - name: Semantic V3.4 bootstrap regression
         run: node scripts/test-semantic-bootstrap-v33.mjs
 
       - name: Semantic V3.3 structure intelligence regression
         run: node scripts/test-semantic-structure-v33.mjs
+
+      - name: Semantic V3.4 cross-genre generalization regression
+        run: node scripts/test-semantic-generalization-v34.mjs
 
       - name: Catalog V3 family authority and maintenance regression
         run: node --check js/catalog-v3-accuracy.js && node --check js/catalog-maintenance.js && node scripts/test-catalog-v3-accuracy.mjs
