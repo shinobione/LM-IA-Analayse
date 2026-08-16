@@ -12,6 +12,13 @@ REFERENCE = {
     'forbiddenPrimaryStyles': ['Contemporary R&B', 'Soul'],
 }
 
+HYBRID_REFERENCE = {
+    'trackId': 'stick-to-you',
+    'expectedPrimaryStyles': ['Dancehall Pop', 'Eurodance', 'Euro-House', 'Europop'],
+    'expectedFamily': 'Pop',
+    'forbiddenPrimaryStyles': ['Vietnamese Bolero', 'Neo Soul'],
+}
+
 
 class AnalysisBenchmarkTests(unittest.TestCase):
     def test_artist_confirmed_bolero_case_passes(self) -> None:
@@ -82,6 +89,35 @@ class AnalysisBenchmarkTests(unittest.TestCase):
         self.assertFalse(result['passed'])
         self.assertTrue(result['checks']['primary_style'])
         self.assertFalse(result['checks']['not_unknown'])
+
+    def test_hybrid_reference_accepts_real_eurodance_resolution(self) -> None:
+        analysis = {
+            'primary': {'label': 'Eurodance', 'family': 'Pop'},
+            'consensus': {'primary_family': 'Pop'},
+            'dimensions': {
+                'version': '3.2',
+                'unknown': False,
+                'family': {'label': 'Pop'},
+                'style': {'primary': {'label': 'Eurodance'}},
+            },
+            'confidence': {'level': 'medium', 'percent': 61.0},
+        }
+        result = evaluate_genre_reference(HYBRID_REFERENCE, analysis)
+        self.assertTrue(result['passed'])
+        self.assertTrue(result['checks']['primary_style'])
+        self.assertEqual(result['expected']['primaryStyles'], ['Dancehall Pop', 'Eurodance', 'Euro-House', 'Europop'])
+
+    def test_hybrid_reference_still_rejects_neosoul_failure_mode(self) -> None:
+        analysis = {
+            'primary': {'label': 'Neo Soul', 'family': 'R&B / Soul / Funk'},
+            'consensus': {'primary_family': 'R&B / Soul / Funk'},
+            'confidence': {'level': 'medium', 'percent': 57.0},
+        }
+        result = evaluate_genre_reference(HYBRID_REFERENCE, analysis)
+        self.assertFalse(result['passed'])
+        self.assertFalse(result['checks']['primary_style'])
+        self.assertFalse(result['checks']['family'])
+        self.assertFalse(result['checks']['not_forbidden'])
 
     def test_summary_marks_missing_analysis_as_failure(self) -> None:
         result = summarize_benchmark({'name': 'fixture', 'tracks': [REFERENCE]}, {})
