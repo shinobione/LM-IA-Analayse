@@ -55,6 +55,7 @@ class GenreDimensionsTests(unittest.TestCase):
         self.assertEqual(dims['form']['primary']['label'], 'Sentimental Ballad')
         self.assertEqual(dims['form']['primary']['source_label'], 'Vietnamese Pop Ballad')
         self.assertEqual(dims['region']['label'], 'Vietnam')
+        self.assertEqual(dims['coherence']['version'], '3.4.1')
         self.assertTrue(result['studio_contract']['semantic_dimensions_additive'])
 
         influence_labels = [item['label'] for item in dims['influences']]
@@ -77,6 +78,44 @@ class GenreDimensionsTests(unittest.TestCase):
         self.assertEqual(dims['family']['label'], 'Hip-Hop / Rap')
         self.assertIsNone(dims['tradition']['primary'])
         self.assertIsNone(dims['form']['primary'])
+        self.assertIsNone(dims['region']['label'])
+
+    def test_cross_family_vietnamese_context_is_rejected_for_grime(self) -> None:
+        analysis = {
+            'primary': {'label': 'Grime', 'family': 'Hip-Hop / Rap', 'score': 0.62},
+            'styles': [
+                {'label': 'Grime', 'family': 'Hip-Hop / Rap', 'score': 0.62},
+                {'label': 'Neo Soul', 'family': 'R&B / Soul / Funk', 'score': 0.51},
+                {'label': 'Vietnamese Pop Ballad', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'score': 0.50},
+                {'label': 'Hip-Hop', 'family': 'Hip-Hop / Rap', 'score': 0.49},
+                {'label': 'Nhạc Vàng', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'score': 0.43},
+            ],
+            'consensus': {'primary_family': 'Hip-Hop / Rap'},
+        }
+        result = attach_genre_dimensions(analysis)
+        dims = result['dimensions']
+        self.assertEqual(dims['family']['label'], 'Hip-Hop / Rap')
+        self.assertEqual(dims['style']['primary']['label'], 'Grime')
+        self.assertIsNone(dims['tradition']['primary'])
+        self.assertIsNone(dims['form']['primary'])
+        self.assertIsNone(dims['region']['label'])
+        rejected = {item['label'] for item in dims['coherence']['rejected_context']}
+        self.assertIn('Nhạc Vàng', rejected)
+        self.assertIn('Vietnamese Pop Ballad', rejected)
+
+    def test_generic_pop_ballad_form_can_cross_into_rnb_without_regional_context(self) -> None:
+        analysis = {
+            'primary': {'label': 'Alternative R&B', 'family': 'R&B / Soul / Funk', 'score': 0.72},
+            'styles': [
+                {'label': 'Alternative R&B', 'family': 'R&B / Soul / Funk', 'score': 0.72},
+                {'label': 'Pop Ballad', 'family': 'Pop', 'score': 0.55},
+            ],
+            'consensus': {'primary_family': 'R&B / Soul / Funk'},
+        }
+        dims = attach_genre_dimensions(analysis)['dimensions']
+        self.assertEqual(dims['family']['label'], 'R&B / Soul / Funk')
+        self.assertEqual(dims['form']['primary']['label'], 'Ballad')
+        self.assertIsNone(dims['region']['label'])
 
     def test_unknown_keeps_style_as_evidence_only(self) -> None:
         analysis = {

@@ -5,7 +5,7 @@ from typing import Any
 
 from .genre_dimensions import attach_genre_dimensions
 
-ENSEMBLE_VERSION = '3.1'
+ENSEMBLE_VERSION = '3.4.1'
 
 # Direct bridges only where the two taxonomies genuinely mean roughly the same
 # musical style. Regional/cultural labels are intentionally NOT inferred from
@@ -94,6 +94,21 @@ VIETNAMESE_STRUCTURAL_SUPPORT: dict[str, tuple[str, ...]] = {
     'Asian Ballad': ('Pop---Ballad',),
 }
 
+# Discogs cannot prove Vietnamese geography, but it can say whether the musical
+# structure underneath a regional label is plausible. V3.4.1 uses this matrix
+# as a coherence gate rather than granting every Vietnamese label a free 0.50
+# family-support score.
+VIETNAMESE_COMPATIBLE_EXPERT_FAMILIES: dict[str, tuple[str, ...]] = {
+    'Vietnamese Bolero': ('Latin', 'Pop', 'Folk / World', 'Country / Acoustic'),
+    'Nhạc Vàng': ('Pop', 'Folk / World', 'Latin', 'Country / Acoustic'),
+    'Nhạc Trữ Tình': ('Pop', 'Folk / World', 'R&B / Soul / Funk', 'Country / Acoustic'),
+    'Vietnamese Pop Ballad': ('Pop', 'R&B / Soul / Funk', 'Country / Acoustic'),
+    'V-Pop': ('Pop', 'Electronic', 'R&B / Soul / Funk'),
+    'Vietnamese Folk': ('Folk / World', 'Country / Acoustic'),
+    'Vietnamese Traditional': ('Folk / World', 'Country / Acoustic'),
+    'Asian Ballad': ('Pop', 'R&B / Soul / Funk', 'Country / Acoustic'),
+}
+
 
 def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | None) -> dict[str, Any]:
     result = copy.deepcopy(clap_analysis)
@@ -135,6 +150,8 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
         for item in expert.get('families') or []
         if isinstance(item, dict) and item.get('label')
     }
+    expert_top_family = str((expert.get('families') or [{}])[0].get('label') or '') if expert.get('families') else ''
+    expert_top_family_score = float((expert.get('families') or [{}])[0].get('score') or 0.0) if expert.get('families') else 0.0
 
     similarities = [float(item.get('similarity') or item.get('score') or 0.0) for item in clap_styles]
     low, high = min(similarities), max(similarities)
@@ -162,14 +179,21 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
                     structural_labels.append(discogs_label)
         style_support = max(direct, structural * 0.72)
 
+        regional = _regional_coherence(
+            label,
+            family,
+            structural=structural,
+            expert_family=expert_family,
+            expert_top_family=expert_top_family,
+            expert_top_family_score=expert_top_family_score,
+        )
         if family == 'Vietnamese / Asian':
-            # Discogs400 has no Vietnamese regional family. Never punish that
-            # missing taxonomy and never reinterpret Latin---Bolero as geography.
-            family_support = 0.50
+            family_support = float(regional['compatible_family_support'])
         else:
             family_support = expert_family.get(family, 0.0)
 
         combined = 0.62 * clap_evidence + 0.25 * style_support + 0.13 * family_support
+        combined *= float(regional['gate'])
         rows.append({
             **item,
             'ensemble_score': round(max(0.0, min(1.0, combined)), 5),
@@ -180,7 +204,8 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
             'discogs_direct_match': round(direct, 5),
             'discogs_structural_support': round(structural, 5),
             'structural_support_labels': structural_labels,
-            'provenance': 'neural-ensemble-clap-discogs400-v3.1',
+            'regional_coherence': regional,
+            'provenance': 'neural-ensemble-clap-discogs400-v3.4.1',
         })
 
     rows.sort(key=lambda item: float(item['ensemble_score']), reverse=True)
@@ -189,12 +214,45 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
     ensemble_margin = float(winner['ensemble_score']) - float(runner['ensemble_score'])
 
     clap_primary_label, clap_primary_row = _primary_label_and_row(original_primary)
+    clap_candidate_label = str((clap_primary_row or {}).get('label') or '')
+    clap_ensemble_row = next((item for item in rows if item.get('label') == clap_candidate_label), None)
     winner_label = str(winner.get('label') or '')
     winner_direct = float(winner.get('discogs_direct_match') or 0.0)
 
     final_label = clap_primary_label
     decision = 'kept-clap-primary'
-    if clap_primary_label == 'Unknown / hybrid':
+    forced_unknown_candidate: dict[str, Any] | None = None
+
+    # V3.4.1 regional coherence guard. A regional CLAP primary may no longer stay
+    # authoritative solely because it won the text similarity race. If Discogs
+    # strongly hears an incompatible family and the regional structural proxies
+    # are weak, prefer a coherent non-regional candidate or explicitly UNKNOWN.
+    regional_conflict = bool(
+        clap_ensemble_row
+        and str(clap_ensemble_row.get('family') or '') == 'Vietnamese / Asian'
+        and str((clap_ensemble_row.get('regional_coherence') or {}).get('status') or '') == 'conflict'
+    )
+    if regional_conflict:
+        nonregional = next((item for item in rows if str(item.get('family') or '') != 'Vietnamese / Asian'), None)
+        regional_score = float(clap_ensemble_row.get('ensemble_score') or 0.0)
+        if nonregional is not None:
+            nonregional_score = float(nonregional.get('ensemble_score') or 0.0)
+            nonregional_family_support = float(nonregional.get('discogs_family_support') or 0.0)
+            expert_matches_nonregional = expert_top_family and expert_top_family == str(nonregional.get('family') or '')
+            if (
+                nonregional_family_support >= 0.14
+                and (expert_matches_nonregional or nonregional_score >= regional_score - 0.07)
+            ):
+                final_label = str(nonregional.get('label') or '')
+                decision = 'regional-primary-rejected-by-cross-family-coherence'
+            else:
+                final_label = 'Unknown / hybrid'
+                forced_unknown_candidate = copy.deepcopy(nonregional)
+                decision = 'regional-primary-demoted-to-unknown-by-cross-family-coherence'
+        else:
+            final_label = 'Unknown / hybrid'
+            decision = 'regional-primary-demoted-to-unknown-by-cross-family-coherence'
+    elif clap_primary_label == 'Unknown / hybrid':
         candidate = original_primary.get('candidate') if isinstance(original_primary, dict) else None
         candidate_label = str(candidate.get('label') or '') if isinstance(candidate, dict) else ''
         # Promote UNKNOWN only when both experts independently support the same
@@ -219,6 +277,13 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
     elif final_label != 'Unknown / hybrid':
         primary_row = next((item for item in rows if item.get('label') == final_label), None) or winner
         final_primary = {**primary_row, 'decision': decision}
+    elif forced_unknown_candidate is not None:
+        final_primary = {
+            'label': 'Unknown / hybrid',
+            'candidate': forced_unknown_candidate,
+            'reason': 'Regional evidence conflicts with the music-specialist family evidence; SonicTrace refuses to force a geographic style.',
+            'decision': decision,
+        }
     else:
         final_primary = copy.deepcopy(original_primary)
         if isinstance(final_primary, dict):
@@ -238,17 +303,17 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
         elif family_support < 0.08 and str(primary_ensemble_row.get('family')) != 'Vietnamese / Asian':
             base_confidence -= 0.08
 
-    expert_top_family = str((expert.get('families') or [{}])[0].get('label') or '') if expert.get('families') else ''
     final_family = str(primary_ensemble_row.get('family') or '') if primary_ensemble_row else ''
-    strong_family_conflict = (
+    strong_family_conflict = bool(regional_conflict) or (
         expert_top_family
         and final_family
-        and final_family != 'Vietnamese / Asian'
         and expert_top_family != final_family
-        and float((expert.get('families') or [{}])[0].get('score') or 0.0) >= 0.22
+        and expert_top_family_score >= 0.22
     )
     if strong_family_conflict:
         base_confidence -= 0.10
+    if regional_conflict:
+        base_confidence -= 0.12
 
     base_confidence = max(0.0, min(1.0, base_confidence))
     confidence['score'] = round(base_confidence, 4)
@@ -256,7 +321,8 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
     confidence['level'] = 'high' if base_confidence >= 0.72 else 'medium' if base_confidence >= 0.50 else 'low'
     confidence['ensemble_version'] = ENSEMBLE_VERSION
     confidence['expert_family_conflict'] = strong_family_conflict
-    confidence['note'] = 'Evidence confidence after CLAP temporal consensus + Discogs400 specialist cross-check; not an absolute genre probability.'
+    confidence['regional_coherence_conflict'] = regional_conflict
+    confidence['note'] = 'Evidence confidence after CLAP temporal consensus + Discogs400 specialist cross-check + V3.4.1 cross-family coherence; not an absolute genre probability.'
 
     result['primary'] = final_primary
     result['confidence'] = confidence
@@ -268,9 +334,64 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
         'styles': rows,
         'margin': round(ensemble_margin, 5),
         'expert_top_family': expert_top_family,
-        'regional_guard': 'Discogs400 cannot establish Vietnamese geography; Latin---Bolero may support bolero structure but never rewrites Vietnamese Bolero to Latin Bolero by itself.',
+        'expert_top_family_score': round(expert_top_family_score, 5),
+        'regional_coherence_conflict': regional_conflict,
+        'regional_guard': (
+            'Discogs400 cannot establish Vietnamese geography. V3.4.1 therefore requires compatible musical-structure evidence '
+            'before a regional label may stay authoritative; Latin---Bolero can support bolero structure but never establish geography.'
+        ),
     }
     return attach_genre_dimensions(result)
+
+
+def _regional_coherence(
+    label: str,
+    family: str,
+    *,
+    structural: float,
+    expert_family: dict[str, float],
+    expert_top_family: str,
+    expert_top_family_score: float,
+) -> dict[str, Any]:
+    if family != 'Vietnamese / Asian':
+        return {
+            'status': 'not-regional',
+            'gate': 1.0,
+            'compatible_family_support': expert_family.get(family, 0.0),
+            'expert_top_family': expert_top_family,
+        }
+
+    compatible_families = VIETNAMESE_COMPATIBLE_EXPERT_FAMILIES.get(label, ('Pop', 'Folk / World'))
+    compatible_family_support = max((expert_family.get(name, 0.0) for name in compatible_families), default=0.0)
+    support = max(float(structural), compatible_family_support)
+    top_incompatible = bool(
+        expert_top_family
+        and expert_top_family not in compatible_families
+        and expert_top_family_score >= 0.20
+    )
+
+    if top_incompatible and support < 0.18:
+        status = 'conflict'
+        gate = 0.62
+    elif support < 0.12:
+        status = 'weak'
+        gate = 0.76
+    elif support >= 0.22:
+        status = 'supported'
+        gate = 1.0
+    else:
+        status = 'plausible'
+        gate = 0.92
+
+    return {
+        'status': status,
+        'gate': round(gate, 4),
+        'compatible_family_support': round(compatible_family_support, 5),
+        'structural_support': round(float(structural), 5),
+        'expert_top_family': expert_top_family,
+        'expert_top_family_score': round(float(expert_top_family_score), 5),
+        'compatible_expert_families': list(compatible_families),
+    }
 
 
 def _primary_label_and_row(primary: Any) -> tuple[str, dict[str, Any] | None]:
