@@ -4,6 +4,7 @@ import copy
 from typing import Any
 
 DIMENSIONS_VERSION = '3.2'
+COHERENCE_VERSION = '3.4.1'
 
 # V3.2 stops forcing unlike concepts to compete for one first place.
 # These role mappings are intentionally conservative: only labels whose musical
@@ -17,6 +18,14 @@ FORM_LABELS = {
     'Vietnamese Pop Ballad': 'Sentimental Ballad',
     'Asian Ballad': 'Sentimental Ballad',
     'Pop Ballad': 'Ballad',
+}
+
+# A form can describe more than one family, but a regional form must never leak
+# into an unrelated winning family merely because its raw CLAP score is high.
+FORM_ALLOWED_FAMILIES: dict[str, set[str]] = {
+    'Vietnamese Pop Ballad': {'Vietnamese / Asian'},
+    'Asian Ballad': {'Vietnamese / Asian'},
+    'Pop Ballad': {'Pop', 'R&B / Soul / Funk', 'Country / Acoustic', 'Vietnamese / Asian'},
 }
 
 # Labels left in the style role compete for `dimensions.style.primary`.
@@ -36,11 +45,12 @@ STYLE_SPECIFICITY_BONUS = {
 
 
 def attach_genre_dimensions(genre_analysis: dict[str, Any]) -> dict[str, Any]:
-    """Attach additive V3.2 semantic dimensions to an existing V3 analysis.
+    """Attach additive semantic dimensions to an existing V3 analysis.
 
-    Compatibility fields and the existing V3.1 ensemble decision are preserved.
-    The new `dimensions` payload provides a better semantic reading for UI,
-    benchmark and future Studio consumers without changing schema v1.
+    V3.4.1 keeps the V3.2 payload shape but adds a coherence guard: tradition,
+    regional form and region are only promoted when they are compatible with
+    the resolved family. Incompatible evidence may still remain visible as a
+    secondary influence, but it cannot drive the main interpretation/grammar.
     """
     result = copy.deepcopy(genre_analysis or {})
     rows = _evidence_rows(result)
@@ -53,10 +63,11 @@ def attach_genre_dimensions(genre_analysis: dict[str, Any]) -> dict[str, Any]:
 
     primary_style = _pick_primary_style(style_rows, primary)
     broad_family = _family_for(primary_style, primary, result)
-    region = _region_for(primary_style, tradition_rows, broad_family)
 
-    traditions = _prefer_context_rows(tradition_rows, broad_family, region)
-    forms = _prefer_context_rows(form_rows, broad_family, region)
+    traditions, rejected_traditions = _coherent_context_rows(tradition_rows, broad_family, role='tradition')
+    forms, rejected_forms = _coherent_context_rows(form_rows, broad_family, role='form')
+    region = _region_for(primary_style, traditions, broad_family)
+
     tradition_primary = traditions[0] if traditions else None
     form_primary = _normalize_form(forms[0]) if forms else None
 
@@ -68,8 +79,26 @@ def attach_genre_dimensions(genre_analysis: dict[str, Any]) -> dict[str, Any]:
     }
     influences = _pick_influences(rows, excluded, broad_family, primary_style)
 
+    rejected_context = [
+        {
+            'label': str(row.get('label') or ''),
+            'family': row.get('family'),
+            'role': role,
+            'evidence_percent': round(_score(row) * 100.0, 1),
+            'reason': f'incompatible with resolved family {broad_family or "General"}',
+        }
+        for role, rejected in (('tradition', rejected_traditions), ('form', rejected_forms))
+        for row in rejected
+    ]
+
     dimensions = {
         'version': DIMENSIONS_VERSION,
+        'coherence': {
+            'version': COHERENCE_VERSION,
+            'status': 'guarded',
+            'resolved_family': broad_family or 'General',
+            'rejected_context': rejected_context,
+        },
         'family': {
             'label': broad_family or 'General',
             'evidence': _family_evidence(broad_family, result, primary_style),
@@ -100,6 +129,7 @@ def attach_genre_dimensions(genre_analysis: dict[str, Any]) -> dict[str, Any]:
         'unknown': primary_unknown,
         'note': (
             'V3.2 semantic dimensions separate style, tradition/cultural context, form and secondary influences. '
+            'V3.4.1 prevents incompatible cross-family context from becoming authoritative. '
             'Evidence scores remain model relevance, not absolute genre probabilities.'
         ),
     }
@@ -108,7 +138,7 @@ def attach_genre_dimensions(genre_analysis: dict[str, Any]) -> dict[str, Any]:
     result['version'] = DIMENSIONS_VERSION
     result.setdefault('studio_contract', {})['semantic_dimensions_additive'] = True
     result.setdefault('provenance', {})['dimensions'] = (
-        'role-aware semantic decomposition over CLAP + Discogs ensemble evidence; '
+        'role-aware semantic decomposition over CLAP + Discogs ensemble evidence with V3.4.1 family-coherence guard; '
         'no metadata fact is inferred solely from a structural proxy'
     )
     return result
@@ -150,7 +180,9 @@ def _pick_primary_style(rows: list[dict[str, Any]], primary: dict[str, Any]) -> 
         candidate = primary.get('candidate') if isinstance(primary.get('candidate'), dict) else primary
         return copy.deepcopy(candidate) if isinstance(candidate, dict) and candidate.get('label') else None
 
-    # Restrict the cultural/regional result to the same family when possible.
+    # Restrict the style result to the same family as the authoritative primary
+    # when possible. This prevents a secondary regional style from hijacking an
+    # otherwise coherent Hip-Hop/Pop/R&B decision.
     primary_candidate = primary.get('candidate') if isinstance(primary.get('candidate'), dict) else primary
     primary_family = str(primary_candidate.get('family') or '') if isinstance(primary_candidate, dict) else ''
     family_rows = [row for row in rows if primary_family and str(row.get('family') or '') == primary_family]
@@ -180,12 +212,12 @@ def _family_for(
 
 def _region_for(
     primary_style: dict[str, Any] | None,
-    tradition_rows: list[dict[str, Any]],
+    coherent_traditions: list[dict[str, Any]],
     family: str,
 ) -> str | None:
-    if primary_style and primary_style.get('region'):
+    if primary_style and str(primary_style.get('family') or '') == family and primary_style.get('region'):
         return str(primary_style['region'])
-    for row in tradition_rows:
+    for row in coherent_traditions:
         if row.get('region'):
             return str(row['region'])
     if family == 'Vietnamese / Asian':
@@ -193,16 +225,33 @@ def _region_for(
     return None
 
 
-def _prefer_context_rows(rows: list[dict[str, Any]], family: str, region: str | None) -> list[dict[str, Any]]:
-    if not rows:
-        return []
+def _coherent_context_rows(
+    rows: list[dict[str, Any]],
+    family: str,
+    *,
+    role: str,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    accepted: list[dict[str, Any]] = []
+    rejected: list[dict[str, Any]] = []
+    for row in rows:
+        row_family = str(row.get('family') or '')
+        label = str(row.get('label') or '')
+        compatible = False
+        if role == 'tradition':
+            # Traditions are cultural context: unlike broad forms, they require
+            # exact family coherence before they may become authoritative.
+            compatible = bool(family and row_family == family)
+        elif role == 'form':
+            allowed = FORM_ALLOWED_FAMILIES.get(label)
+            compatible = family in allowed if allowed is not None else bool(family and row_family == family)
+        if compatible:
+            accepted.append(copy.deepcopy(row))
+        else:
+            rejected.append(copy.deepcopy(row))
 
-    def context_rank(row: dict[str, Any]) -> tuple[int, float]:
-        same_family = bool(family and str(row.get('family') or '') == family)
-        same_region = bool(region and str(row.get('region') or '') == region)
-        return (2 if same_family else 1 if same_region else 0, _score(row))
-
-    return [copy.deepcopy(row) for row in sorted(rows, key=context_rank, reverse=True)]
+    accepted.sort(key=_score, reverse=True)
+    rejected.sort(key=_score, reverse=True)
+    return accepted, rejected
 
 
 def _alternative_rows(rows: list[dict[str, Any]], primary: dict[str, Any] | None) -> list[dict[str, Any]]:
