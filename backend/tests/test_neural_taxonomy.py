@@ -18,9 +18,27 @@ class NeuralTaxonomyTests(unittest.TestCase):
         self.assertIn('nhạc vàng', joined)
         self.assertIn('nhạc trữ tình', joined)
 
+    def test_v35_adds_first_class_hybrid_dance_pop_styles(self) -> None:
+        by_label = {candidate.label: candidate for candidate in GENRE_CANDIDATES}
+        self.assertTrue(TAXONOMY_VERSION.startswith('3.5-'))
+        self.assertIn('Dancehall Pop', by_label)
+        self.assertIn('Eurodance', by_label)
+        self.assertIn('Euro-House', by_label)
+        self.assertIn('Afropop', by_label)
+        self.assertEqual(by_label['Dancehall Pop'].family, 'Pop')
+        self.assertEqual(by_label['Euro-House'].family, 'Electronic')
+        self.assertEqual(by_label['Afropop'].region, 'Africa')
+        dancehall_pop_prompts = ' '.join(by_label['Dancehall Pop'].prompts).lower()
+        self.assertIn('dancehall', dancehall_pop_prompts)
+        self.assertIn('pop', dancehall_pop_prompts)
+        self.assertIn('caribbean', dancehall_pop_prompts)
+        neo_soul_prompts = ' '.join(by_label['Neo Soul'].prompts).lower()
+        self.assertIn('harmony', neo_soul_prompts)
+        self.assertIn('groove', neo_soul_prompts)
+
     def test_taxonomy_is_materially_broader_than_v2_closed_list(self) -> None:
-        self.assertTrue(TAXONOMY_VERSION.startswith('3.0-'))
-        self.assertGreaterEqual(len(GENRE_CANDIDATES), 90)
+        self.assertTrue(TAXONOMY_VERSION.startswith('3.5-'))
+        self.assertGreaterEqual(len(GENRE_CANDIDATES), 94)
         self.assertGreaterEqual(len(families()), 10)
 
     def test_confidence_can_return_unknown_instead_of_forcing_a_genre(self) -> None:
