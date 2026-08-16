@@ -296,13 +296,15 @@ def _pick_primary_style(
     cluster_rows = [row for row in rows if cluster_family and str(row.get('family') or '') == cluster_family]
     cluster_can_override = False
     if cluster_rows:
-        if cluster_family == primary_family:
-            cluster_can_override = True
-        elif cluster_family == 'Vietnamese / Asian':
-            # Discogs cannot establish Vietnamese geography. A fragmented CLAP
-            # family may overturn another true style only when the regional style
-            # itself has a style-specific structural proxy (Bolero here).
+        if cluster_family == 'Vietnamese / Asian':
+            # Regional cluster authority is never granted merely because several
+            # related text labels agree. The selected regional style must still
+            # carry its style-specific expert proxy. This preserves the old
+            # Stick-to-You false-Bolero guard even when its raw regional cluster
+            # happens to contain three labels.
             cluster_can_override = any(_can_anchor_family_from_context(row) for row in cluster_rows)
+        elif cluster_family == primary_family:
+            cluster_can_override = True
         elif primary_role in {'form', 'tradition'} or str(primary_candidate.get('label') or '') == 'Unknown / hybrid':
             cluster_can_override = True
         else:
