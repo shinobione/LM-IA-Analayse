@@ -62,8 +62,8 @@ class GenreDimensionsTests(unittest.TestCase):
         self.assertEqual(dims['form']['primary']['label'], 'Sentimental Ballad')
         self.assertEqual(dims['form']['primary']['source_label'], 'Vietnamese Pop Ballad')
         self.assertEqual(dims['region']['label'], 'Vietnam')
-        self.assertEqual(dims['coherence']['version'], '3.4.2')
-        self.assertEqual(dims['coherence']['family_lock']['status'], 'context-supported-by-style-specific-proxy')
+        self.assertEqual(dims['coherence']['version'], '3.5.1')
+        self.assertTrue(dims['coherence']['family_cluster']['status'] in {'authoritative', 'insufficient'})
         self.assertTrue(result['studio_contract']['semantic_dimensions_additive'])
 
         influence_labels = [item['label'] for item in dims['influences']]
@@ -169,6 +169,97 @@ class GenreDimensionsTests(unittest.TestCase):
         self.assertIsNone(dims['form']['primary'])
         self.assertIsNone(dims['region']['label'])
         self.assertEqual(dims['coherence']['family_lock']['status'], 'released')
+        self.assertTrue(dims['coherence']['family_cluster']['style_specific_anchor'] is False)
+
+    def test_v351_fragmented_vietnamese_cluster_restores_real_bolero(self) -> None:
+        # Real-user V3.5 regression pattern: an isolated Neo Soul label wins the
+        # single-label race, while three Vietnamese cues agree on the family.
+        # The Bolero style may take authority only because the expert row carries
+        # the style-specific Latin---Bolero structural proxy.
+        analysis = {
+            'primary': {'label': 'Neo Soul', 'family': 'R&B / Soul / Funk', 'score': 0.56},
+            'styles': [
+                {'label': 'Neo Soul', 'family': 'R&B / Soul / Funk', 'score': 0.56},
+                {'label': 'Nhạc Vàng', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'score': 0.46},
+                {'label': 'Vietnamese Pop Ballad', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'score': 0.41},
+                {'label': 'Country', 'family': 'Country / Acoustic', 'score': 0.35},
+                {'label': 'Vietnamese Bolero', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'score': 0.32},
+            ],
+            'ensemble': {
+                'status': 'ready',
+                'primary': {'label': 'Neo Soul', 'family': 'R&B / Soul / Funk', 'ensemble_score': 0.58},
+                'styles': [
+                    {'label': 'Neo Soul', 'family': 'R&B / Soul / Funk', 'ensemble_score': 0.58},
+                    {'label': 'Nhạc Vàng', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'ensemble_score': 0.43},
+                    {'label': 'Vietnamese Pop Ballad', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'ensemble_score': 0.39},
+                    {'label': 'Country', 'family': 'Country / Acoustic', 'ensemble_score': 0.34},
+                    {
+                        'label': 'Vietnamese Bolero',
+                        'family': 'Vietnamese / Asian',
+                        'region': 'Vietnam',
+                        'ensemble_score': 0.31,
+                        'structural_support_labels': ['Latin---Bolero', 'Pop---Ballad'],
+                        'regional_coherence': {'status': 'supported'},
+                    },
+                ],
+            },
+            'consensus': {'primary_family': 'R&B / Soul / Funk'},
+        }
+
+        dims = attach_genre_dimensions(analysis)['dimensions']
+        self.assertEqual(dims['coherence']['family_cluster']['status'], 'authoritative')
+        self.assertEqual(dims['coherence']['family_cluster']['family'], 'Vietnamese / Asian')
+        self.assertEqual(dims['family']['label'], 'Vietnamese / Asian')
+        self.assertEqual(dims['style']['primary']['label'], 'Vietnamese Bolero')
+        self.assertEqual(dims['tradition']['primary']['label'], 'Nhạc Vàng')
+        self.assertEqual(dims['form']['primary']['label'], 'Sentimental Ballad')
+        self.assertEqual(dims['region']['label'], 'Vietnam')
+        self.assertEqual(dims['coherence']['family_lock']['status'], 'evidence-cluster-authority')
+
+    def test_v351_pop_cluster_keeps_real_stick_to_you_out_of_vietnamese_family(self) -> None:
+        # Real-user V3.5 success pattern: Eurodance + Dancehall Pop form a strong
+        # Pop cluster; Vietnamese labels remain secondary and cannot regain
+        # authority without a Bolero-specific expert proxy.
+        analysis = {
+            'primary': {'label': 'Eurodance', 'family': 'Pop', 'score': 0.61},
+            'styles': [
+                {'label': 'Eurodance', 'family': 'Pop', 'score': 0.61},
+                {'label': 'Dancehall Pop', 'family': 'Pop', 'score': 0.48},
+                {'label': 'Vietnamese Pop Ballad', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'score': 0.38},
+                {'label': 'Nhạc Vàng', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'score': 0.30},
+                {'label': 'Neo Soul', 'family': 'R&B / Soul / Funk', 'score': 0.29},
+                {'label': 'Vietnamese Bolero', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'score': 0.24},
+            ],
+            'ensemble': {
+                'status': 'ready',
+                'primary': {'label': 'Eurodance', 'family': 'Pop', 'ensemble_score': 0.66},
+                'styles': [
+                    {'label': 'Eurodance', 'family': 'Pop', 'ensemble_score': 0.66},
+                    {'label': 'Dancehall Pop', 'family': 'Pop', 'ensemble_score': 0.52},
+                    {'label': 'Vietnamese Pop Ballad', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'ensemble_score': 0.34},
+                    {'label': 'Nhạc Vàng', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'ensemble_score': 0.27},
+                    {'label': 'Neo Soul', 'family': 'R&B / Soul / Funk', 'ensemble_score': 0.25},
+                    {
+                        'label': 'Vietnamese Bolero',
+                        'family': 'Vietnamese / Asian',
+                        'region': 'Vietnam',
+                        'ensemble_score': 0.21,
+                        'structural_support_labels': ['Pop---Ballad'],
+                        'regional_coherence': {'status': 'plausible'},
+                    },
+                ],
+            },
+            'consensus': {'primary_family': 'Pop'},
+        }
+
+        dims = attach_genre_dimensions(analysis)['dimensions']
+        self.assertEqual(dims['coherence']['family_cluster']['status'], 'authoritative')
+        self.assertEqual(dims['coherence']['family_cluster']['family'], 'Pop')
+        self.assertEqual(dims['family']['label'], 'Pop')
+        self.assertEqual(dims['style']['primary']['label'], 'Eurodance')
+        self.assertIsNone(dims['tradition']['primary'])
+        self.assertIsNone(dims['form']['primary'])
+        self.assertIsNone(dims['region']['label'])
 
     def test_generic_pop_ballad_form_can_cross_into_rnb_without_regional_context(self) -> None:
         analysis = {
