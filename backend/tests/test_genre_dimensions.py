@@ -36,7 +36,14 @@ class GenreDimensionsTests(unittest.TestCase):
                 'styles': [
                     {'label': 'Nhạc Vàng', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'ensemble_score': 0.69},
                     {'label': 'Vietnamese Pop Ballad', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'ensemble_score': 0.63},
-                    {'label': 'Vietnamese Bolero', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'ensemble_score': 0.51},
+                    {
+                        'label': 'Vietnamese Bolero',
+                        'family': 'Vietnamese / Asian',
+                        'region': 'Vietnam',
+                        'ensemble_score': 0.51,
+                        'structural_support_labels': ['Latin---Bolero', 'Pop---Ballad'],
+                        'regional_coherence': {'status': 'supported'},
+                    },
                     {'label': 'Neo Soul', 'family': 'R&B / Soul / Funk', 'region': None, 'ensemble_score': 0.48},
                 ],
             },
@@ -55,7 +62,8 @@ class GenreDimensionsTests(unittest.TestCase):
         self.assertEqual(dims['form']['primary']['label'], 'Sentimental Ballad')
         self.assertEqual(dims['form']['primary']['source_label'], 'Vietnamese Pop Ballad')
         self.assertEqual(dims['region']['label'], 'Vietnam')
-        self.assertEqual(dims['coherence']['version'], '3.4.1')
+        self.assertEqual(dims['coherence']['version'], '3.4.2')
+        self.assertEqual(dims['coherence']['family_lock']['status'], 'context-supported-by-style-specific-proxy')
         self.assertTrue(result['studio_contract']['semantic_dimensions_additive'])
 
         influence_labels = [item['label'] for item in dims['influences']]
@@ -102,6 +110,65 @@ class GenreDimensionsTests(unittest.TestCase):
         rejected = {item['label'] for item in dims['coherence']['rejected_context']}
         self.assertIn('Nhạc Vàng', rejected)
         self.assertIn('Vietnamese Pop Ballad', rejected)
+
+    def test_stick_to_you_regional_form_does_not_manufacture_vietnamese_bolero(self) -> None:
+        analysis = {
+            'primary': {
+                'label': 'Vietnamese Pop Ballad',
+                'family': 'Vietnamese / Asian',
+                'region': 'Vietnam',
+                'score': 0.47,
+            },
+            'styles': [
+                {'label': 'Vietnamese Pop Ballad', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'score': 0.47},
+                {'label': 'Neo Soul', 'family': 'R&B / Soul / Funk', 'score': 0.42},
+                {'label': 'Nhạc Vàng', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'score': 0.39},
+                {'label': 'Country', 'family': 'Country / Acoustic', 'score': 0.38},
+                {'label': 'Pop', 'family': 'Pop', 'score': 0.36},
+                {'label': 'Vietnamese Bolero', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'score': 0.34},
+            ],
+            'ensemble': {
+                'status': 'ready',
+                'primary': {
+                    'label': 'Vietnamese Pop Ballad',
+                    'family': 'Vietnamese / Asian',
+                    'region': 'Vietnam',
+                    'ensemble_score': 0.47,
+                },
+                'styles': [
+                    {
+                        'label': 'Vietnamese Pop Ballad',
+                        'family': 'Vietnamese / Asian',
+                        'region': 'Vietnam',
+                        'ensemble_score': 0.47,
+                        'structural_support_labels': ['Pop---Ballad'],
+                        'regional_coherence': {'status': 'supported'},
+                    },
+                    {'label': 'Neo Soul', 'family': 'R&B / Soul / Funk', 'ensemble_score': 0.42},
+                    {'label': 'Nhạc Vàng', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'ensemble_score': 0.39},
+                    {'label': 'Country', 'family': 'Country / Acoustic', 'ensemble_score': 0.38},
+                    {'label': 'Pop', 'family': 'Pop', 'ensemble_score': 0.36},
+                    {
+                        'label': 'Vietnamese Bolero',
+                        'family': 'Vietnamese / Asian',
+                        'region': 'Vietnam',
+                        'ensemble_score': 0.34,
+                        'structural_support_labels': ['Pop---Ballad'],
+                        'regional_coherence': {'status': 'supported'},
+                    },
+                ],
+            },
+            'consensus': {'primary_family': 'Vietnamese / Asian'},
+        }
+
+        dims = attach_genre_dimensions(analysis)['dimensions']
+        self.assertEqual(dims['style']['primary']['label'], 'Neo Soul')
+        self.assertEqual(dims['family']['label'], 'R&B / Soul / Funk')
+        self.assertNotEqual(dims['style']['primary']['label'], 'Vietnamese Bolero')
+        self.assertIsNone(dims['tradition']['primary'])
+        self.assertIsNone(dims['form']['primary'])
+        self.assertIsNone(dims['region']['label'])
+        self.assertEqual(dims['coherence']['family_lock']['status'], 'released')
 
     def test_generic_pop_ballad_form_can_cross_into_rnb_without_regional_context(self) -> None:
         analysis = {
