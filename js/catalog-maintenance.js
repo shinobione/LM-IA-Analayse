@@ -5,21 +5,15 @@
   let observer = null;
   let scheduled = false;
 
-  function esc(value) {
-    return String(value ?? '').replace(/[&<>"']/g, char => ({
-      '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;'
-    })[char]);
-  }
-
   function installStyle() {
     if (document.getElementById('st-catalog-maintenance-style')) return;
     const style = document.createElement('style');
     style.id = 'st-catalog-maintenance-style';
     style.textContent = `
-      .st-track-row{position:relative;padding-right:42px}
-      .st-track-delete{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:30px;height:30px;border:1px solid rgba(255,105,120,.22);border-radius:9px;background:rgba(255,80,100,.06);color:#9aa8ad;display:grid;place-items:center;cursor:pointer;opacity:.48;transition:.16s ease;z-index:4}
+      .st-track-row{grid-template-columns:1fr 38px 34px!important}
+      .st-track-delete{align-self:center;justify-self:center;width:30px;height:30px;border:1px solid rgba(255,105,120,.22);border-radius:9px;background:rgba(255,80,100,.06);color:#9aa8ad;display:grid;place-items:center;cursor:pointer;opacity:.48;transition:.16s ease}
       .st-track-row:hover .st-track-delete,.st-track-delete:focus-visible{opacity:1;color:#ff7180;border-color:rgba(255,113,128,.52);background:rgba(255,80,100,.12);outline:none}
-      .st-track-delete:hover{transform:translateY(-50%) scale(1.05)}
+      .st-track-delete:hover{transform:scale(1.05)}
       .st-track-delete svg{width:15px;height:15px}
       .st-track-delete.is-busy{pointer-events:none;opacity:.35}
     `;
@@ -27,7 +21,7 @@
   }
 
   function trackTitle(row) {
-    return row.querySelector('.st-track-main strong')?.textContent?.trim() || 'ce morceau';
+    return row?.querySelector('.st-track-main strong')?.textContent?.trim() || 'ce morceau';
   }
 
   function addDeleteButtons() {
