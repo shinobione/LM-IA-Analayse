@@ -4,7 +4,7 @@ import copy
 from typing import Any
 
 DIMENSIONS_VERSION = '3.2'
-COHERENCE_VERSION = '3.4.1'
+COHERENCE_VERSION = '3.4.2'
 
 # V3.2 stops forcing unlike concepts to compete for one first place.
 # These role mappings are intentionally conservative: only labels whose musical
@@ -47,10 +47,10 @@ STYLE_SPECIFICITY_BONUS = {
 def attach_genre_dimensions(genre_analysis: dict[str, Any]) -> dict[str, Any]:
     """Attach additive semantic dimensions to an existing V3 analysis.
 
-    V3.4.1 keeps the V3.2 payload shape but adds a coherence guard: tradition,
-    regional form and region are only promoted when they are compatible with
-    the resolved family. Incompatible evidence may still remain visible as a
-    secondary influence, but it cannot drive the main interpretation/grammar.
+    V3.4.2 keeps the V3.2 payload shape and hardens family authority. A primary
+    form/tradition may describe context, but it cannot force a weaker regional
+    style merely because both share a family. Regional style anchoring requires
+    style-specific expert support; otherwise styles compete globally.
     """
     result = copy.deepcopy(genre_analysis or {})
     rows = _evidence_rows(result)
@@ -91,12 +91,18 @@ def attach_genre_dimensions(genre_analysis: dict[str, Any]) -> dict[str, Any]:
         for row in rejected
     ]
 
+    primary_candidate = _primary_candidate(primary)
+    primary_role = _role_for(primary_candidate) if primary_candidate else None
+    family_lock = _family_lock_status(primary_candidate, primary_style)
+
     dimensions = {
         'version': DIMENSIONS_VERSION,
         'coherence': {
             'version': COHERENCE_VERSION,
             'status': 'guarded',
             'resolved_family': broad_family or 'General',
+            'primary_role': primary_role,
+            'family_lock': family_lock,
             'rejected_context': rejected_context,
         },
         'family': {
@@ -129,7 +135,7 @@ def attach_genre_dimensions(genre_analysis: dict[str, Any]) -> dict[str, Any]:
         'unknown': primary_unknown,
         'note': (
             'V3.2 semantic dimensions separate style, tradition/cultural context, form and secondary influences. '
-            'V3.4.1 prevents incompatible cross-family context from becoming authoritative. '
+            'V3.4.2 prevents cross-family contamination and prevents a non-style regional primary from forcing a weaker regional style. '
             'Evidence scores remain model relevance, not absolute genre probabilities.'
         ),
     }
@@ -138,7 +144,7 @@ def attach_genre_dimensions(genre_analysis: dict[str, Any]) -> dict[str, Any]:
     result['version'] = DIMENSIONS_VERSION
     result.setdefault('studio_contract', {})['semantic_dimensions_additive'] = True
     result.setdefault('provenance', {})['dimensions'] = (
-        'role-aware semantic decomposition over CLAP + Discogs ensemble evidence with V3.4.1 family-coherence guard; '
+        'role-aware semantic decomposition over CLAP + Discogs ensemble evidence with V3.4.2 family-authority guard; '
         'no metadata fact is inferred solely from a structural proxy'
     )
     return result
@@ -166,6 +172,13 @@ def _effective_primary(analysis: dict[str, Any]) -> dict[str, Any]:
     return copy.deepcopy(primary) if isinstance(primary, dict) else {}
 
 
+def _primary_candidate(primary: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(primary, dict):
+        return {}
+    candidate = primary.get('candidate') if isinstance(primary.get('candidate'), dict) else primary
+    return copy.deepcopy(candidate) if isinstance(candidate, dict) else {}
+
+
 def _role_for(row: dict[str, Any]) -> str:
     label = str(row.get('label') or '')
     if label in TRADITION_LABELS:
@@ -177,16 +190,25 @@ def _role_for(row: dict[str, Any]) -> str:
 
 def _pick_primary_style(rows: list[dict[str, Any]], primary: dict[str, Any]) -> dict[str, Any] | None:
     if not rows:
-        candidate = primary.get('candidate') if isinstance(primary.get('candidate'), dict) else primary
-        return copy.deepcopy(candidate) if isinstance(candidate, dict) and candidate.get('label') else None
+        candidate = _primary_candidate(primary)
+        return copy.deepcopy(candidate) if candidate.get('label') and _role_for(candidate) == 'style' else None
 
-    # Restrict the style result to the same family as the authoritative primary
-    # when possible. This prevents a secondary regional style from hijacking an
-    # otherwise coherent Hip-Hop/Pop/R&B decision.
-    primary_candidate = primary.get('candidate') if isinstance(primary.get('candidate'), dict) else primary
-    primary_family = str(primary_candidate.get('family') or '') if isinstance(primary_candidate, dict) else ''
+    primary_candidate = _primary_candidate(primary)
+    primary_family = str(primary_candidate.get('family') or '')
+    primary_role = _role_for(primary_candidate) if primary_candidate.get('label') else None
     family_rows = [row for row in rows if primary_family and str(row.get('family') or '') == primary_family]
-    candidates = family_rows or rows
+
+    # A true style primary is allowed to anchor its family. A form/tradition is
+    # contextual evidence, not permission to manufacture the best-looking style
+    # from the same regional family. This was the Stick to You -> Vietnamese
+    # Bolero failure mode in V3.4.1.
+    if primary_role == 'style' and family_rows:
+        candidates = family_rows
+    elif primary_role in {'form', 'tradition'} and family_rows:
+        authoritative_family_rows = [row for row in family_rows if _can_anchor_family_from_context(row)]
+        candidates = authoritative_family_rows or rows
+    else:
+        candidates = rows
 
     def ranking(row: dict[str, Any]) -> tuple[float, float]:
         evidence = _score(row)
@@ -196,6 +218,43 @@ def _pick_primary_style(rows: list[dict[str, Any]], primary: dict[str, Any]) -> 
     return copy.deepcopy(max(candidates, key=ranking))
 
 
+def _can_anchor_family_from_context(row: dict[str, Any]) -> bool:
+    family = str(row.get('family') or '')
+    if not family:
+        return False
+    if family != 'Vietnamese / Asian':
+        return True
+
+    # Discogs cannot establish geography. For a contextual Vietnamese primary,
+    # only a style with a style-specific proxy may anchor the regional family.
+    # Generic Pop---Ballad/Folk evidence can support form, never Vietnamese-ness.
+    label = str(row.get('label') or '')
+    structural_labels = {str(item) for item in row.get('structural_support_labels') or []}
+    regional = row.get('regional_coherence') if isinstance(row.get('regional_coherence'), dict) else {}
+    status = str(regional.get('status') or '')
+
+    if label == 'Vietnamese Bolero':
+        return 'Latin---Bolero' in structural_labels and status not in {'conflict', 'weak'}
+    return False
+
+
+def _family_lock_status(primary_candidate: dict[str, Any], primary_style: dict[str, Any] | None) -> dict[str, Any]:
+    if not primary_candidate:
+        return {'status': 'unresolved', 'reason': 'no primary candidate'}
+    role = _role_for(primary_candidate)
+    family = str(primary_candidate.get('family') or '')
+    style_family = str((primary_style or {}).get('family') or '')
+    if role == 'style':
+        return {'status': 'authoritative-style', 'family': family}
+    if family and family == style_family and _can_anchor_family_from_context(primary_style or {}):
+        return {'status': 'context-supported-by-style-specific-proxy', 'family': family}
+    return {
+        'status': 'released',
+        'family': family or None,
+        'reason': 'primary is form/tradition without style-specific authority; styles competed globally',
+    }
+
+
 def _family_for(
     primary_style: dict[str, Any] | None,
     primary: dict[str, Any],
@@ -203,8 +262,8 @@ def _family_for(
 ) -> str:
     if primary_style and primary_style.get('family'):
         return str(primary_style['family'])
-    candidate = primary.get('candidate') if isinstance(primary.get('candidate'), dict) else primary
-    if isinstance(candidate, dict) and candidate.get('family'):
+    candidate = _primary_candidate(primary)
+    if candidate.get('family') and _role_for(candidate) == 'style':
         return str(candidate['family'])
     consensus = analysis.get('consensus') if isinstance(analysis.get('consensus'), dict) else {}
     return str(consensus.get('primary_family') or '')
