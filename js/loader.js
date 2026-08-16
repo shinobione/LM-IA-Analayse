@@ -117,7 +117,7 @@ function loadCatalogIntelligenceAssets() {
     ['js/catalog-v3-accuracy.js?v=1', 'v3Accuracy'],
     ['js/catalog-style-families-build04.js?v=1', 'styleFamiliesBuild04'],
     ['js/catalog-family-language-build05.js?v=1', 'familyLanguageBuild05'],
-    ['js/catalog-maintenance.js?v=1', 'maintenance'],
+    ['js/catalog-maintenance.js?v=2', 'maintenance'],
   ];
   const loadNext = index => {
     if (index >= assets.length) return;

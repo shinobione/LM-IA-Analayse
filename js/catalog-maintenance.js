@@ -11,17 +11,25 @@
     style.id = 'st-catalog-maintenance-style';
     style.textContent = `
       .st-track-row{grid-template-columns:1fr 38px 34px!important}
-      .st-track-delete{align-self:center;justify-self:center;width:30px;height:30px;border:1px solid rgba(255,105,120,.22);border-radius:9px;background:rgba(255,80,100,.06);color:#9aa8ad;display:grid;place-items:center;cursor:pointer;opacity:.48;transition:.16s ease}
+      .st-track-delete{position:relative;z-index:8;align-self:center;justify-self:center;width:30px;height:30px;border:1px solid rgba(255,105,120,.22);border-radius:9px;background:rgba(255,80,100,.06);color:#9aa8ad;display:grid;place-items:center;cursor:pointer;opacity:.48;transition:.16s ease;pointer-events:auto!important}
       .st-track-row:hover .st-track-delete,.st-track-delete:focus-visible{opacity:1;color:#ff7180;border-color:rgba(255,113,128,.52);background:rgba(255,80,100,.12);outline:none}
       .st-track-delete:hover{transform:scale(1.05)}
-      .st-track-delete svg{width:15px;height:15px}
-      .st-track-delete.is-busy{pointer-events:none;opacity:.35}
+      .st-track-delete svg{width:15px;height:15px;pointer-events:none}
+      .st-track-delete.is-busy{pointer-events:none!important;opacity:.35}
     `;
     document.head.appendChild(style);
   }
 
   function trackTitle(row) {
     return row?.querySelector('.st-track-main strong')?.textContent?.trim() || 'ce morceau';
+  }
+
+  function onDeleteClick(event) {
+    const button = event.currentTarget;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+    deleteTrack(button);
   }
 
   function addDeleteButtons() {
@@ -34,9 +42,11 @@
       button.type = 'button';
       button.className = 'st-track-delete';
       button.dataset.deleteCatalogTrack = id;
+      button.dataset.directDeleteHandler = '1';
       button.title = `Supprimer ${trackTitle(row)} du catalogue local`;
       button.setAttribute('aria-label', button.title);
       button.innerHTML = '<i data-lucide="trash-2"></i>';
+      button.addEventListener('click', onDeleteClick);
       row.appendChild(button);
     });
     window.lucide?.createIcons?.();
@@ -53,7 +63,17 @@
 
   async function deleteTrack(button) {
     const id = button?.dataset?.deleteCatalogTrack;
-    if (!id || !NS.memory?.deleteTrack) return;
+    if (!id) {
+      toast('Identifiant catalogue introuvable.', true);
+      return;
+    }
+    if (!NS.memory?.deleteTrack) {
+      console.error('[SonicTrace Catalog] deleteTrack API unavailable');
+      toast('La mémoire du catalogue n’est pas prête. Relance SonicTrace.', true);
+      return;
+    }
+    if (button.dataset.deleteBusy === '1') return;
+
     const row = button.closest('[data-track-row]');
     const title = trackTitle(row);
     const accepted = window.confirm(
@@ -62,6 +82,7 @@
     );
     if (!accepted) return;
 
+    button.dataset.deleteBusy = '1';
     button.classList.add('is-busy');
     button.disabled = true;
     try {
@@ -70,6 +91,7 @@
     } catch (error) {
       console.error('[SonicTrace Catalog] delete failed:', error);
       button.disabled = false;
+      button.dataset.deleteBusy = '0';
       button.classList.remove('is-busy');
       toast('Impossible de supprimer cette entrée du catalogue.', true);
     }
@@ -95,9 +117,11 @@
     observer.observe(document.documentElement, { childList:true, subtree:true });
   }
 
+  // Fallback delegation for externally injected rows. Native maintenance buttons
+  // own a direct handler so parent propagation rules cannot swallow the action.
   document.addEventListener('click', event => {
     const button = event.target.closest?.('[data-delete-catalog-track]');
-    if (!button) return;
+    if (!button || button.dataset.directDeleteHandler === '1') return;
     event.preventDefault();
     event.stopPropagation();
     deleteTrack(button);
@@ -116,5 +140,5 @@
     schedule();
   }
 
-  NS.catalogMaintenance = { version:'1.0', refresh: schedule };
+  NS.catalogMaintenance = { version:'1.1', refresh: schedule };
 })();
