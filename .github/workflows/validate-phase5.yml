@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [codex/phase5-sonictrace, agent/neural-accuracy-v3-foundation, agent/neural-v3-music-expert, agent/semantic-v31-genre-authority-fix, agent/neural-v32-semantic-taxonomy, agent/neural-v321-bootstrap-hardening]
+    branches: [codex/phase5-sonictrace, agent/neural-accuracy-v3-foundation, agent/neural-v3-music-expert, agent/semantic-v31-genre-authority-fix, agent/neural-v32-semantic-taxonomy, agent/neural-v321-bootstrap-hardening, agent/neural-v33-structure-intelligence]
 
 permissions:
   contents: read
@@ -56,7 +56,13 @@ jobs:
         run: python -m py_compile backend/app/studio_contract.py backend/app/entrypoint.py backend/app/neural.py backend/app/neural_taxonomy.py backend/app/music_expert.py backend/app/genre_ensemble.py backend/app/genre_dimensions.py backend/app/analysis_benchmark.py backend/tests/smoke_music_expert.py
 
       - name: Semantic V3.2 genre and arrangement regression
-        run: node --check js/semantic-v32.js && node --check js/semantic-bootstrap.js && node --check js/semantic-client.js && node scripts/test-semantic-genre-context.mjs && node scripts/test-semantic-bootstrap-v321.mjs
+        run: node --check js/semantic-v32.js && node --check js/semantic-bootstrap.js && node --check js/semantic-client.js && node scripts/test-semantic-genre-context.mjs
+
+      - name: Semantic V3.3 bootstrap regression
+        run: node scripts/test-semantic-bootstrap-v33.mjs
+
+      - name: Semantic V3.3 structure intelligence regression
+        run: node scripts/test-semantic-structure-v33.mjs
 
       - name: Catalog memory JavaScript syntax
         run: node --check js/catalog-memory.js && node --check js/catalog-style-families.js && node --check js/catalog-style-families-build04.js && node --check js/catalog-family-language-build05.js
