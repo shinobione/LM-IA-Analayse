@@ -42,6 +42,7 @@
       button.type = 'button';
       button.className = 'st-track-delete';
       button.dataset.deleteCatalogTrack = id;
+      button.dataset.directDeleteHandler = '1';
       button.title = `Supprimer ${trackTitle(row)} du catalogue local`;
       button.setAttribute('aria-label', button.title);
       button.innerHTML = '<i data-lucide="trash-2"></i>';
@@ -116,9 +117,8 @@
     observer.observe(document.documentElement, { childList:true, subtree:true });
   }
 
-  // Fallback delegation kept for rows injected by external code, but each
-  // maintenance button owns its direct click handler so parent propagation
-  // rules cannot silently turn the trash icon into a decorative control.
+  // Fallback delegation for externally injected rows. Native maintenance buttons
+  // own a direct handler so parent propagation rules cannot swallow the action.
   document.addEventListener('click', event => {
     const button = event.target.closest?.('[data-delete-catalog-track]');
     if (!button || button.dataset.directDeleteHandler === '1') return;
