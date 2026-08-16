@@ -4,6 +4,7 @@ import vm from 'node:vm';
 
 const accuracySource = fs.readFileSync(new URL('../js/catalog-v3-accuracy.js', import.meta.url), 'utf8');
 const maintenanceSource = fs.readFileSync(new URL('../js/catalog-maintenance.js', import.meta.url), 'utf8');
+const loaderSource = fs.readFileSync(new URL('../js/loader.js', import.meta.url), 'utf8');
 
 const catalog = {
   styleFamilies: { analyze() { return { count:0, groups:[], assignments:{} }; } },
@@ -81,5 +82,9 @@ assert.match(maintenanceSource, /data-delete-catalog-track/);
 assert.match(maintenanceSource, /NS\.memory\?\.deleteTrack/);
 assert.match(maintenanceSource, /window\.confirm/);
 assert.match(maintenanceSource, /Seule l’entrée locale IndexedDB sera supprimée/);
+assert.match(maintenanceSource, /button\.addEventListener\('click', onDeleteClick\)/, 'delete buttons must own a direct click handler');
+assert.match(maintenanceSource, /button\.dataset\.directDeleteHandler\s*=\s*'1'/, 'direct delete buttons must be marked to avoid delegated double handling');
+assert.match(maintenanceSource, /pointer-events:auto!important/, 'delete action must remain pointer-active above catalog row controls');
+assert.match(loaderSource, /js\/catalog-maintenance\.js\?v=2/, 'loader must cache-bust the fixed catalog maintenance asset');
 
-console.log('Catalog V3 family authority + local deletion regression: PASS');
+console.log('Catalog V3 family authority + direct local deletion regression: PASS');
