@@ -4,7 +4,7 @@ import copy
 from typing import Any
 
 DIMENSIONS_VERSION = '3.2'
-COHERENCE_VERSION = '3.4.2'
+COHERENCE_VERSION = '3.5.1'
 
 # V3.2 stops forcing unlike concepts to compete for one first place.
 # These role mappings are intentionally conservative: only labels whose musical
@@ -43,17 +43,29 @@ STYLE_SPECIFICITY_BONUS = {
     'Phonk': 0.015,
 }
 
+# V3.5.1: open-vocabulary labels can fragment one coherent musical family into
+# several medium-scoring candidates. Aggregate only the strongest few labels so
+# a family is not rewarded merely for having a larger vocabulary.
+FAMILY_CLUSTER_WEIGHTS = (1.00, 0.55, 0.30)
+FAMILY_CLUSTER_MIN_ROW = 0.16
+FAMILY_CLUSTER_MIN_SCORE = 0.58
+FAMILY_CLUSTER_MIN_MARGIN = 0.08
+REGIONAL_CLUSTER_MIN_LABELS = 3
+GENERAL_CLUSTER_MIN_LABELS = 2
+
 
 def attach_genre_dimensions(genre_analysis: dict[str, Any]) -> dict[str, Any]:
     """Attach additive semantic dimensions to an existing V3 analysis.
 
-    V3.4.2 keeps the V3.2 payload shape and hardens family authority. A primary
-    form/tradition may describe context, but it cannot force a weaker regional
-    style merely because both share a family. Regional style anchoring requires
-    style-specific expert support; otherwise styles compete globally.
+    V3.5.1 keeps the V3.2 payload shape, keeps the V3.4.2 family-authority
+    guard, and adds family evidence aggregation. Several coherent labels from
+    one family may now outweigh one isolated label from another family, while a
+    regional family still needs style-specific expert support before it may
+    override an explicit non-regional style.
     """
     result = copy.deepcopy(genre_analysis or {})
     rows = _evidence_rows(result)
+    raw_rows = _raw_evidence_rows(result)
     primary = _effective_primary(result)
     primary_unknown = str(primary.get('label') or '').strip() == 'Unknown / hybrid'
 
@@ -61,7 +73,8 @@ def attach_genre_dimensions(genre_analysis: dict[str, Any]) -> dict[str, Any]:
     tradition_rows = [row for row in rows if _role_for(row) == 'tradition']
     form_rows = [row for row in rows if _role_for(row) == 'form']
 
-    primary_style = _pick_primary_style(style_rows, primary)
+    family_cluster = _resolve_family_cluster(raw_rows)
+    primary_style = _pick_primary_style(style_rows, primary, family_cluster)
     broad_family = _family_for(primary_style, primary, result)
 
     traditions, rejected_traditions = _coherent_context_rows(tradition_rows, broad_family, role='tradition')
@@ -93,7 +106,7 @@ def attach_genre_dimensions(genre_analysis: dict[str, Any]) -> dict[str, Any]:
 
     primary_candidate = _primary_candidate(primary)
     primary_role = _role_for(primary_candidate) if primary_candidate else None
-    family_lock = _family_lock_status(primary_candidate, primary_style)
+    family_lock = _family_lock_status(primary_candidate, primary_style, family_cluster)
 
     dimensions = {
         'version': DIMENSIONS_VERSION,
@@ -103,11 +116,12 @@ def attach_genre_dimensions(genre_analysis: dict[str, Any]) -> dict[str, Any]:
             'resolved_family': broad_family or 'General',
             'primary_role': primary_role,
             'family_lock': family_lock,
+            'family_cluster': family_cluster,
             'rejected_context': rejected_context,
         },
         'family': {
             'label': broad_family or 'General',
-            'evidence': _family_evidence(broad_family, result, primary_style),
+            'evidence': _family_evidence(broad_family, result, primary_style, family_cluster),
         },
         'style': {
             'primary': _dimension_row(primary_style, role='style', authority='evidence-only' if primary_unknown else 'resolved'),
@@ -135,7 +149,7 @@ def attach_genre_dimensions(genre_analysis: dict[str, Any]) -> dict[str, Any]:
         'unknown': primary_unknown,
         'note': (
             'V3.2 semantic dimensions separate style, tradition/cultural context, form and secondary influences. '
-            'V3.4.2 prevents cross-family contamination and prevents a non-style regional primary from forcing a weaker regional style. '
+            'V3.5.1 aggregates fragmented same-family audio evidence without allowing generic regional context to manufacture geography. '
             'Evidence scores remain model relevance, not absolute genre probabilities.'
         ),
     }
@@ -144,8 +158,8 @@ def attach_genre_dimensions(genre_analysis: dict[str, Any]) -> dict[str, Any]:
     result['version'] = DIMENSIONS_VERSION
     result.setdefault('studio_contract', {})['semantic_dimensions_additive'] = True
     result.setdefault('provenance', {})['dimensions'] = (
-        'role-aware semantic decomposition over CLAP + Discogs ensemble evidence with V3.4.2 family-authority guard; '
-        'no metadata fact is inferred solely from a structural proxy'
+        'role-aware semantic decomposition over CLAP + Discogs ensemble evidence with V3.5.1 family-evidence aggregation; '
+        'regional cross-family overrides still require style-specific expert support and declared metadata is not inference input'
     )
     return result
 
@@ -153,6 +167,21 @@ def attach_genre_dimensions(genre_analysis: dict[str, Any]) -> dict[str, Any]:
 def _evidence_rows(analysis: dict[str, Any]) -> list[dict[str, Any]]:
     ensemble = analysis.get('ensemble') if isinstance(analysis.get('ensemble'), dict) else {}
     source = ensemble.get('styles') if ensemble.get('status') == 'ready' else analysis.get('styles')
+    return _normalized_rows(source)
+
+
+def _raw_evidence_rows(analysis: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return raw CLAP/open-vocabulary style rows for family aggregation.
+
+    The ensemble may deliberately penalize a regional label because Discogs
+    cannot prove geography. Family aggregation therefore happens on the raw
+    audio/text evidence, while the eventual style selection still uses the
+    expert-enriched ensemble rows.
+    """
+    return _normalized_rows(analysis.get('styles'))
+
+
+def _normalized_rows(source: Any) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for item in source or []:
         if not isinstance(item, dict) or not item.get('label'):
@@ -188,7 +217,72 @@ def _role_for(row: dict[str, Any]) -> str:
     return 'style'
 
 
-def _pick_primary_style(rows: list[dict[str, Any]], primary: dict[str, Any]) -> dict[str, Any] | None:
+def _resolve_family_cluster(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        family = str(row.get('family') or '')
+        if not family or _score(row) < FAMILY_CLUSTER_MIN_ROW:
+            continue
+        grouped.setdefault(family, []).append(row)
+
+    summaries: list[dict[str, Any]] = []
+    for family, family_rows in grouped.items():
+        ordered = sorted(family_rows, key=_score, reverse=True)
+        top = ordered[: len(FAMILY_CLUSTER_WEIGHTS)]
+        aggregate = sum(weight * _score(row) for weight, row in zip(FAMILY_CLUSTER_WEIGHTS, top))
+        aggregate = max(0.0, min(1.0, aggregate))
+        style_rows = [row for row in ordered if _role_for(row) == 'style']
+        minimum_labels = REGIONAL_CLUSTER_MIN_LABELS if family == 'Vietnamese / Asian' else GENERAL_CLUSTER_MIN_LABELS
+        eligible = bool(
+            len(ordered) >= minimum_labels
+            and style_rows
+            and aggregate >= FAMILY_CLUSTER_MIN_SCORE
+        )
+        summaries.append({
+            'family': family,
+            'score': round(aggregate, 5),
+            'percent': round(aggregate * 100.0, 1),
+            'label_count': len(ordered),
+            'supporting_labels': [str(row.get('label') or '') for row in ordered[:4]],
+            'roles': sorted({_role_for(row) for row in ordered}),
+            'eligible': eligible,
+            'style_specific_anchor': any(_can_anchor_family_from_context(row) for row in style_rows),
+        })
+
+    summaries.sort(key=lambda item: float(item.get('score') or 0.0), reverse=True)
+    if not summaries:
+        return {
+            'status': 'none',
+            'family': None,
+            'score': 0.0,
+            'percent': 0.0,
+            'margin': 0.0,
+            'supporting_labels': [],
+            'families': [],
+            'source': 'raw-audio-style-evidence',
+        }
+
+    best = summaries[0]
+    runner = summaries[1] if len(summaries) > 1 else None
+    runner_score = float((runner or {}).get('score') or 0.0)
+    margin = float(best.get('score') or 0.0) - runner_score
+    authoritative = bool(best.get('eligible')) and margin >= FAMILY_CLUSTER_MIN_MARGIN
+    return {
+        **copy.deepcopy(best),
+        'status': 'authoritative' if authoritative else 'insufficient',
+        'margin': round(margin, 5),
+        'runner_up_family': (runner or {}).get('family'),
+        'runner_up_score': round(runner_score, 5),
+        'families': copy.deepcopy(summaries[:6]),
+        'source': 'raw-audio-style-evidence',
+    }
+
+
+def _pick_primary_style(
+    rows: list[dict[str, Any]],
+    primary: dict[str, Any],
+    family_cluster: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
     if not rows:
         candidate = _primary_candidate(primary)
         return copy.deepcopy(candidate) if candidate.get('label') and _role_for(candidate) == 'style' else None
@@ -196,19 +290,46 @@ def _pick_primary_style(rows: list[dict[str, Any]], primary: dict[str, Any]) -> 
     primary_candidate = _primary_candidate(primary)
     primary_family = str(primary_candidate.get('family') or '')
     primary_role = _role_for(primary_candidate) if primary_candidate.get('label') else None
-    family_rows = [row for row in rows if primary_family and str(row.get('family') or '') == primary_family]
 
-    # A true style primary is allowed to anchor its family. A form/tradition is
-    # contextual evidence, not permission to manufacture the best-looking style
-    # from the same regional family. This was the Stick to You -> Vietnamese
-    # Bolero failure mode in V3.4.1.
-    if primary_role == 'style' and family_rows:
-        candidates = family_rows
-    elif primary_role in {'form', 'tradition'} and family_rows:
-        authoritative_family_rows = [row for row in family_rows if _can_anchor_family_from_context(row)]
-        candidates = authoritative_family_rows or rows
+    cluster = family_cluster or {}
+    cluster_family = str(cluster.get('family') or '') if cluster.get('status') == 'authoritative' else ''
+    cluster_rows = [row for row in rows if cluster_family and str(row.get('family') or '') == cluster_family]
+    cluster_can_override = False
+    if cluster_rows:
+        if cluster_family == 'Vietnamese / Asian':
+            # Regional cluster authority is never granted merely because several
+            # related text labels agree. The selected regional style must still
+            # carry its style-specific expert proxy. This preserves the old
+            # Stick-to-You false-Bolero guard even when its raw regional cluster
+            # happens to contain three labels.
+            cluster_can_override = any(_can_anchor_family_from_context(row) for row in cluster_rows)
+        elif cluster_family == primary_family:
+            cluster_can_override = True
+        elif primary_role in {'form', 'tradition'} or str(primary_candidate.get('label') or '') == 'Unknown / hybrid':
+            cluster_can_override = True
+        else:
+            # Cross-family replacement of an explicit non-regional style is kept
+            # conservative: demand a clearly dominant multi-label family cluster.
+            cluster_can_override = bool(
+                float(cluster.get('score') or 0.0) >= 0.72
+                and float(cluster.get('margin') or 0.0) >= 0.18
+            )
+
+    if cluster_rows and cluster_can_override:
+        candidates = cluster_rows
     else:
-        candidates = rows
+        family_rows = [row for row in rows if primary_family and str(row.get('family') or '') == primary_family]
+
+        # A true style primary is allowed to anchor its family. A form/tradition
+        # is contextual evidence, not permission to manufacture the best-looking
+        # style from the same regional family. This remains the V3.4.2 guard.
+        if primary_role == 'style' and family_rows:
+            candidates = family_rows
+        elif primary_role in {'form', 'tradition'} and family_rows:
+            authoritative_family_rows = [row for row in family_rows if _can_anchor_family_from_context(row)]
+            candidates = authoritative_family_rows or rows
+        else:
+            candidates = rows
 
     def ranking(row: dict[str, Any]) -> tuple[float, float]:
         evidence = _score(row)
@@ -225,7 +346,7 @@ def _can_anchor_family_from_context(row: dict[str, Any]) -> bool:
     if family != 'Vietnamese / Asian':
         return True
 
-    # Discogs cannot establish geography. For a contextual Vietnamese primary,
+    # Discogs cannot establish geography. For a Vietnamese family override,
     # only a style with a style-specific proxy may anchor the regional family.
     # Generic Pop---Ballad/Folk evidence can support form, never Vietnamese-ness.
     label = str(row.get('label') or '')
@@ -238,20 +359,43 @@ def _can_anchor_family_from_context(row: dict[str, Any]) -> bool:
     return False
 
 
-def _family_lock_status(primary_candidate: dict[str, Any], primary_style: dict[str, Any] | None) -> dict[str, Any]:
+def _family_lock_status(
+    primary_candidate: dict[str, Any],
+    primary_style: dict[str, Any] | None,
+    family_cluster: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     if not primary_candidate:
         return {'status': 'unresolved', 'reason': 'no primary candidate'}
+
     role = _role_for(primary_candidate)
     family = str(primary_candidate.get('family') or '')
     style_family = str((primary_style or {}).get('family') or '')
-    if role == 'style':
+    cluster = family_cluster or {}
+    cluster_family = str(cluster.get('family') or '')
+
+    if (
+        cluster.get('status') == 'authoritative'
+        and cluster_family
+        and cluster_family == style_family
+        and cluster_family != family
+    ):
+        return {
+            'status': 'evidence-cluster-authority',
+            'family': style_family,
+            'score': cluster.get('score'),
+            'margin': cluster.get('margin'),
+            'supporting_labels': copy.deepcopy(cluster.get('supporting_labels') or []),
+            'reason': 'multiple same-family audio labels outweighed an isolated primary from another family',
+        }
+
+    if role == 'style' and family == style_family:
         return {'status': 'authoritative-style', 'family': family}
     if family and family == style_family and _can_anchor_family_from_context(primary_style or {}):
         return {'status': 'context-supported-by-style-specific-proxy', 'family': family}
     return {
         'status': 'released',
         'family': family or None,
-        'reason': 'primary is form/tradition without style-specific authority; styles competed globally',
+        'reason': 'primary is contextual or was not supported strongly enough to lock the resolved style family',
     }
 
 
@@ -377,7 +521,22 @@ def _dimension_row(
     }
 
 
-def _family_evidence(family: str, analysis: dict[str, Any], primary_style: dict[str, Any] | None) -> dict[str, Any]:
+def _family_evidence(
+    family: str,
+    analysis: dict[str, Any],
+    primary_style: dict[str, Any] | None,
+    family_cluster: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    cluster = family_cluster or {}
+    if cluster.get('status') == 'authoritative' and str(cluster.get('family') or '') == family:
+        return {
+            'score': round(float(cluster.get('score') or 0.0), 5),
+            'percent': round(float(cluster.get('score') or 0.0) * 100.0, 1),
+            'source': 'cross-label-family-cluster',
+            'supporting_labels': copy.deepcopy(cluster.get('supporting_labels') or []),
+            'margin': round(float(cluster.get('margin') or 0.0), 5),
+        }
+
     for row in analysis.get('families') or []:
         if isinstance(row, dict) and str(row.get('label') or '') == family:
             return {
