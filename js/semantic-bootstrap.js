@@ -1,30 +1,32 @@
 (() => {
   'use strict';
 
+  const REQUIRED_HELPER_VERSION = '3.3';
+
   async function loadOptionalHelper() {
-    if (window.LMNSemanticV32) return true;
+    if (window.LMNSemanticV32?.version === REQUIRED_HELPER_VERSION) return true;
     try {
-      const response = await fetch('js/semantic-v32.js?v=3.2.1', { cache: 'no-store' });
+      const response = await fetch('js/semantic-v32.js?v=3.3', { cache: 'no-store' });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const source = await response.text();
-      (0, eval)(`${source}\n//# sourceURL=semantic-v32.js?v=3.2.1`);
-      return Boolean(window.LMNSemanticV32);
+      (0, eval)(`${source}\n//# sourceURL=semantic-v32.js?v=3.3`);
+      return window.LMNSemanticV32?.version === REQUIRED_HELPER_VERSION;
     } catch (error) {
-      console.error('[SonicTrace] Semantic V3.2 helper failed to load:', error);
+      console.error('[SonicTrace] Semantic V3.3 structure helper failed to load:', error);
       return false;
     }
   }
 
   async function bootSemantic() {
-    // V3.2.1: helper availability is independent from client/button creation.
-    // The human/unified UI may create the semantic button before this bootstrap
-    // runs. Previously that early button made us return before loading V3.2,
-    // silently falling back to V3.1 genre authority + generic arrangement.
+    // V3.2.1 established that helper availability must be independent from
+    // client/button creation. V3.3 keeps the same invariant and additionally
+    // verifies the helper version so an already-open/stale V3.2 page cannot
+    // silently claim the V3.3 structure policy.
     const helperReady = await loadOptionalHelper();
 
     if (document.getElementById('semantic-arrangement-btn')) {
       if (!helperReady) {
-        console.error('[SonicTrace] Semantic client exists but V3.2 helper is unavailable; V3.2 interpretation is not active.');
+        console.error('[SonicTrace] Semantic client exists but V3.3 structure helper is unavailable; V3.3 interpretation is not active.');
       }
       return;
     }
