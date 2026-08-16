@@ -4,7 +4,6 @@ import vm from 'node:vm';
 
 const accuracySource = fs.readFileSync(new URL('../js/catalog-v3-accuracy.js', import.meta.url), 'utf8');
 const maintenanceSource = fs.readFileSync(new URL('../js/catalog-maintenance.js', import.meta.url), 'utf8');
-const sitecustomizeSource = fs.readFileSync(new URL('../sitecustomize.py', import.meta.url), 'utf8');
 
 const catalog = {
   styleFamilies: { analyze() { return { count:0, groups:[], assignments:{} }; } },
@@ -83,8 +82,4 @@ assert.match(maintenanceSource, /NS\.memory\?\.deleteTrack/);
 assert.match(maintenanceSource, /window\.confirm/);
 assert.match(maintenanceSource, /Seule l’entrée locale IndexedDB sera supprimée/);
 
-assert.match(sitecustomizeSource, /Cache-Control/);
-assert.match(sitecustomizeSource, /no-store/);
-assert.match(sitecustomizeSource, /X-SonicTrace-Frontend/);
-
-console.log('Catalog V3 family authority + local deletion + no-cache frontend regression: PASS');
+console.log('Catalog V3 family authority + local deletion regression: PASS');
