@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
-TAXONOMY_VERSION = '3.0-shinobi-2026-08'
+TAXONOMY_VERSION = '3.5-shinobi-2026-08'
 
 
 @dataclass(frozen=True)
@@ -39,13 +39,21 @@ GENRE_CANDIDATES: tuple[GenreCandidate, ...] = (
     # R&B / Soul / Funk
     GenreCandidate('Contemporary R&B', 'R&B / Soul / Funk', ('contemporary R&B', 'modern rhythm and blues')),
     GenreCandidate('Alternative R&B', 'R&B / Soul / Funk', ('alternative R&B', 'experimental atmospheric R&B')),
-    GenreCandidate('Neo Soul', 'R&B / Soul / Funk', ('neo soul music', 'modern neo-soul with warm vocals')),
+    GenreCandidate(
+        'Neo Soul',
+        'R&B / Soul / Funk',
+        (
+            'neo soul music',
+            'neo-soul with laid-back pocket, soulful harmony and organic R&B instrumentation',
+            'modern neo-soul with live groove, warm vocals and jazz-influenced chords',
+        ),
+    ),
     GenreCandidate('Soul', 'R&B / Soul / Funk', ('soul music', 'classic expressive soul music')),
     GenreCandidate('Funk', 'R&B / Soul / Funk', ('funk music', 'groove-driven funk music')),
     GenreCandidate('New Jack Swing', 'R&B / Soul / Funk', ('new jack swing', 'late 80s and 90s R&B new jack swing')),
     GenreCandidate('Quiet Storm', 'R&B / Soul / Funk', ('quiet storm R&B', 'smooth romantic quiet storm soul')),
 
-    # Pop and chanson
+    # Pop and dance-pop hybrids
     GenreCandidate('Pop', 'Pop', ('pop music', 'mainstream contemporary pop')),
     GenreCandidate('Pop Ballad', 'Pop', ('pop ballad', 'slow emotional vocal pop ballad')),
     GenreCandidate('Synth-Pop', 'Pop', ('synth-pop', 'melodic pop driven by synthesizers')),
@@ -55,7 +63,36 @@ GENRE_CANDIDATES: tuple[GenreCandidate, ...] = (
     GenreCandidate('J-Pop', 'Pop', ('Japanese J-pop', 'modern Japanese pop music'), region='Japan'),
     GenreCandidate('K-Pop', 'Pop', ('K-pop', 'modern Korean pop music'), region='Korea'),
     GenreCandidate('French Chanson', 'Pop', ('French chanson', 'French singer-songwriter chanson'), region='France'),
-    GenreCandidate('Europop', 'Pop', ('Europop', 'European dance-oriented pop')),
+    GenreCandidate(
+        'Europop',
+        'Pop',
+        (
+            'Europop',
+            'European dance-oriented pop',
+            'late 1990s and 2000s melodic European dance-pop',
+            'polished European club pop with electronic dance production',
+        ),
+    ),
+    GenreCandidate(
+        'Dancehall Pop',
+        'Pop',
+        (
+            'dancehall pop',
+            'pop song built on a syncopated Jamaican dancehall rhythm',
+            'Caribbean-influenced dance-pop with electronic production',
+            'late 2000s dancehall-influenced pop with a bouncy club groove',
+        ),
+    ),
+    GenreCandidate(
+        'Eurodance',
+        'Pop',
+        (
+            'Eurodance pop',
+            'European dance-pop with a four-on-the-floor house beat',
+            'late 1990s and 2000s Eurodance club pop',
+            'Y2K European vocal dance music with bright synths and club drums',
+        ),
+    ),
 
     # Vietnamese / Asian regional vocabulary
     GenreCandidate(
@@ -96,11 +133,30 @@ GENRE_CANDIDATES: tuple[GenreCandidate, ...] = (
     GenreCandidate('Zouk', 'Folk / World', ('zouk music', 'French Caribbean zouk'), region='Caribbean'),
     GenreCandidate('Highlife', 'Folk / World', ('West African highlife', 'Ghanaian highlife music'), region='West Africa'),
     GenreCandidate('Afrobeat', 'Folk / World', ('Afrobeat music', 'West African Afrobeat groove'), region='West Africa'),
+    GenreCandidate(
+        'Afropop',
+        'Folk / World',
+        (
+            'Afropop music',
+            'modern African pop with melodic vocals and a syncopated dance groove',
+            'Afro-pop dance music with bright pop production and layered percussion',
+        ),
+        region='Africa',
+    ),
     GenreCandidate('Indian Classical', 'Folk / World', ('Indian classical music', 'Hindustani or Carnatic classical music'), region='India'),
 
     # Electronic
     GenreCandidate('House', 'Electronic', ('house music', 'four-on-the-floor house music')),
     GenreCandidate('Deep House', 'Electronic', ('deep house', 'warm atmospheric deep house')),
+    GenreCandidate(
+        'Euro-House',
+        'Electronic',
+        (
+            'Euro house music',
+            'European vocal house with pop songwriting',
+            'Y2K European house-pop with four-on-the-floor club drums',
+        ),
+    ),
     GenreCandidate('Techno', 'Electronic', ('techno music', 'driving electronic techno')),
     GenreCandidate('Drum and Bass', 'Electronic', ('drum and bass', 'fast breakbeat drum and bass')),
     GenreCandidate('Jungle', 'Electronic', ('jungle music', 'old-school jungle breakbeats')),
@@ -120,7 +176,16 @@ GENRE_CANDIDATES: tuple[GenreCandidate, ...] = (
 
     # Reggae / Caribbean
     GenreCandidate('Reggae', 'Reggae / Caribbean', ('reggae music', 'Jamaican reggae')),
-    GenreCandidate('Dancehall', 'Reggae / Caribbean', ('dancehall music', 'Jamaican dancehall')),
+    GenreCandidate(
+        'Dancehall',
+        'Reggae / Caribbean',
+        (
+            'dancehall music',
+            'Jamaican dancehall',
+            'digital dancehall riddim with syncopated Caribbean drums and bass',
+            'modern Jamaican dancehall groove',
+        ),
+    ),
     GenreCandidate('Dub', 'Reggae / Caribbean', ('dub reggae', 'echo-heavy Jamaican dub')),
     GenreCandidate('Lovers Rock', 'Reggae / Caribbean', ('lovers rock reggae', 'romantic smooth reggae')),
     GenreCandidate('Ska', 'Reggae / Caribbean', ('ska music', 'upbeat Jamaican ska')),
