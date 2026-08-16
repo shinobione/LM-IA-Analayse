@@ -51,10 +51,57 @@ class GenreEnsembleTests(unittest.TestCase):
         )
         result = fuse_genre_analysis(clap, expert)
         self.assertEqual(result['primary']['label'], 'Vietnamese Bolero')
-        self.assertIn('Discogs400 cannot establish Vietnamese geography', result['ensemble']['regional_guard'])
+        self.assertIn('cannot establish Vietnamese geography', result['ensemble']['regional_guard'])
         bolero = next(item for item in result['ensemble']['styles'] if item['label'] == 'Vietnamese Bolero')
         self.assertGreater(bolero['discogs_structural_support'], 0.5)
         self.assertEqual(bolero['discogs_direct_match'], 0.0)
+        self.assertEqual(bolero['regional_coherence']['status'], 'supported')
+        self.assertFalse(result['confidence']['regional_coherence_conflict'])
+
+    def test_false_vietnamese_primary_is_demoted_when_discogs_hears_incompatible_family(self) -> None:
+        clap = {
+            'primary': {
+                'label': 'Vietnamese Pop Ballad',
+                'family': 'Vietnamese / Asian',
+                'region': 'Vietnam',
+                'similarity': 0.69,
+                'score': 0.69,
+                'percent': 69.0,
+            },
+            'styles': [
+                {'label': 'Vietnamese Pop Ballad', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'similarity': 0.69, 'score': 0.69},
+                {'label': 'Nhạc Vàng', 'family': 'Vietnamese / Asian', 'region': 'Vietnam', 'similarity': 0.58, 'score': 0.58},
+                {'label': 'Neo Soul', 'family': 'R&B / Soul / Funk', 'similarity': 0.42, 'score': 0.42},
+                {'label': 'Country', 'family': 'Country / Acoustic', 'similarity': 0.38, 'score': 0.38},
+                {'label': 'Pop', 'family': 'Pop', 'similarity': 0.36, 'score': 0.36},
+                {'label': 'Dancehall', 'family': 'Reggae / Caribbean', 'similarity': 0.35, 'score': 0.35},
+                {'label': 'House', 'family': 'Electronic', 'similarity': 0.34, 'score': 0.34},
+            ],
+            'families': [
+                {'label': 'Vietnamese / Asian', 'score': 0.69},
+                {'label': 'R&B / Soul / Funk', 'score': 0.42},
+                {'label': 'Pop', 'score': 0.36},
+            ],
+            'confidence': {'score': 0.70, 'percent': 70.0, 'level': 'medium', 'is_unknown': False},
+            'consensus': {'primary_family': 'Vietnamese / Asian'},
+        }
+        expert = expert_fixture(
+            [
+                ('Reggae---Dancehall', 'Reggae / Caribbean', 0.82),
+                ('Electronic---House', 'Electronic', 0.63),
+                ('Pop---Ballad', 'Pop', 0.04),
+            ],
+            [('Reggae / Caribbean', 0.41), ('Electronic', 0.31), ('Pop', 0.08), ('R&B / Soul / Funk', 0.07)],
+        )
+        result = fuse_genre_analysis(clap, expert)
+        self.assertTrue(result['confidence']['regional_coherence_conflict'])
+        self.assertNotEqual(result['primary']['label'], 'Vietnamese Pop Ballad')
+        self.assertNotEqual(result['dimensions']['family']['label'], 'Vietnamese / Asian')
+        self.assertIsNone(result['dimensions']['tradition']['primary'])
+        self.assertIsNone(result['dimensions']['region']['label'])
+        vietnamese_row = next(item for item in result['ensemble']['styles'] if item['label'] == 'Vietnamese Pop Ballad')
+        self.assertEqual(vietnamese_row['regional_coherence']['status'], 'conflict')
+        self.assertLess(vietnamese_row['regional_coherence']['gate'], 1.0)
 
     def test_direct_trap_agreement_boosts_confidence(self) -> None:
         clap = clap_fixture('Trap', 'Hip-Hop / Rap', 0.58)
