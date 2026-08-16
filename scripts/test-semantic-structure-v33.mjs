@@ -15,7 +15,7 @@ vm.runInContext(clientSource, context, { filename: 'semantic-client.js' });
 
 const api = context.window.LMNSemanticGenreContext;
 const helper = context.window.LMNSemanticV32;
-assert.equal(helper?.version, '3.3', 'structure helper must expose V3.3');
+assert.equal(helper?.version, '3.4', 'structure helper must expose V3.4 while preserving V3.3 invariants');
 assert.ok(api?.scoreSection, 'semantic test hook must expose scoreSection');
 assert.ok(api?.transition, 'semantic test hook must expose transition');
 
@@ -169,10 +169,10 @@ assert.ok(finalOutroTransition > finalPreTransition, 'terminal sequence should r
 
 const edmFinalDropTransition = api.transition('Chorus', 'Drop', electronic, 9, 10);
 const sentimentalFinalDropTransition = api.transition('Chorus', 'Drop', sentimental, 9, 10);
-assert.ok(edmFinalDropTransition > sentimentalFinalDropTransition, 'V3.3 must preserve stronger terminal Drop paths for electronic grammar');
+assert.ok(edmFinalDropTransition > sentimentalFinalDropTransition, 'V3.4 must preserve stronger terminal Drop paths for electronic grammar');
 
 const earlyBridgeTransition = api.transition('Verse', 'Bridge', sentimental, 1, 10);
 const lateBridgeTransition = api.transition('Chorus', 'Bridge', sentimental, 6, 10);
 assert.ok(lateBridgeTransition > earlyBridgeTransition, 'Bridge should be structurally more plausible mid/late than very early');
 
-console.log('Semantic V3.3 structure intelligence regression: PASS');
+console.log('Semantic V3.3 structure invariants preserved under V3.4: PASS');

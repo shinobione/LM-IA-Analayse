@@ -1,8 +1,8 @@
 (() => {
   'use strict';
 
-  const REQUIRED_HELPER_VERSION = '3.3';
-  const ASSET_REVISION = '3.3.1';
+  const REQUIRED_HELPER_VERSION = '3.4';
+  const ASSET_REVISION = '3.4.0';
 
   async function loadOptionalHelper() {
     if (window.LMNSemanticV32?.version === REQUIRED_HELPER_VERSION) return true;
@@ -13,20 +13,20 @@
       (0, eval)(`${source}\n//# sourceURL=semantic-v32.js?v=${ASSET_REVISION}`);
       return window.LMNSemanticV32?.version === REQUIRED_HELPER_VERSION;
     } catch (error) {
-      console.error('[SonicTrace] Semantic V3.3 structure helper failed to load:', error);
+      console.error('[SonicTrace] Semantic V3.4 generalization helper failed to load:', error);
       return false;
     }
   }
 
   async function bootSemantic() {
-    // Helper availability is independent from client/button creation. We verify
-    // the V3.3 helper before accepting any existing semantic UI, so a stale tab
-    // cannot silently claim a newer structure policy.
+    // Helper availability is independent from client/button creation. Verify the
+    // current helper before accepting any existing semantic UI, so a stale tab
+    // cannot silently run an older structure policy.
     const helperReady = await loadOptionalHelper();
 
     if (document.getElementById('semantic-arrangement-btn')) {
       if (!helperReady) {
-        console.error('[SonicTrace] Semantic client exists but V3.3 structure helper is unavailable; V3.3 interpretation is not active.');
+        console.error('[SonicTrace] Semantic client exists but V3.4 structure helper is unavailable; V3.4 interpretation is not active.');
       }
       document.documentElement.dataset.sonictraceSemanticHelper = helperReady ? REQUIRED_HELPER_VERSION : 'missing';
       return;
