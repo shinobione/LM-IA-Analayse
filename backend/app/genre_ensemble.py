@@ -5,7 +5,7 @@ from typing import Any
 
 from .genre_dimensions import attach_genre_dimensions
 
-ENSEMBLE_VERSION = '3.4.1'
+ENSEMBLE_VERSION = '3.5'
 
 # Direct bridges only where the two taxonomies genuinely mean roughly the same
 # musical style. Regional/cultural labels are intentionally NOT inferred from
@@ -81,6 +81,35 @@ DISCOGS_TO_V3: dict[str, str] = {
     'Classical---Neo-Classical': 'Neo-Classical',
     'Stage & Screen---Score': 'Cinematic Score',
     'Stage & Screen---Soundtrack': 'Soundtrack',
+}
+
+# V3.5 cross-expert style neighborhoods model styles that are real hybrids but
+# do not have a one-to-one Discogs400 label. A single neighboring label is only
+# weak evidence; two or more independent specialist cues can jointly support a
+# hybrid CLAP candidate. This is intentionally audio-only: declared TXT genre is
+# never used to force the classification.
+STYLE_NEIGHBORHOODS: dict[str, dict[str, float]] = {
+    'Dancehall Pop': {
+        'Reggae---Dancehall': 1.00,
+        'Pop---Europop': 0.75,
+        'Electronic---House': 0.65,
+        'Funk / Soul---Afrobeat': 0.55,
+    },
+    'Eurodance': {
+        'Pop---Europop': 1.00,
+        'Electronic---House': 0.90,
+        'Electronic---Trance': 0.45,
+    },
+    'Euro-House': {
+        'Electronic---House': 1.00,
+        'Pop---Europop': 0.80,
+        'Electronic---Deep House': 0.40,
+    },
+    'Afropop': {
+        'Funk / Soul---Afrobeat': 0.90,
+        'Folk, World, & Country---Highlife': 0.65,
+        'Reggae---Dancehall': 0.40,
+    },
 }
 
 VIETNAMESE_STRUCTURAL_SUPPORT: dict[str, tuple[str, ...]] = {
@@ -177,7 +206,8 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
                     structural = value
                 if value >= 0.15:
                     structural_labels.append(discogs_label)
-        style_support = max(direct, structural * 0.72)
+        neighborhood_support, neighborhood_labels = _hybrid_neighborhood_support(label, expert_by_discogs)
+        style_support = max(direct, structural * 0.72, neighborhood_support)
 
         regional = _regional_coherence(
             label,
@@ -192,7 +222,7 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
         else:
             family_support = expert_family.get(family, 0.0)
 
-        combined = 0.62 * clap_evidence + 0.25 * style_support + 0.13 * family_support
+        combined = 0.60 * clap_evidence + 0.27 * style_support + 0.13 * family_support
         combined *= float(regional['gate'])
         rows.append({
             **item,
@@ -203,9 +233,11 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
             'discogs_family_support': round(family_support, 5),
             'discogs_direct_match': round(direct, 5),
             'discogs_structural_support': round(structural, 5),
+            'discogs_neighborhood_support': round(neighborhood_support, 5),
             'structural_support_labels': structural_labels,
+            'neighborhood_support_labels': neighborhood_labels,
             'regional_coherence': regional,
-            'provenance': 'neural-ensemble-clap-discogs400-v3.4.1',
+            'provenance': 'neural-ensemble-clap-discogs400-v3.5-style-calibration',
         })
 
     rows.sort(key=lambda item: float(item['ensemble_score']), reverse=True)
@@ -218,6 +250,8 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
     clap_ensemble_row = next((item for item in rows if item.get('label') == clap_candidate_label), None)
     winner_label = str(winner.get('label') or '')
     winner_direct = float(winner.get('discogs_direct_match') or 0.0)
+    winner_neighborhood = float(winner.get('discogs_neighborhood_support') or 0.0)
+    winner_neighborhood_labels = list(winner.get('neighborhood_support_labels') or [])
 
     final_label = clap_primary_label
     decision = 'kept-clap-primary'
@@ -238,10 +272,12 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
         if nonregional is not None:
             nonregional_score = float(nonregional.get('ensemble_score') or 0.0)
             nonregional_family_support = float(nonregional.get('discogs_family_support') or 0.0)
+            nonregional_neighborhood = float(nonregional.get('discogs_neighborhood_support') or 0.0)
             expert_matches_nonregional = expert_top_family and expert_top_family == str(nonregional.get('family') or '')
+            calibrated_hybrid = nonregional_neighborhood >= 0.34 and len(nonregional.get('neighborhood_support_labels') or []) >= 2
             if (
-                nonregional_family_support >= 0.14
-                and (expert_matches_nonregional or nonregional_score >= regional_score - 0.07)
+                (nonregional_family_support >= 0.14 or calibrated_hybrid)
+                and (expert_matches_nonregional or calibrated_hybrid or nonregional_score >= regional_score - 0.07)
             ):
                 final_label = str(nonregional.get('label') or '')
                 decision = 'regional-primary-rejected-by-cross-family-coherence'
@@ -257,15 +293,30 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
         candidate_label = str(candidate.get('label') or '') if isinstance(candidate, dict) else ''
         # Promote UNKNOWN only when both experts independently support the same
         # non-regional style with a meaningful margin.
-        if winner_label == candidate_label and winner_direct >= 0.30 and ensemble_margin >= 0.06 and float(winner['ensemble_score']) >= 0.68:
+        direct_agreement = winner_label == candidate_label and winner_direct >= 0.30
+        calibrated_hybrid = winner_neighborhood >= 0.38 and len(winner_neighborhood_labels) >= 2
+        if winner_label == candidate_label and (direct_agreement or calibrated_hybrid) and ensemble_margin >= 0.06 and float(winner['ensemble_score']) >= 0.66:
             final_label = winner_label
-            decision = 'promoted-from-unknown-by-direct-expert-agreement'
+            decision = 'promoted-from-unknown-by-cross-expert-style-agreement'
     elif winner_label != clap_primary_label:
-        # A specialist model may overturn CLAP only with a direct taxonomic match,
-        # not through family resemblance or a regional proxy.
-        if winner_direct >= 0.38 and ensemble_margin >= 0.10 and float(winner['ensemble_score']) >= 0.72:
+        # Direct Discogs matches remain the strongest override. V3.5 additionally
+        # allows a hybrid style to overturn CLAP only when multiple independent
+        # specialist cues support the same neighborhood (e.g. Dancehall + Europop
+        # + House for Dancehall Pop). One neighboring label is never enough.
+        direct_override = winner_direct >= 0.38 and ensemble_margin >= 0.10 and float(winner['ensemble_score']) >= 0.72
+        neighborhood_override = (
+            winner_neighborhood >= 0.38
+            and len(winner_neighborhood_labels) >= 2
+            and ensemble_margin >= 0.06
+            and float(winner['ensemble_score']) >= 0.66
+        )
+        if direct_override or neighborhood_override:
             final_label = winner_label
-            decision = 'specialist-overrode-clap-with-strong-direct-agreement'
+            decision = (
+                'style-calibration-overrode-clap-with-multi-cue-neighborhood'
+                if neighborhood_override and not direct_override
+                else 'specialist-overrode-clap-with-strong-direct-agreement'
+            )
 
     if final_label == clap_primary_label and clap_primary_label != 'Unknown / hybrid':
         primary_row = next((item for item in rows if item.get('label') == final_label), None) or clap_primary_row or winner
@@ -295,20 +346,29 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
     if primary_ensemble_row:
         direct = float(primary_ensemble_row.get('discogs_direct_match') or 0.0)
         structural = float(primary_ensemble_row.get('discogs_structural_support') or 0.0)
+        neighborhood = float(primary_ensemble_row.get('discogs_neighborhood_support') or 0.0)
         family_support = float(primary_ensemble_row.get('discogs_family_support') or 0.0)
         if direct >= 0.25:
             base_confidence += min(0.12, direct * 0.16)
+        elif neighborhood >= 0.34 and len(primary_ensemble_row.get('neighborhood_support_labels') or []) >= 2:
+            base_confidence += min(0.08, neighborhood * 0.10)
         elif structural >= 0.25 and str(primary_ensemble_row.get('family')) == 'Vietnamese / Asian':
             base_confidence += min(0.07, structural * 0.10)
         elif family_support < 0.08 and str(primary_ensemble_row.get('family')) != 'Vietnamese / Asian':
             base_confidence -= 0.08
 
     final_family = str(primary_ensemble_row.get('family') or '') if primary_ensemble_row else ''
+    calibrated_hybrid_primary = bool(
+        primary_ensemble_row
+        and float(primary_ensemble_row.get('discogs_neighborhood_support') or 0.0) >= 0.34
+        and len(primary_ensemble_row.get('neighborhood_support_labels') or []) >= 2
+    )
     strong_family_conflict = bool(regional_conflict) or (
         expert_top_family
         and final_family
         and expert_top_family != final_family
         and expert_top_family_score >= 0.22
+        and not calibrated_hybrid_primary
     )
     if strong_family_conflict:
         base_confidence -= 0.10
@@ -322,7 +382,8 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
     confidence['ensemble_version'] = ENSEMBLE_VERSION
     confidence['expert_family_conflict'] = strong_family_conflict
     confidence['regional_coherence_conflict'] = regional_conflict
-    confidence['note'] = 'Evidence confidence after CLAP temporal consensus + Discogs400 specialist cross-check + V3.4.1 cross-family coherence; not an absolute genre probability.'
+    confidence['style_calibration'] = 'V3.5 multi-cue specialist neighborhoods for hybrid styles; TXT metadata is comparison-only.'
+    confidence['note'] = 'Evidence confidence after CLAP temporal consensus + Discogs400 specialist cross-check + V3.5 style calibration; not an absolute genre probability.'
 
     result['primary'] = final_primary
     result['confidence'] = confidence
@@ -336,12 +397,42 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
         'expert_top_family': expert_top_family,
         'expert_top_family_score': round(expert_top_family_score, 5),
         'regional_coherence_conflict': regional_conflict,
+        'style_calibration': {
+            'version': '3.5',
+            'mode': 'audio-only-cross-expert-neighborhoods',
+            'declared_metadata_used_for_inference': False,
+        },
         'regional_guard': (
             'Discogs400 cannot establish Vietnamese geography. V3.4.1 therefore requires compatible musical-structure evidence '
             'before a regional label may stay authoritative; Latin---Bolero can support bolero structure but never establish geography.'
         ),
     }
     return attach_genre_dimensions(result)
+
+
+def _hybrid_neighborhood_support(label: str, expert_by_discogs: dict[str, float]) -> tuple[float, list[str]]:
+    neighborhood = STYLE_NEIGHBORHOODS.get(label)
+    if not neighborhood:
+        return 0.0, []
+
+    signals: list[tuple[str, float]] = []
+    for discogs_label, weight in neighborhood.items():
+        raw = max(0.0, min(1.0, float(expert_by_discogs.get(discogs_label, 0.0))))
+        if raw < 0.08:
+            continue
+        signals.append((discogs_label, raw * float(weight)))
+
+    signals.sort(key=lambda item: item[1], reverse=True)
+    if not signals:
+        return 0.0, []
+    if len(signals) == 1:
+        return round(signals[0][1] * 0.50, 5), [signals[0][0]]
+
+    strongest = signals[0][1]
+    second = signals[1][1]
+    third = signals[2][1] if len(signals) > 2 else 0.0
+    support = 0.65 * strongest + 0.25 * second + 0.10 * third
+    return round(max(0.0, min(1.0, support)), 5), [label for label, _ in signals[:4]]
 
 
 def _regional_coherence(

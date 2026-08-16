@@ -12,6 +12,16 @@
         "Soul"
       ],
       "note": "Artist-confirmed Vietnamese Bolero. This is the regression case that exposed the V2 forced-label failure."
+    },
+    {
+      "trackId": "stick-to-you",
+      "expectedPrimaryStyle": "Dancehall Pop",
+      "expectedFamily": "Pop",
+      "forbiddenPrimaryStyles": [
+        "Vietnamese Bolero",
+        "Neo Soul"
+      ],
+      "note": "Artist-confirmed Dancehall Pop / Y2K Euro-House / Afro-Pop hybrid. V3.4.x exposed regional-family locking and smooth-vocal Neo Soul confusion; runtime inference must remain audio-only."
     }
   ]
 }

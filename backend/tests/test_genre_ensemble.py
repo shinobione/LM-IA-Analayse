@@ -103,6 +103,70 @@ class GenreEnsembleTests(unittest.TestCase):
         self.assertEqual(vietnamese_row['regional_coherence']['status'], 'conflict')
         self.assertLess(vietnamese_row['regional_coherence']['gate'], 1.0)
 
+    def test_v35_multi_cue_neighborhood_can_resolve_dancehall_pop_over_neo_soul(self) -> None:
+        # Real-user failure shape: smooth/romantic vocals make CLAP lean Neo Soul,
+        # while the specialist hears a Dancehall + Europop + House neighborhood.
+        # TXT metadata is deliberately absent: this must be solved from audio evidence.
+        clap = {
+            'primary': {'label': 'Neo Soul', 'family': 'R&B / Soul / Funk', 'similarity': 0.44, 'score': 0.44},
+            'styles': [
+                {'label': 'Neo Soul', 'family': 'R&B / Soul / Funk', 'similarity': 0.44, 'score': 0.44},
+                {'label': 'Dancehall Pop', 'family': 'Pop', 'similarity': 0.43, 'score': 0.43},
+                {'label': 'Europop', 'family': 'Pop', 'similarity': 0.40, 'score': 0.40},
+                {'label': 'Euro-House', 'family': 'Electronic', 'similarity': 0.39, 'score': 0.39},
+                {'label': 'Afropop', 'family': 'Folk / World', 'similarity': 0.38, 'score': 0.38},
+                {'label': 'Pop', 'family': 'Pop', 'similarity': 0.35, 'score': 0.35},
+            ],
+            'families': [
+                {'label': 'R&B / Soul / Funk', 'score': 0.44},
+                {'label': 'Pop', 'score': 0.43},
+                {'label': 'Electronic', 'score': 0.39},
+            ],
+            'confidence': {'score': 0.61, 'percent': 61.0, 'level': 'medium', 'is_unknown': False},
+            'consensus': {'primary_family': 'R&B / Soul / Funk'},
+        }
+        expert = expert_fixture(
+            [
+                ('Reggae---Dancehall', 'Reggae / Caribbean', 0.90),
+                ('Pop---Europop', 'Pop', 0.75),
+                ('Electronic---House', 'Electronic', 0.70),
+                ('Funk / Soul---Afrobeat', 'Folk / World', 0.45),
+                ('Funk / Soul---Neo Soul', 'R&B / Soul / Funk', 0.06),
+            ],
+            [('Reggae / Caribbean', 0.40), ('Pop', 0.33), ('Electronic', 0.31), ('R&B / Soul / Funk', 0.05)],
+        )
+        result = fuse_genre_analysis(clap, expert)
+        self.assertEqual(result['primary']['label'], 'Dancehall Pop')
+        self.assertEqual(result['dimensions']['style']['primary']['label'], 'Dancehall Pop')
+        self.assertEqual(result['dimensions']['family']['label'], 'Pop')
+        self.assertEqual(result['ensemble']['style_calibration']['version'], '3.5')
+        self.assertFalse(result['ensemble']['style_calibration']['declared_metadata_used_for_inference'])
+        dancehall_pop = next(item for item in result['ensemble']['styles'] if item['label'] == 'Dancehall Pop')
+        self.assertGreaterEqual(dancehall_pop['discogs_neighborhood_support'], 0.38)
+        self.assertGreaterEqual(len(dancehall_pop['neighborhood_support_labels']), 2)
+        self.assertEqual(result['primary']['decision'], 'style-calibration-overrode-clap-with-multi-cue-neighborhood')
+
+    def test_v35_single_neighbor_cannot_force_a_hybrid_style(self) -> None:
+        clap = {
+            'primary': {'label': 'Neo Soul', 'family': 'R&B / Soul / Funk', 'similarity': 0.44, 'score': 0.44},
+            'styles': [
+                {'label': 'Neo Soul', 'family': 'R&B / Soul / Funk', 'similarity': 0.44, 'score': 0.44},
+                {'label': 'Dancehall Pop', 'family': 'Pop', 'similarity': 0.43, 'score': 0.43},
+                {'label': 'Pop', 'family': 'Pop', 'similarity': 0.35, 'score': 0.35},
+            ],
+            'families': [{'label': 'R&B / Soul / Funk', 'score': 0.44}, {'label': 'Pop', 'score': 0.43}],
+            'confidence': {'score': 0.61, 'percent': 61.0, 'level': 'medium', 'is_unknown': False},
+            'consensus': {'primary_family': 'R&B / Soul / Funk'},
+        }
+        expert = expert_fixture(
+            [('Reggae---Dancehall', 'Reggae / Caribbean', 0.90)],
+            [('Reggae / Caribbean', 0.40), ('R&B / Soul / Funk', 0.05), ('Pop', 0.04)],
+        )
+        result = fuse_genre_analysis(clap, expert)
+        self.assertEqual(result['primary']['label'], 'Neo Soul')
+        dancehall_pop = next(item for item in result['ensemble']['styles'] if item['label'] == 'Dancehall Pop')
+        self.assertEqual(len(dancehall_pop['neighborhood_support_labels']), 1)
+
     def test_direct_trap_agreement_boosts_confidence(self) -> None:
         clap = clap_fixture('Trap', 'Hip-Hop / Rap', 0.58)
         expert = expert_fixture(
