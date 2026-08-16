@@ -14,9 +14,11 @@ assert.ok(
 );
 
 assert.match(source, /REQUIRED_HELPER_VERSION\s*=\s*'3\.3'/);
-assert.match(source, /semantic-v32\.js\?v=3\.3/);
-assert.match(source, /semantic-client\.js\?v=3\.2\.1/);
+assert.match(source, /ASSET_REVISION\s*=\s*'3\.3\.1'/);
+assert.match(source, /semantic-v32\.js\?v=\$\{ASSET_REVISION\}/);
+assert.match(source, /semantic-client\.js\?v=\$\{ASSET_REVISION\}/);
 assert.match(source, /cache:\s*'no-store'/);
 assert.match(source, /window\.LMNSemanticV32\?\.version\s*===\s*REQUIRED_HELPER_VERSION/);
+assert.match(source, /dataset\.sonictraceSemanticHelper/);
 
-console.log('Semantic V3.3 bootstrap ordering + version regression: PASS');
+console.log('Semantic V3.3.1 bootstrap ordering + cache-bust regression: PASS');

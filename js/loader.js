@@ -30,24 +30,37 @@ function loadFusionAssets() {
 function loadSemanticAssets() {
   if (!document.querySelector('link[data-lmn-semantic]')) {
     const link = document.createElement('link');
-    link.rel = 'stylesheet'; link.href = 'css/semantic.css?v=4'; link.dataset.lmnSemantic = '1'; document.head.appendChild(link);
+    link.rel = 'stylesheet'; link.href = 'css/semantic.css?v=5'; link.dataset.lmnSemantic = '1'; document.head.appendChild(link);
   }
   if (!document.querySelector('link[data-lmn-semantic-human]')) {
     const link = document.createElement('link');
-    link.rel = 'stylesheet'; link.href = 'css/semantic-human.css?v=4'; link.dataset.lmnSemanticHuman = '1'; document.head.appendChild(link);
+    link.rel = 'stylesheet'; link.href = 'css/semantic-human.css?v=5'; link.dataset.lmnSemanticHuman = '1'; document.head.appendChild(link);
   }
-  if (!document.querySelector('script[data-lmn-semantic-bootstrap]')) {
+
+  const assets = [
+    ['js/semantic-bootstrap.js?v=6', 'bootstrap'],
+    ['js/semantic-metadata.js?v=5', 'metadata'],
+    ['js/semantic-human-ui.js?v=5', 'human-ui'],
+  ];
+  const loadNext = index => {
+    if (index >= assets.length) return;
+    const [src, name] = assets[index];
+    const attr = `data-lmn-semantic-${name}`;
+    const existing = document.querySelector(`script[${attr}]`);
+    if (existing) {
+      if (existing.dataset.loaded === '1') loadNext(index + 1);
+      else existing.addEventListener('load', () => loadNext(index + 1), { once:true });
+      return;
+    }
     const script = document.createElement('script');
-    script.src = 'js/semantic-bootstrap.js?v=4'; script.dataset.lmnSemanticBootstrap = '1'; document.head.appendChild(script);
-  }
-  if (!document.querySelector('script[data-lmn-semantic-metadata]')) {
-    const script = document.createElement('script');
-    script.src = 'js/semantic-metadata.js?v=4'; script.dataset.lmnSemanticMetadata = '1'; document.head.appendChild(script);
-  }
-  if (!document.querySelector('script[data-lmn-semantic-human-ui]')) {
-    const script = document.createElement('script');
-    script.src = 'js/semantic-human-ui.js?v=4'; script.dataset.lmnSemanticHumanUi = '1'; document.head.appendChild(script);
-  }
+    script.src = src;
+    script.async = false;
+    script.setAttribute(attr, '1');
+    script.addEventListener('load', () => { script.dataset.loaded = '1'; loadNext(index + 1); }, { once:true });
+    script.addEventListener('error', () => console.error(`[SonicTrace] Semantic asset failed to load: ${src}`), { once:true });
+    document.head.appendChild(script);
+  };
+  loadNext(0);
 }
 
 function loadUnifiedAnalysisAssets() {
@@ -101,8 +114,10 @@ function loadCatalogIntelligenceAssets() {
     ['js/catalog-similarity.js?v=2', 'similarity'],
     ['js/catalog-ui.js?v=2', 'ui'],
     ['js/catalog-style-families.js?v=2', 'styleFamilies'],
+    ['js/catalog-v3-accuracy.js?v=1', 'v3Accuracy'],
     ['js/catalog-style-families-build04.js?v=1', 'styleFamiliesBuild04'],
     ['js/catalog-family-language-build05.js?v=1', 'familyLanguageBuild05'],
+    ['js/catalog-maintenance.js?v=1', 'maintenance'],
   ];
   const loadNext = index => {
     if (index >= assets.length) return;
@@ -130,6 +145,8 @@ loadUnifiedAnalysisAssets();
 loadHumanInsightAssets();
 loadReadabilityOverhaulAssets();
 loadCatalogIntelligenceAssets();
+
+document.documentElement.dataset.sonictraceLoader = 'v3.3.1';
 
 function initLoader(onComplete) {
   const statusEl = document.getElementById('loader-status');
