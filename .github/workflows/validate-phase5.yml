@@ -47,13 +47,18 @@ jobs:
           PYTHONPATH: backend
         run: python backend/tests/test_genre_dimensions.py
 
+      - name: Neural V3.5.2 real-runtime family authority tests
+        env:
+          PYTHONPATH: backend
+        run: python backend/tests/test_genre_dimensions_v352_runtime.py
+
       - name: SHINOBIWAN analysis benchmark tests
         env:
           PYTHONPATH: backend
         run: python backend/tests/test_analysis_benchmark.py
 
       - name: Python syntax
-        run: python -m py_compile backend/app/studio_contract.py backend/app/entrypoint.py backend/app/neural.py backend/app/neural_taxonomy.py backend/app/music_expert.py backend/app/genre_ensemble.py backend/app/genre_dimensions.py backend/app/analysis_benchmark.py backend/tests/smoke_music_expert.py
+        run: python -m py_compile backend/app/studio_contract.py backend/app/entrypoint.py backend/app/neural.py backend/app/neural_taxonomy.py backend/app/music_expert.py backend/app/genre_ensemble.py backend/app/genre_dimensions.py backend/app/analysis_benchmark.py backend/tests/test_genre_dimensions_v352_runtime.py backend/tests/smoke_music_expert.py
 
       - name: Semantic V3.2 genre and arrangement regression
         run: node --check js/semantic-v32.js && node --check js/semantic-bootstrap.js && node --check js/semantic-client.js && node scripts/test-semantic-genre-context.mjs
