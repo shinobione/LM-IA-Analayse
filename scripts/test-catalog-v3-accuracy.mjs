@@ -13,7 +13,7 @@ const catalog = {
 const context = {
   window: {
     SonicTraceCatalog: catalog,
-    setInterval(fn) { fn(); return 1; },
+    setInterval() { return 1; },
     clearInterval() {},
     setTimeout() { return 1; },
   },
