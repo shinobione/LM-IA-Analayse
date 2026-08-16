@@ -62,7 +62,7 @@ class GenreDimensionsTests(unittest.TestCase):
         self.assertEqual(dims['form']['primary']['label'], 'Sentimental Ballad')
         self.assertEqual(dims['form']['primary']['source_label'], 'Vietnamese Pop Ballad')
         self.assertEqual(dims['region']['label'], 'Vietnam')
-        self.assertEqual(dims['coherence']['version'], '3.5.1')
+        self.assertEqual(dims['coherence']['version'], '3.5.2')
         self.assertTrue(dims['coherence']['family_cluster']['status'] in {'authoritative', 'insufficient'})
         self.assertTrue(result['studio_contract']['semantic_dimensions_additive'])
 
@@ -172,10 +172,6 @@ class GenreDimensionsTests(unittest.TestCase):
         self.assertTrue(dims['coherence']['family_cluster']['style_specific_anchor'] is False)
 
     def test_v351_fragmented_vietnamese_cluster_restores_real_bolero(self) -> None:
-        # Real-user V3.5 regression pattern: an isolated Neo Soul label wins the
-        # single-label race, while three Vietnamese cues agree on the family.
-        # The Bolero style may take authority only because the expert row carries
-        # the style-specific Latin---Bolero structural proxy.
         analysis = {
             'primary': {'label': 'Neo Soul', 'family': 'R&B / Soul / Funk', 'score': 0.56},
             'styles': [
@@ -217,9 +213,6 @@ class GenreDimensionsTests(unittest.TestCase):
         self.assertEqual(dims['coherence']['family_lock']['status'], 'evidence-cluster-authority')
 
     def test_v351_pop_cluster_keeps_real_stick_to_you_out_of_vietnamese_family(self) -> None:
-        # Real-user V3.5 success pattern: Eurodance + Dancehall Pop form a strong
-        # Pop cluster; Vietnamese labels remain secondary and cannot regain
-        # authority without a Bolero-specific expert proxy.
         analysis = {
             'primary': {'label': 'Eurodance', 'family': 'Pop', 'score': 0.61},
             'styles': [
