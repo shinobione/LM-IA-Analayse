@@ -13,6 +13,11 @@ backend/cache/
 logs/
 .lmn-runtime.json
 
+# V4 Model Lab local runtime / model caches / user audio / results
+model_lab/.runtime/
+model_lab/input/
+model_lab/results/
+
 # OS / editors
 .DS_Store
 Thumbs.db

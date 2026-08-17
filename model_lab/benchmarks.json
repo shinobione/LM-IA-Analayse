@@ -1,0 +1,51 @@
+{
+  "schema": "sonictrace-model-lab-benchmarks-v1",
+  "policy": {
+    "declared_metadata_is_evaluation_only": true,
+    "declared_metadata_used_for_inference": false,
+    "match_rule": "case-insensitive normalized filename stem"
+  },
+  "tracks": [
+    {
+      "key": "thick",
+      "display_name": "THICK",
+      "acceptable_family": ["Hip-Hop / Rap", "Electronic / EDM"],
+      "acceptable_primary_style": ["Industrial Hip-Hop", "Cyber Trap", "Glitch Hop", "Drift Phonk", "Electronic Drill", "Trap", "Phonk"],
+      "acceptable_top5_style": ["Industrial Hip-Hop", "Cyber Trap", "Glitch Hop", "Drift Phonk", "Electronic Drill", "Trap", "Phonk"],
+      "forbidden_primary_style": ["Dancehall Pop", "Eurodance", "Vietnamese Bolero", "Neo Soul"],
+      "discouraged_primary_style": ["Grime"],
+      "declared_reference": "Industrial Hip-Hop, Cyberpunk Trap, Dark Electronic Club, Glitch Hop"
+    },
+    {
+      "key": "tachy psychia",
+      "display_name": "Tachy Psychia",
+      "acceptable_family": ["Hip-Hop / Rap", "Electronic / EDM"],
+      "acceptable_primary_style": ["Drift Phonk", "Cyber Trap", "Glitch Hop", "Electronic Drill", "Trap", "Phonk"],
+      "acceptable_top5_style": ["Drift Phonk", "Cyber Trap", "Glitch Hop", "Electronic Drill", "Trap", "Phonk"],
+      "forbidden_primary_style": ["Dancehall Pop", "Vietnamese Bolero", "Neo Soul"],
+      "discouraged_primary_style": ["Grime"],
+      "declared_reference": "Drift Phonk, Cyber Trap, Glitch Hop, Electronic Drill"
+    },
+    {
+      "key": "stick to you",
+      "display_name": "Stick to You",
+      "acceptable_family": ["Pop"],
+      "acceptable_primary_style": ["Dancehall Pop", "Eurodance", "Euro-House", "Afropop"],
+      "acceptable_top5_style": ["Dancehall Pop", "Eurodance", "Euro-House", "Afropop"],
+      "forbidden_primary_style": ["Vietnamese Bolero", "Neo Soul"],
+      "declared_reference": "Dancehall Pop, Y2K Euro-House, Afro-Pop Duet"
+    },
+    {
+      "key": "tinh bolero cho tran",
+      "aliases": ["tinh bolero cho trân"],
+      "display_name": "Tinh Bolero Cho Trân",
+      "acceptable_family": ["Vietnamese / Asian"],
+      "acceptable_primary_style": ["Vietnamese Bolero"],
+      "acceptable_top5_style": ["Vietnamese Bolero"],
+      "acceptable_primary_tradition": ["Nhạc Vàng", "Nhạc Trữ Tình"],
+      "acceptable_primary_form": ["Sentimental Ballad", "Pop Ballad"],
+      "forbidden_primary_style": ["Neo Soul", "Dancehall Pop", "Eurodance"],
+      "declared_reference": "Vietnamese Bolero, Traditional Acoustic Fusion, Romantic Folk"
+    }
+  ]
+}
