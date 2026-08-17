@@ -12,6 +12,7 @@ def main() -> int:
     taxonomy = json.loads((ROOT / "taxonomy_v1.json").read_text(encoding="utf-8"))
     benchmarks = json.loads((ROOT / "benchmarks.json").read_text(encoding="utf-8"))
     runner = (ROOT / "run_clamp3_benchmark.py").read_text(encoding="utf-8")
+    launcher = (ROOT / "launch_benchmark.py").read_text(encoding="utf-8")
     setup = (ROOT / "setup_clamp3.py").read_text(encoding="utf-8")
     setup_cmd = (REPO / "SONICTRACE_V4_MODEL_LAB_SETUP.cmd").read_text(encoding="utf-8")
     bench_cmd = (REPO / "SONICTRACE_V4_MODEL_LAB_BENCHMARK.cmd").read_text(encoding="utf-8")
@@ -60,7 +61,21 @@ def main() -> int:
     assert 'set "VENV=%RUNTIME%\\venv"' in setup_cmd
     assert "%ROOT%backend\\.venv\\Scripts\\python.exe" not in setup_cmd
     assert "studio" in setup_cmd.lower() and "does not modify" in setup_cmd.lower()
-    assert "SONICTRACE_V4_MODEL_LAB_SETUP.cmd" in bench_cmd
+
+    # Windows launcher hardening: no second PowerShell is allowed to forward
+    # selected audio paths into Python. The stable stdlib launcher reads the
+    # selection file itself and pins every nested `python` command to the lab venv.
+    assert "launch_benchmark.py" in bench_cmd
+    assert 'set "PATH=%RUNTIME%\\venv\\Scripts;%PATH%"' in bench_cmd
+    assert "--file-list" in bench_cmd
+    assert "$files=Get-Content" not in bench_cmd
+    assert "last-run.log" in bench_cmd
+    assert "last-error.txt" in bench_cmd
+    assert 'env["PATH"] = str(venv_scripts) + os.pathsep + env.get("PATH", "")' in launcher
+    assert 'env["VIRTUAL_ENV"] = str(venv_root)' in launcher
+    assert 'env["PYTHONNOUSERSITE"] = "1"' in launcher
+    assert 'stderr=subprocess.STDOUT' in launcher
+    assert "Selected files:" in launcher
 
     print("SonicTrace V4 Model Lab contract PASS")
     return 0
