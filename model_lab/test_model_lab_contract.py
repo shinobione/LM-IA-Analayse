@@ -77,6 +77,19 @@ def main() -> int:
     assert 'stderr=subprocess.STDOUT' in launcher
     assert "Selected files:" in launcher
 
+    # Upstream CLaMP3 builds an unquoted nested search command from the generated
+    # query embedding filename. Real user files may contain spaces/Unicode, so
+    # inference must use a disposable ASCII/no-space staging name while benchmark
+    # matching and reports retain the original source filename/path.
+    assert "def _stage_audio_for_clamp3" in runner
+    assert 'stage_dir = runtime_dir / "staged_audio"' in runner
+    assert 'staged = stage_dir / f"track-{token}{suffix}"' in runner
+    assert "audio=staged_audio" in runner
+    assert "_clear_query_cache(clamp_dir, staged_audio)" in runner
+    assert "staged_audio.unlink(missing_ok=True)" in runner
+    assert "benchmark = _load_benchmark(args.benchmarks.resolve(), audio)" in runner
+    assert '"file": audio.name' in runner and '"path": str(audio)' in runner
+
     print("SonicTrace V4 Model Lab contract PASS")
     return 0
 
