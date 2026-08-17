@@ -5,6 +5,12 @@
   const ASSET_REVISION = '3.4.0';
   const DIAGNOSTIC_REVISION = '3.5.3.1';
 
+  function neuralDebugEnabled() {
+    const params = new URLSearchParams(window.location.search || '');
+    const debug = String(params.get('debug') || '').toLowerCase().split(',').map(value => value.trim());
+    return debug.includes('neural');
+  }
+
   async function loadDiagnosticProbe() {
     if (window.LMNNeuralDiagnostics?.version === '3.5.3.1-diagnostic') return true;
     try {
@@ -34,10 +40,13 @@
   }
 
   async function bootSemantic() {
-    const diagnosticReady = await loadDiagnosticProbe();
+    const debugEnabled = neuralDebugEnabled();
+    const diagnosticReady = debugEnabled ? await loadDiagnosticProbe() : false;
     const helperReady = await loadOptionalHelper();
 
-    document.documentElement.dataset.sonictraceNeuralDiagnostic = diagnosticReady ? '3.5.3.1' : 'missing';
+    document.documentElement.dataset.sonictraceNeuralDiagnostic = debugEnabled
+      ? (diagnosticReady ? '3.5.3.1' : 'missing')
+      : 'off';
 
     if (document.getElementById('semantic-arrangement-btn')) {
       if (!helperReady) {
