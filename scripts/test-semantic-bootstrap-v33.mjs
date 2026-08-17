@@ -19,7 +19,8 @@ assert.ok(
 
 assert.match(source, /REQUIRED_HELPER_VERSION\s*=\s*'3\.4'/);
 assert.match(source, /ASSET_REVISION\s*=\s*'3\.4\.0'/);
-assert.match(source, /DIAGNOSTIC_REVISION\s*=\s*'3\.5\.3'/);
+assert.match(source, /DIAGNOSTIC_REVISION\s*=\s*'3\.5\.3\.1'/);
+assert.match(source, /3\.5\.3\.1-diagnostic/);
 assert.match(source, /neural-diagnostics-v353\.js\?v=\$\{DIAGNOSTIC_REVISION\}/);
 assert.match(source, /semantic-v32\.js\?v=\$\{ASSET_REVISION\}/);
 assert.match(source, /semantic-client\.js\?v=\$\{ASSET_REVISION\}/);
@@ -27,17 +28,19 @@ assert.match(source, /cache:\s*'no-store'/);
 assert.match(source, /window\.LMNSemanticV32\?\.version\s*===\s*REQUIRED_HELPER_VERSION/);
 assert.match(source, /dataset\.sonictraceSemanticHelper/);
 assert.match(source, /dataset\.sonictraceNeuralDiagnostic/);
-assert.match(loader, /js\/semantic-bootstrap\.js\?v=8/);
-assert.match(loader, /sonictraceLoader\s*=\s*'v3\.5\.3-diagnostic'/);
+assert.match(loader, /js\/semantic-bootstrap\.js\?v=9/);
+assert.match(loader, /sonictraceLoader\s*=\s*'v3\.5\.3\.1-diagnostic-visible'/);
 
-// Parse the browser module for syntax without executing DOM-dependent code.
 new Function(diagnostic);
 assert.match(diagnostic, /response\.clone\(\)\.json\(\)/, 'probe must read a cloned response, not consume the real response');
 assert.match(diagnostic, /analysis\.styles/, 'probe must expose raw CLAP style rows');
 assert.match(diagnostic, /ensemble\.styles/, 'probe must expose CLAP + Discogs ensemble rows');
 assert.match(diagnostic, /coherence\.family_cluster/, 'probe must expose the V3.5.2 family cluster decision');
 assert.match(diagnostic, /ensemble\.decision/, 'probe must expose the ensemble decision reason');
-assert.match(diagnostic, /metadata TXT/i, 'probe must state that TXT metadata does not alter inference');
+assert.match(diagnostic, /semantic-context-tags/, 'probe must anchor immediately after visible Neural style badges');
+assert.match(diagnostic, /insertAdjacentElement\('afterend', panel\)/, 'probe must be inserted after the Neural badges, not buried at card bottom');
+assert.match(diagnostic, /PAYLOAD CAPTURÉ/, 'probe must visibly confirm that the real payload was captured');
+assert.match(diagnostic, /metadata|TXT/i, 'probe must state that TXT metadata does not alter inference');
 assert.doesNotMatch(diagnostic, /latestPayload\s*=\s*response\.json/, 'probe must never consume the live response directly');
 
-console.log('Semantic V3.5.3 bootstrap + read-only Neural diagnostic probe regression: PASS');
+console.log('Semantic V3.5.3.1 visible read-only Neural diagnostic regression: PASS');

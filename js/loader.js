@@ -38,7 +38,7 @@ function loadSemanticAssets() {
   }
 
   const assets = [
-    ['js/semantic-bootstrap.js?v=8', 'bootstrap'],
+    ['js/semantic-bootstrap.js?v=9', 'bootstrap'],
     ['js/semantic-metadata.js?v=5', 'metadata'],
     ['js/semantic-human-ui.js?v=5', 'human-ui'],
   ];
@@ -146,7 +146,7 @@ loadHumanInsightAssets();
 loadReadabilityOverhaulAssets();
 loadCatalogIntelligenceAssets();
 
-document.documentElement.dataset.sonictraceLoader = 'v3.5.3-diagnostic';
+document.documentElement.dataset.sonictraceLoader = 'v3.5.3.1-diagnostic-visible';
 
 function initLoader(onComplete) {
   const statusEl = document.getElementById('loader-status');
