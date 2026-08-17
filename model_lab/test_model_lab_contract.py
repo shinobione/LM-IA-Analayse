@@ -99,6 +99,11 @@ def main() -> int:
     # deterministic song coverage and the same post-inference benchmark truth.
     assert 'set "VENV=%RUNTIME%\\muq_venv"' in muq_setup_cmd
     assert "muq==0.1.0" in muq_setup_cmd
+    assert "transformers==4.46.3" in muq_setup_cmd
+    assert "torch==2.4.1" in muq_setup_cmd and "torchaudio==2.4.1" in muq_setup_cmd
+    assert "from transformers.utils import is_torch_available" in muq_setup_cmd
+    assert "assert is_torch_available()" in muq_setup_cmd
+    assert "from muq import MuQMuLan" in muq_setup_cmd
     assert "OpenMuQ/MuQ-MuLan-large" in muq_setup_cmd
     assert "CC-BY-NC-4.0" in muq_setup_cmd
     assert "DOES NOT MODIFY V3, CLAMP3 OR STUDIO" in muq_setup_cmd

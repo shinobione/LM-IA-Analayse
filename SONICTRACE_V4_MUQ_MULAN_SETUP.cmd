@@ -22,6 +22,7 @@ echo.
 echo Official checkpoint: OpenMuQ/MuQ-MuLan-large
 echo Audio: 24 kHz - fp32 - 10 second clip model
 echo Weights license: CC-BY-NC-4.0 ^(non-commercial^)
+echo Runtime pins: Torch 2.4.1 cu118 + Transformers 4.46.3
 echo.
 
 echo [1/5] Verification uv...
@@ -50,12 +51,14 @@ echo [3/5] Installation PyTorch CUDA 11.8...
 "%UV%" pip install --python "%VENV%\Scripts\python.exe" --upgrade "torch==2.4.1" "torchaudio==2.4.1" --index-url https://download.pytorch.org/whl/cu118
 if errorlevel 1 goto :fail
 
-echo [4/5] Installation MuQ officiel + audio deps...
-"%UV%" pip install --python "%VENV%\Scripts\python.exe" "muq==0.1.0" "librosa==0.10.2.post1" "soundfile==0.12.1" "numpy<2" "requests>=2.31,<3"
+echo [4/5] Installation MuQ officiel + stack Transformers compatible...
+rem MuQ 0.1.0 leaves transformers unbounded. Transformers 5.x may disable
+rem its PyTorch backend with Torch 2.4.1, so pin the known-compatible 4.x stack.
+"%UV%" pip install --python "%VENV%\Scripts\python.exe" "muq==0.1.0" "transformers==4.46.3" "librosa==0.10.2.post1" "soundfile==0.12.1" "numpy<2" "requests>=2.31,<3"
 if errorlevel 1 goto :fail
 
-echo [5/5] Verification CUDA + package...
-"%VENV%\Scripts\python.exe" -c "import torch,muq,numpy; assert torch.cuda.is_available(); print('[OK] GPU:',torch.cuda.get_device_name(0)); print('[OK] Torch',torch.__version__,'CUDA',torch.version.cuda,'NumPy',numpy.__version__); print('[OK] MuQ package import')"
+echo [5/5] Verification CUDA + Transformers + MuQ-MuLan...
+"%VENV%\Scripts\python.exe" -c "import torch,transformers,numpy; from transformers.utils import is_torch_available; from muq import MuQMuLan; assert torch.cuda.is_available(); assert transformers.__version__ == '4.46.3'; assert is_torch_available(), 'Transformers PyTorch backend disabled'; print('[OK] GPU:',torch.cuda.get_device_name(0)); print('[OK] Torch',torch.__version__,'CUDA',torch.version.cuda,'Transformers',transformers.__version__,'NumPy',numpy.__version__); print('[OK] MuQMuLan class import + Transformers PyTorch backend active')"
 if errorlevel 1 goto :fail
 
 echo.
@@ -66,9 +69,9 @@ echo.
 echo Runtime : %VENV%
 echo Model   : OpenMuQ/MuQ-MuLan-large ^(~700M, 512D^)
 echo Policy  : fp32 / 24 kHz / 5 clips deterministes de 10s par morceau
+echo Stack   : Torch 2.4.1 cu118 / Transformers 4.46.3
 echo.
 echo IMPORTANT : le premier benchmark telechargera les checkpoints
-
 echo MuQ-MuLan / MuQ depuis Hugging Face ^(plusieurs Go^).
 echo Les runs suivants reutiliseront le cache local partage du Model Lab.
 echo.
