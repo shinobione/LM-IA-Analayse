@@ -12,10 +12,13 @@ def main() -> int:
     taxonomy = json.loads((ROOT / "taxonomy_v1.json").read_text(encoding="utf-8"))
     benchmarks = json.loads((ROOT / "benchmarks.json").read_text(encoding="utf-8"))
     runner = (ROOT / "run_clamp3_benchmark.py").read_text(encoding="utf-8")
+    muq_runner = (ROOT / "run_muq_mulan_benchmark.py").read_text(encoding="utf-8")
     launcher = (ROOT / "launch_benchmark.py").read_text(encoding="utf-8")
     setup = (ROOT / "setup_clamp3.py").read_text(encoding="utf-8")
     setup_cmd = (REPO / "SONICTRACE_V4_MODEL_LAB_SETUP.cmd").read_text(encoding="utf-8")
     bench_cmd = (REPO / "SONICTRACE_V4_MODEL_LAB_BENCHMARK.cmd").read_text(encoding="utf-8")
+    muq_setup_cmd = (REPO / "SONICTRACE_V4_MUQ_MULAN_SETUP.cmd").read_text(encoding="utf-8")
+    muq_bench_cmd = (REPO / "SONICTRACE_V4_MUQ_MULAN_BENCHMARK.cmd").read_text(encoding="utf-8")
     gitignore = (REPO / ".gitignore").read_text(encoding="utf-8")
 
     assert taxonomy["inference_policy"]["audio_only"] is True
@@ -76,6 +79,7 @@ def main() -> int:
     assert 'env["PYTHONNOUSERSITE"] = "1"' in launcher
     assert 'stderr=subprocess.STDOUT' in launcher
     assert "Selected files:" in launcher
+    assert "--engine-label" in launcher
 
     # Upstream CLaMP3 builds an unquoted nested search command from the generated
     # query embedding filename. Real user files may contain spaces/Unicode, so
@@ -89,6 +93,30 @@ def main() -> int:
     assert "staged_audio.unlink(missing_ok=True)" in runner
     assert "benchmark = _load_benchmark(args.benchmarks.resolve(), audio)" in runner
     assert '"file": audio.name' in runner and '"path": str(audio)' in runner
+
+    # MuQ-MuLan challenger is isolated from the CLaMP3 venv and V3. It must use
+    # the official 24 kHz / 10-second audio regime, fp32, generic taxonomy text,
+    # deterministic song coverage and the same post-inference benchmark truth.
+    assert 'set "VENV=%RUNTIME%\\muq_venv"' in muq_setup_cmd
+    assert "muq==0.1.0" in muq_setup_cmd
+    assert "OpenMuQ/MuQ-MuLan-large" in muq_setup_cmd
+    assert "CC-BY-NC-4.0" in muq_setup_cmd
+    assert "DOES NOT MODIFY V3, CLAMP3 OR STUDIO" in muq_setup_cmd
+    assert 'set "LABPY=%RUNTIME%\\muq_venv\\Scripts\\python.exe"' in muq_bench_cmd
+    assert '--engine-label "MuQ-MuLan"' in muq_bench_cmd
+    assert "muq-last-run.log" in muq_bench_cmd and "muq-last-error.txt" in muq_bench_cmd
+    assert 'MODEL_ID = "OpenMuQ/MuQ-MuLan-large"' in muq_runner
+    assert "SAMPLE_RATE = 24000" in muq_runner
+    assert "CLIP_SECONDS = 10.0" in muq_runner
+    assert "DEFAULT_CLIPS = 5" in muq_runner
+    assert "np.linspace(0, max_start, num=clips)" in muq_runner
+    assert "F.normalize(stacked.mean(dim=0, keepdim=True), dim=-1)" in muq_runner
+    assert 'model = model.float()' in muq_runner
+    muq_inference_pos = muq_runner.index("audio_embedding, sampling_meta = _encode_audio_track")
+    muq_benchmark_pos = muq_runner.index("benchmark = _load_benchmark")
+    assert muq_inference_pos < muq_benchmark_pos
+    assert '"declared_metadata_used_for_inference": False' in muq_runner
+    assert '"weights_license": "CC-BY-NC-4.0"' in muq_runner
 
     print("SonicTrace V4 Model Lab contract PASS")
     return 0

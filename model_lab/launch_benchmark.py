@@ -23,7 +23,7 @@ def _read_file_list(path: Path) -> list[Path]:
         if not audio.exists():
             raise FileNotFoundError(f"Selected audio file not found: {audio}")
         if audio.suffix.lower() not in SUPPORTED_AUDIO:
-            raise ValueError(f"Unsupported CLaMP3 audio type: {audio.suffix} ({audio})")
+            raise ValueError(f"Unsupported Model Lab audio type: {audio.suffix} ({audio})")
         files.append(audio)
     if not files:
         raise ValueError("The Windows picker returned an empty audio selection.")
@@ -49,17 +49,19 @@ def _write_error(path: Path, message: str, log_path: Path) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Stable Windows launcher for the SonicTrace V4 Model Lab benchmark.")
+    parser = argparse.ArgumentParser(description="Stable Windows launcher for SonicTrace V4 Model Lab benchmarks.")
     parser.add_argument("--runner", type=Path, required=True)
     parser.add_argument("--file-list", type=Path, required=True)
     parser.add_argument("--log", type=Path, required=True)
     parser.add_argument("--error-log", type=Path, required=True)
+    parser.add_argument("--engine-label", default="CLaMP3", help="Human-readable engine label for logs only.")
     args = parser.parse_args()
 
     runner = args.runner.resolve()
     file_list = args.file_list.resolve()
     log_path = args.log.resolve()
     error_path = args.error_log.resolve()
+    engine_label = str(args.engine_label).strip() or "Model Lab"
     log_path.parent.mkdir(parents=True, exist_ok=True)
     error_path.unlink(missing_ok=True)
 
@@ -71,9 +73,8 @@ def main() -> int:
         venv_scripts = Path(sys.executable).resolve().parent
         venv_root = venv_scripts.parent
         env = os.environ.copy()
-        # CLaMP3's official helpers launch nested commands with the literal
-        # executable name `python`. Put this isolated venv first so those
-        # children cannot fall back to a global Windows Python installation.
+        # Keep every child process inside the isolated engine venv. This is
+        # required by CLaMP3's nested helpers and harmless for direct runners.
         env["PATH"] = str(venv_scripts) + os.pathsep + env.get("PATH", "")
         env["VIRTUAL_ENV"] = str(venv_root)
         env["PYTHONNOUSERSITE"] = "1"
@@ -83,6 +84,7 @@ def main() -> int:
         header = [
             "SONICTRACE V4 MODEL LAB - WINDOWS LAUNCHER",
             "=" * 58,
+            f"Engine: {engine_label}",
             f"Time: {datetime.now().isoformat(timespec='seconds')}",
             f"Python: {sys.executable}",
             f"VIRTUAL_ENV: {env['VIRTUAL_ENV']}",
@@ -91,8 +93,8 @@ def main() -> int:
             f"Selected files: {len(files)}",
             *[f"  - {path}" for path in files],
             "",
-            "[STEP] Starting CLaMP3 benchmark...",
-            "[INFO] Nested CLaMP3 `python` commands are pinned to the Model Lab venv.",
+            f"[STEP] Starting {engine_label} benchmark...",
+            "[INFO] Child Python processes are pinned to this isolated Model Lab venv.",
             "",
         ]
 
@@ -121,7 +123,7 @@ def main() -> int:
             print(f"\n[STEP] Benchmark process exited with code {return_code}.", file=log, flush=True)
 
         if return_code != 0:
-            _write_error(error_path, f"Benchmark process failed with exit code {return_code}.", log_path)
+            _write_error(error_path, f"{engine_label} benchmark failed with exit code {return_code}.", log_path)
             return return_code
 
         error_path.unlink(missing_ok=True)
