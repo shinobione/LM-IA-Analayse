@@ -5,7 +5,7 @@ from typing import Any
 
 from .genre_dimensions import attach_genre_dimensions
 
-ENSEMBLE_VERSION = '3.5'
+ENSEMBLE_VERSION = '3.6'
 
 # Direct bridges only where the two taxonomies genuinely mean roughly the same
 # musical style. Regional/cultural labels are intentionally NOT inferred from
@@ -83,11 +83,10 @@ DISCOGS_TO_V3: dict[str, str] = {
     'Stage & Screen---Soundtrack': 'Soundtrack',
 }
 
-# V3.5 cross-expert style neighborhoods model styles that are real hybrids but
-# do not have a one-to-one Discogs400 label. A single neighboring label is only
-# weak evidence; two or more independent specialist cues can jointly support a
-# hybrid CLAP candidate. This is intentionally audio-only: declared TXT genre is
-# never used to force the classification.
+# Cross-expert neighborhoods model real hybrid styles without pretending that
+# Discogs has a one-to-one label for every modern production vocabulary. A
+# single neighboring class is deliberately weak evidence. Multiple independent
+# cues are required before a hybrid can gain authority.
 STYLE_NEIGHBORHOODS: dict[str, dict[str, float]] = {
     'Dancehall Pop': {
         'Reggae---Dancehall': 1.00,
@@ -110,7 +109,50 @@ STYLE_NEIGHBORHOODS: dict[str, dict[str, float]] = {
         'Folk, World, & Country---Highlife': 0.65,
         'Reggae---Dancehall': 0.40,
     },
+    'Cyber Trap': {
+        'Hip Hop---Trap': 1.00,
+        'Electronic---Industrial': 0.80,
+        'Electronic---Glitch': 0.60,
+        'Electronic---Dubstep': 0.40,
+    },
+    'Industrial Hip-Hop': {
+        'Electronic---Industrial': 1.00,
+        'Hip Hop---Trap': 0.78,
+        'Hip Hop---Grime': 0.48,
+        'Hip Hop---Horrorcore': 0.42,
+    },
+    'Glitch Hop': {
+        'Electronic---Glitch': 1.00,
+        'Hip Hop---Trap': 0.72,
+        'Electronic---IDM': 0.52,
+        'Electronic---Dubstep': 0.42,
+    },
+    'Drift Phonk': {
+        'Hip Hop---Trap': 0.88,
+        'Hip Hop---Horrorcore': 0.72,
+        'Hip Hop---Grime': 0.40,
+        'Electronic---Industrial': 0.32,
+    },
+    'Electronic Drill': {
+        'Hip Hop---Trap': 0.82,
+        'Hip Hop---Grime': 0.72,
+        'Electronic---Industrial': 0.62,
+        'Electronic---Dubstep': 0.42,
+    },
 }
+
+HARD_HYBRID_STYLES = frozenset({
+    'Cyber Trap',
+    'Industrial Hip-Hop',
+    'Glitch Hop',
+    'Drift Phonk',
+    'Electronic Drill',
+})
+HARD_PROXY_PRIMARIES = frozenset({'Grime', 'Hip-Hop', 'Alternative Hip-Hop'})
+HARD_HYBRID_MAX_CLAP_GAP = 0.055
+HARD_HYBRID_MIN_NEIGHBORHOOD = 0.40
+HARD_HYBRID_MIN_EXPERT_CUES = 2
+GRIME_DIRECT_LOCK = 0.30
 
 VIETNAMESE_STRUCTURAL_SUPPORT: dict[str, tuple[str, ...]] = {
     'Vietnamese Bolero': ('Latin---Bolero', 'Pop---Ballad', 'Folk, World, & Country---Folk'),
@@ -237,7 +279,7 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
             'structural_support_labels': structural_labels,
             'neighborhood_support_labels': neighborhood_labels,
             'regional_coherence': regional,
-            'provenance': 'neural-ensemble-clap-discogs400-v3.5-style-calibration',
+            'provenance': 'neural-ensemble-clap-discogs400-v3.6-hard-hybrid-specificity',
         })
 
     rows.sort(key=lambda item: float(item['ensemble_score']), reverse=True)
@@ -298,25 +340,34 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
         if winner_label == candidate_label and (direct_agreement or calibrated_hybrid) and ensemble_margin >= 0.06 and float(winner['ensemble_score']) >= 0.66:
             final_label = winner_label
             decision = 'promoted-from-unknown-by-cross-expert-style-agreement'
-    elif winner_label != clap_primary_label:
-        # Direct Discogs matches remain the strongest override. V3.5 additionally
-        # allows a hybrid style to overturn CLAP only when multiple independent
-        # specialist cues support the same neighborhood (e.g. Dancehall + Europop
-        # + House for Dancehall Pop). One neighboring label is never enough.
-        direct_override = winner_direct >= 0.38 and ensemble_margin >= 0.10 and float(winner['ensemble_score']) >= 0.72
-        neighborhood_override = (
-            winner_neighborhood >= 0.38
-            and len(winner_neighborhood_labels) >= 2
-            and ensemble_margin >= 0.06
-            and float(winner['ensemble_score']) >= 0.66
+    else:
+        hard_hybrid = _hard_hybrid_specificity_candidate(
+            rows,
+            clap_primary_label=clap_primary_label,
+            clap_primary_row=clap_primary_row,
+            clap_ensemble_row=clap_ensemble_row,
         )
-        if direct_override or neighborhood_override:
-            final_label = winner_label
-            decision = (
-                'style-calibration-overrode-clap-with-multi-cue-neighborhood'
-                if neighborhood_override and not direct_override
-                else 'specialist-overrode-clap-with-strong-direct-agreement'
+        if hard_hybrid is not None:
+            final_label = str(hard_hybrid.get('label') or clap_primary_label)
+            decision = 'hard-hybrid-specificity-overrode-generic-rap-proxy'
+        elif winner_label != clap_primary_label:
+            # Direct Discogs matches remain the strongest override. V3.5+
+            # additionally allows a hybrid style to overturn CLAP only when
+            # multiple independent specialist cues support the same neighborhood.
+            direct_override = winner_direct >= 0.38 and ensemble_margin >= 0.10 and float(winner['ensemble_score']) >= 0.72
+            neighborhood_override = (
+                winner_neighborhood >= 0.38
+                and len(winner_neighborhood_labels) >= 2
+                and ensemble_margin >= 0.06
+                and float(winner['ensemble_score']) >= 0.66
             )
+            if direct_override or neighborhood_override:
+                final_label = winner_label
+                decision = (
+                    'style-calibration-overrode-clap-with-multi-cue-neighborhood'
+                    if neighborhood_override and not direct_override
+                    else 'specialist-overrode-clap-with-strong-direct-agreement'
+                )
 
     if final_label == clap_primary_label and clap_primary_label != 'Unknown / hybrid':
         primary_row = next((item for item in rows if item.get('label') == final_label), None) or clap_primary_row or winner
@@ -382,8 +433,8 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
     confidence['ensemble_version'] = ENSEMBLE_VERSION
     confidence['expert_family_conflict'] = strong_family_conflict
     confidence['regional_coherence_conflict'] = regional_conflict
-    confidence['style_calibration'] = 'V3.5 multi-cue specialist neighborhoods for hybrid styles; TXT metadata is comparison-only.'
-    confidence['note'] = 'Evidence confidence after CLAP temporal consensus + Discogs400 specialist cross-check + V3.5 style calibration; not an absolute genre probability.'
+    confidence['style_calibration'] = 'V3.6 multi-cue specialist neighborhoods + hard-hybrid specificity; TXT metadata is comparison-only.'
+    confidence['note'] = 'Evidence confidence after CLAP temporal consensus + Discogs400 specialist cross-check + V3.6 style calibration; not an absolute genre probability.'
 
     result['primary'] = final_primary
     result['confidence'] = confidence
@@ -398,8 +449,8 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
         'expert_top_family_score': round(expert_top_family_score, 5),
         'regional_coherence_conflict': regional_conflict,
         'style_calibration': {
-            'version': '3.5',
-            'mode': 'audio-only-cross-expert-neighborhoods',
+            'version': '3.6',
+            'mode': 'audio-only-cross-expert-neighborhoods-and-hard-hybrid-specificity',
             'declared_metadata_used_for_inference': False,
         },
         'regional_guard': (
@@ -408,6 +459,65 @@ def fuse_genre_analysis(clap_analysis: dict[str, Any], expert: dict[str, Any] | 
         ),
     }
     return attach_genre_dimensions(result)
+
+
+def _hard_hybrid_specificity_candidate(
+    rows: list[dict[str, Any]],
+    *,
+    clap_primary_label: str,
+    clap_primary_row: dict[str, Any] | None,
+    clap_ensemble_row: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Resolve a close, multi-cue hard hybrid over a generic rap proxy.
+
+    This is intentionally narrower than the normal ensemble override. It exists
+    because broad CLAP wording such as historical Grime prompts can absorb dark
+    electronic rap. A real Grime direct Discogs agreement locks Grime in place;
+    otherwise a same-family hard hybrid must remain close in raw CLAP and carry
+    at least two independent expert-neighborhood cues.
+    """
+    if clap_primary_label not in HARD_PROXY_PRIMARIES or not isinstance(clap_primary_row, dict):
+        return None
+    primary_family = str(clap_primary_row.get('family') or '')
+    if primary_family != 'Hip-Hop / Rap':
+        return None
+    if clap_primary_label == 'Grime' and float((clap_ensemble_row or {}).get('discogs_direct_match') or 0.0) >= GRIME_DIRECT_LOCK:
+        return None
+
+    primary_similarity = float(clap_primary_row.get('similarity') or clap_primary_row.get('score') or 0.0)
+    candidates: list[dict[str, Any]] = []
+    for row in rows:
+        label = str(row.get('label') or '')
+        if label not in HARD_HYBRID_STYLES or str(row.get('family') or '') != primary_family:
+            continue
+        similarity = float(row.get('similarity') or row.get('score') or 0.0)
+        clap_gap = primary_similarity - similarity
+        neighborhood = float(row.get('discogs_neighborhood_support') or 0.0)
+        cues = list(row.get('neighborhood_support_labels') or [])
+        if clap_gap > HARD_HYBRID_MAX_CLAP_GAP:
+            continue
+        if neighborhood < HARD_HYBRID_MIN_NEIGHBORHOOD or len(cues) < HARD_HYBRID_MIN_EXPERT_CUES:
+            continue
+        candidate = copy.deepcopy(row)
+        candidate['hard_hybrid_specificity'] = {
+            'clap_gap': round(clap_gap, 5),
+            'neighborhood_support': round(neighborhood, 5),
+            'expert_cues': cues,
+            'proxy_primary': clap_primary_label,
+        }
+        candidates.append(candidate)
+
+    if not candidates:
+        return None
+    candidates.sort(
+        key=lambda row: (
+            float(row.get('discogs_neighborhood_support') or 0.0),
+            float(row.get('ensemble_score') or 0.0),
+            float(row.get('similarity') or row.get('score') or 0.0),
+        ),
+        reverse=True,
+    )
+    return candidates[0]
 
 
 def _hybrid_neighborhood_support(label: str, expert_by_discogs: dict[str, float]) -> tuple[float, list[str]]:

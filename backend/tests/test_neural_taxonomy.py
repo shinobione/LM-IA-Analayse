@@ -20,7 +20,7 @@ class NeuralTaxonomyTests(unittest.TestCase):
 
     def test_v35_adds_first_class_hybrid_dance_pop_styles(self) -> None:
         by_label = {candidate.label: candidate for candidate in GENRE_CANDIDATES}
-        self.assertTrue(TAXONOMY_VERSION.startswith('3.5-'))
+        self.assertTrue(TAXONOMY_VERSION.startswith('3.6-'))
         self.assertIn('Dancehall Pop', by_label)
         self.assertIn('Eurodance', by_label)
         self.assertIn('Euro-House', by_label)
@@ -36,9 +36,27 @@ class NeuralTaxonomyTests(unittest.TestCase):
         self.assertIn('harmony', neo_soul_prompts)
         self.assertIn('groove', neo_soul_prompts)
 
+    def test_v36_adds_hard_hybrid_styles_and_narrows_grime(self) -> None:
+        by_label = {candidate.label: candidate for candidate in GENRE_CANDIDATES}
+        for label in ('Cyber Trap', 'Industrial Hip-Hop', 'Glitch Hop', 'Drift Phonk', 'Electronic Drill'):
+            self.assertIn(label, by_label)
+            self.assertEqual(by_label[label].family, 'Hip-Hop / Rap')
+            self.assertGreaterEqual(len(by_label[label].prompts), 3)
+
+        grime = ' '.join(by_label['Grime'].prompts).lower()
+        self.assertIn('uk grime', grime)
+        self.assertIn('east london', grime)
+        self.assertIn('british', grime)
+        self.assertNotIn('grime rap with electronic beats', grime)
+
+        cyber = ' '.join(by_label['Cyber Trap'].prompts).lower()
+        self.assertIn('industrial', cyber)
+        self.assertIn('glitch', cyber)
+        self.assertIn('808', cyber)
+
     def test_taxonomy_is_materially_broader_than_v2_closed_list(self) -> None:
-        self.assertTrue(TAXONOMY_VERSION.startswith('3.5-'))
-        self.assertGreaterEqual(len(GENRE_CANDIDATES), 94)
+        self.assertTrue(TAXONOMY_VERSION.startswith('3.6-'))
+        self.assertGreaterEqual(len(GENRE_CANDIDATES), 99)
         self.assertGreaterEqual(len(families()), 10)
 
     def test_confidence_can_return_unknown_instead_of_forcing_a_genre(self) -> None:
