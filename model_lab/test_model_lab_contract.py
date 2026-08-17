@@ -57,7 +57,8 @@ def main() -> int:
     assert "9016d2b0c8d12d1aa79c2e0ab201e6822bdc83a8" in setup
     assert "model_lab/.runtime/" in gitignore
     assert "model_lab/results/" in gitignore
-    assert "backend\\.venv" not in setup_cmd.lower()
+    assert 'set "VENV=%RUNTIME%\\venv"' in setup_cmd
+    assert "%ROOT%backend\\.venv\\Scripts\\python.exe" not in setup_cmd
     assert "studio" in setup_cmd.lower() and "does not modify" in setup_cmd.lower()
     assert "SONICTRACE_V4_MODEL_LAB_SETUP.cmd" in bench_cmd
 
