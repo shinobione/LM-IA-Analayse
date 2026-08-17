@@ -20,12 +20,12 @@ echo  ISOLATED CANDIDATE C - DOES NOT MODIFY V3, CLAMP3, MUQ OR STUDIO
 echo ============================================================
 echo.
 echo Official package : msclap 1.3.3
-echo Official code    : microsoft/CLAP @ e8a6467b87cd85716e20c6a008126150d9740be0
-echo Checkpoint       : microsoft/msclap / CLAP_weights_2023.pth
-echo Audio regime     : 44.1 kHz - 7 second clips - CUDA
-echo Code license     : MIT
-echo Weights license  : MS-PL ^(commercially eligible subject to license terms; review before shipping^)
-echo Runtime pins     : Torch 2.4.1 cu118 + Transformers 4.46.3
+echo Reference code  : microsoft/CLAP @ e8a6467b87cd85716e20c6a008126150d9740be0
+echo Checkpoint      : microsoft/msclap / CLAP_weights_2023.pth
+echo Audio regime    : 44.1 kHz - 7 second clips - CUDA
+echo Code license    : MIT
+echo Weights license : MS-PL ^(commercially eligible subject to license terms; review before shipping^)
+echo Runtime pins    : Torch 2.4.1 cu118 + Transformers 4.46.3
 echo.
 
 echo [1/5] Verification uv...
@@ -69,11 +69,11 @@ echo ============================================================
 echo.
 echo Runtime : %VENV%
 echo Model   : microsoft/msclap / CLAP_weights_2023.pth
- echo Policy  : 44.1 kHz / 5 clips deterministes de 7s par morceau
- echo License : MIT code / MS-PL weights
- echo.
+echo Policy  : 44.1 kHz / 5 clips deterministes de 7s par morceau
+echo License : MIT code / MS-PL weights
+echo.
 echo IMPORTANT : le premier benchmark telechargera le checkpoint 2023
- echo Microsoft CLAP depuis Hugging Face ^(~690 MB^).
+echo Microsoft CLAP depuis Hugging Face ^(~690 MB^).
 echo Les runs suivants reutiliseront le cache local partage du Model Lab.
 echo.
 echo Ensuite double-clique :
