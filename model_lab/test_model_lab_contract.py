@@ -13,12 +13,15 @@ def main() -> int:
     benchmarks = json.loads((ROOT / "benchmarks.json").read_text(encoding="utf-8"))
     runner = (ROOT / "run_clamp3_benchmark.py").read_text(encoding="utf-8")
     muq_runner = (ROOT / "run_muq_mulan_benchmark.py").read_text(encoding="utf-8")
+    msclap_runner = (ROOT / "run_ms_clap_benchmark.py").read_text(encoding="utf-8")
     launcher = (ROOT / "launch_benchmark.py").read_text(encoding="utf-8")
     setup = (ROOT / "setup_clamp3.py").read_text(encoding="utf-8")
     setup_cmd = (REPO / "SONICTRACE_V4_MODEL_LAB_SETUP.cmd").read_text(encoding="utf-8")
     bench_cmd = (REPO / "SONICTRACE_V4_MODEL_LAB_BENCHMARK.cmd").read_text(encoding="utf-8")
     muq_setup_cmd = (REPO / "SONICTRACE_V4_MUQ_MULAN_SETUP.cmd").read_text(encoding="utf-8")
     muq_bench_cmd = (REPO / "SONICTRACE_V4_MUQ_MULAN_BENCHMARK.cmd").read_text(encoding="utf-8")
+    msclap_setup_cmd = (REPO / "SONICTRACE_V4_MS_CLAP_SETUP.cmd").read_text(encoding="utf-8")
+    msclap_bench_cmd = (REPO / "SONICTRACE_V4_MS_CLAP_BENCHMARK.cmd").read_text(encoding="utf-8")
     gitignore = (REPO / ".gitignore").read_text(encoding="utf-8")
 
     assert taxonomy["inference_policy"]["audio_only"] is True
@@ -122,6 +125,44 @@ def main() -> int:
     assert muq_inference_pos < muq_benchmark_pos
     assert '"declared_metadata_used_for_inference": False' in muq_runner
     assert '"weights_license": "CC-BY-NC-4.0"' in muq_runner
+
+    # Candidate C: official Microsoft CLAP 2023 is kept in a third isolated venv.
+    # Its upstream wrapper randomly crops long files, so the Model Lab must first
+    # stage deterministic exact-duration 7s clips and only then call msclap.
+    # The checkpoint is MS-PL (not MIT like the code repo), and the runner must
+    # preserve that distinction instead of declaring an unconditional product pass.
+    assert 'set "VENV=%RUNTIME%\\msclap_venv"' in msclap_setup_cmd
+    assert "msclap==1.3.3" in msclap_setup_cmd
+    assert "transformers==4.46.3" in msclap_setup_cmd
+    assert "torch==2.4.1" in msclap_setup_cmd and "torchaudio==2.4.1" in msclap_setup_cmd
+    assert "from msclap import CLAP" in msclap_setup_cmd
+    assert "e8a6467b87cd85716e20c6a008126150d9740be0" in msclap_setup_cmd
+    assert "MIT" in msclap_setup_cmd and "MS-PL" in msclap_setup_cmd
+    assert "DOES NOT MODIFY V3, CLAMP3, MUQ OR STUDIO" in msclap_setup_cmd
+    assert 'set "LABPY=%RUNTIME%\\msclap_venv\\Scripts\\python.exe"' in msclap_bench_cmd
+    assert '--engine-label "Microsoft CLAP 2023"' in msclap_bench_cmd
+    assert "msclap-last-run.log" in msclap_bench_cmd and "msclap-last-error.txt" in msclap_bench_cmd
+    assert 'MODEL_REPO = "microsoft/msclap"' in msclap_runner
+    assert 'MODEL_VERSION = "2023"' in msclap_runner
+    assert 'WEIGHTS_FILE = "CLAP_weights_2023.pth"' in msclap_runner
+    assert "SAMPLE_RATE = 44100" in msclap_runner
+    assert "CLIP_SECONDS = 7.0" in msclap_runner
+    assert "DEFAULT_CLIPS = 5" in msclap_runner
+    assert "np.linspace(0, max_start, num=clips)" in msclap_runner
+    assert 'stage_dir = runtime_dir / "msclap_staged"' in msclap_runner
+    assert 'staged = stage_dir / f"clip-{token}-{index:02d}.wav"' in msclap_runner
+    assert 'sf.write(str(staged)' in msclap_runner
+    assert 'model.get_audio_embeddings([str(staged)], resample=True)' in msclap_runner
+    assert "staged.unlink(missing_ok=True)" in msclap_runner
+    assert "F.normalize(stacked.mean(dim=0, keepdim=True), dim=-1)" in msclap_runner
+    assert 'model = CLAP(version=MODEL_VERSION, use_cuda=True)' in msclap_runner
+    msclap_inference_pos = msclap_runner.index("audio_embedding, sampling_meta = _encode_audio_track")
+    msclap_benchmark_pos = msclap_runner.index("benchmark = _load_benchmark")
+    assert msclap_inference_pos < msclap_benchmark_pos
+    assert '"declared_metadata_used_for_inference": False' in msclap_runner
+    assert '"code_license": "MIT"' in msclap_runner
+    assert '"weights_license": "MS-PL"' in msclap_runner
+    assert "product legal review before shipping" in msclap_runner
 
     print("SonicTrace V4 Model Lab contract PASS")
     return 0
