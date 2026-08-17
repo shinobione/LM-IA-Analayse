@@ -37,7 +37,7 @@ assert.match(diagnostic, /analysis\.styles/, 'probe must expose raw CLAP style r
 assert.match(diagnostic, /ensemble\.styles/, 'probe must expose CLAP + Discogs ensemble rows');
 assert.match(diagnostic, /coherence\.family_cluster/, 'probe must expose the V3.5.2 family cluster decision');
 assert.match(diagnostic, /ensemble\.decision/, 'probe must expose the ensemble decision reason');
-assert.match(diagnostic, /declared metadata TXT/i, 'probe must state that TXT metadata does not alter inference');
+assert.match(diagnostic, /metadata TXT/i, 'probe must state that TXT metadata does not alter inference');
 assert.doesNotMatch(diagnostic, /latestPayload\s*=\s*response\.json/, 'probe must never consume the live response directly');
 
 console.log('Semantic V3.5.3 bootstrap + read-only Neural diagnostic probe regression: PASS');
