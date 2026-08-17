@@ -3,18 +3,18 @@
 
   const REQUIRED_HELPER_VERSION = '3.4';
   const ASSET_REVISION = '3.4.0';
-  const DIAGNOSTIC_REVISION = '3.5.3';
+  const DIAGNOSTIC_REVISION = '3.5.3.1';
 
   async function loadDiagnosticProbe() {
-    if (window.LMNNeuralDiagnostics?.version === '3.5.3-diagnostic') return true;
+    if (window.LMNNeuralDiagnostics?.version === '3.5.3.1-diagnostic') return true;
     try {
       const response = await fetch(`js/neural-diagnostics-v353.js?v=${DIAGNOSTIC_REVISION}`, { cache: 'no-store' });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const source = await response.text();
       (0, eval)(`${source}\n//# sourceURL=neural-diagnostics-v353.js?v=${DIAGNOSTIC_REVISION}`);
-      return window.LMNNeuralDiagnostics?.version === '3.5.3-diagnostic';
+      return window.LMNNeuralDiagnostics?.version === '3.5.3.1-diagnostic';
     } catch (error) {
-      console.error('[SonicTrace] Neural V3.5.3 diagnostic probe failed to load:', error);
+      console.error('[SonicTrace] Neural V3.5.3.1 diagnostic probe failed to load:', error);
       return false;
     }
   }
@@ -34,16 +34,10 @@
   }
 
   async function bootSemantic() {
-    // Install the read-only probe before the Semantic client can issue a Neural
-    // request. It only clones responses and never mutates inference payloads.
     const diagnosticReady = await loadDiagnosticProbe();
-
-    // Helper availability is independent from client/button creation. Verify the
-    // current helper before accepting any existing semantic UI, so a stale tab
-    // cannot silently run an older structure policy.
     const helperReady = await loadOptionalHelper();
 
-    document.documentElement.dataset.sonictraceNeuralDiagnostic = diagnosticReady ? '3.5.3' : 'missing';
+    document.documentElement.dataset.sonictraceNeuralDiagnostic = diagnosticReady ? '3.5.3.1' : 'missing';
 
     if (document.getElementById('semantic-arrangement-btn')) {
       if (!helperReady) {
