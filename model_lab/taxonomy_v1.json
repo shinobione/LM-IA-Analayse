@@ -1,0 +1,74 @@
+{
+  "schema": "sonictrace-model-lab-taxonomy-v1",
+  "inference_policy": {
+    "audio_only": true,
+    "declared_metadata_used_for_inference": false,
+    "notes": "Each axis is classified independently. Text prompts describe generic musical concepts only and never contain track-specific metadata."
+  },
+  "axes": {
+    "family": [
+      {"id": "hip_hop_rap", "label": "Hip-Hop / Rap", "prompt": "Hip-hop and rap music centered on rhythmic vocal delivery, beat-driven production, drums, bass, sampling or programmed percussion."},
+      {"id": "pop", "label": "Pop", "prompt": "Pop music with accessible songwriting, memorable hooks, clear verse-chorus organization and polished mainstream production."},
+      {"id": "electronic_edm", "label": "Electronic / EDM", "prompt": "Electronic dance music driven by synthesized sounds, programmed drums, electronic bass, club-oriented production and electronic arrangement techniques."},
+      {"id": "rnb_soul_funk", "label": "R&B / Soul / Funk", "prompt": "R&B, soul and funk music with groove-focused rhythm, expressive vocals, syncopation, soulful harmony and bass-led pocket."},
+      {"id": "vietnamese_asian", "label": "Vietnamese / Asian", "prompt": "Vietnamese or closely related Asian popular and traditional music whose melody, phrasing, instrumentation or cultural style is recognizably rooted in Vietnam or East and Southeast Asia."},
+      {"id": "rock", "label": "Rock", "prompt": "Rock music built around guitars, bass and drums, from alternative and indie rock to heavier guitar-driven forms."},
+      {"id": "country_acoustic", "label": "Country / Acoustic", "prompt": "Country, folk or acoustic-oriented music led by organic instruments such as acoustic guitar, strings, piano or roots instrumentation."},
+      {"id": "latin", "label": "Latin", "prompt": "Latin music shaped by Latin American rhythmic traditions, percussion patterns, dance grooves, guitar or regional melodic language."},
+      {"id": "cinematic_classical", "label": "Cinematic / Classical", "prompt": "Cinematic score or classical-oriented music led by orchestral, chamber, piano, string or soundtrack-style composition."}
+    ],
+    "style": [
+      {"id": "cyber_trap", "label": "Cyber Trap", "prompt": "Cyber trap: dark futuristic trap with heavy 808 bass, hard programmed drums, synthetic textures, digital distortion, glitch details and an aggressive technological atmosphere."},
+      {"id": "industrial_hip_hop", "label": "Industrial Hip-Hop", "prompt": "Industrial hip-hop: abrasive rap production with distorted drums, metallic percussion, noise, mechanical textures, heavy low end and harsh industrial sound design."},
+      {"id": "glitch_hop", "label": "Glitch Hop", "prompt": "Glitch hop: hip-hop-influenced electronic music with broken edits, stutters, digital glitches, syncopated bass, chopped rhythmic details and futuristic sound design."},
+      {"id": "drift_phonk", "label": "Drift Phonk", "prompt": "Drift phonk: aggressive modern phonk with distorted cowbells, clipped bass, hard trap percussion, dark Memphis-derived vocal textures and high-energy driving momentum."},
+      {"id": "electronic_drill", "label": "Electronic Drill", "prompt": "Electronic drill: drill rhythm and sliding low bass combined with synthetic, futuristic or heavily electronic production and dark aggressive sound design."},
+      {"id": "grime", "label": "Grime", "prompt": "UK grime: British MC music around roughly 140 BPM with sparse angular electronic riddims, icy square-wave synths, syncopated drums and distinctly UK grime rhythmic language."},
+      {"id": "trap", "label": "Trap", "prompt": "Trap music with rolling hi-hats, punchy programmed drums, deep 808 bass, sparse dark harmony and rap-oriented production."},
+      {"id": "drill", "label": "Drill", "prompt": "Drill music with dark minor-key atmosphere, sliding bass, syncopated kick patterns, tense percussion and aggressive rap production."},
+      {"id": "phonk", "label": "Phonk", "prompt": "Phonk rooted in Memphis rap aesthetics, lo-fi or distorted texture, sampled rap vocals, cowbell motifs, dark bass and hypnotic beat loops."},
+      {"id": "boom_bap", "label": "Boom Bap", "prompt": "Boom bap hip-hop with hard kick and snare emphasis, sample-based production, head-nod groove and classic rap rhythm."},
+      {"id": "g_funk", "label": "G-Funk", "prompt": "G-funk with laid-back West Coast hip-hop groove, deep bass, melodic synthesizer leads, funk-derived harmony and relaxed rhythmic pocket."},
+      {"id": "alternative_hip_hop", "label": "Alternative Hip-Hop", "prompt": "Alternative hip-hop that departs from mainstream rap conventions through unusual production, experimental textures, unconventional sampling or hybrid songwriting."},
+      {"id": "dancehall_pop", "label": "Dancehall Pop", "prompt": "Dancehall pop: melodic pop songwriting over a recognizably Caribbean dancehall groove, syncopated dembow-related rhythm, dancehall percussion and bright modern pop production."},
+      {"id": "eurodance", "label": "Eurodance", "prompt": "Eurodance: energetic European dance-pop with four-on-the-floor club drums, bright synthesizers, strong melodic hooks, pumping bass and a late-1990s to 2000s dance feel."},
+      {"id": "euro_house", "label": "Euro-House", "prompt": "Euro-house: European pop-house with steady four-on-the-floor rhythm, house piano or synth chords, club bass and accessible vocal hooks."},
+      {"id": "afropop", "label": "Afropop", "prompt": "Afropop: contemporary African pop with interlocking percussion, syncopated groove, melodic vocals, warm rhythmic bass and modern polished production."},
+      {"id": "synth_pop", "label": "Synth-Pop", "prompt": "Synth-pop with melodic pop songwriting led by synthesizers, electronic drums, clean hooks and polished electronic production."},
+      {"id": "synthwave", "label": "Synthwave", "prompt": "Synthwave inspired by 1980s electronic music, analog-style synthesizers, retro drum machines, arpeggios, cinematic neon atmosphere and nostalgic production."},
+      {"id": "house", "label": "House", "prompt": "House music with a steady four-on-the-floor kick, repetitive dance groove, electronic bass, hi-hats and club-focused arrangement."},
+      {"id": "deep_house", "label": "Deep House", "prompt": "Deep house with warm bass, restrained four-on-the-floor rhythm, soulful or atmospheric chords and smooth late-night club production."},
+      {"id": "techno", "label": "Techno", "prompt": "Techno with repetitive machine-driven rhythm, four-on-the-floor kick, synthetic percussion, hypnotic sequencing and minimal club-focused structure."},
+      {"id": "trance", "label": "Trance", "prompt": "Trance with driving electronic dance rhythm, long builds, arpeggiated synthesizers, euphoric harmonic movement and expansive breakdowns."},
+      {"id": "dubstep", "label": "Dubstep", "prompt": "Dubstep with heavy sub-bass, half-time or broken electronic drums, aggressive bass sound design, drops and strong dynamic contrast."},
+      {"id": "drum_and_bass", "label": "Drum and Bass", "prompt": "Drum and bass with fast breakbeat-driven percussion, deep sub-bass, high tempo and energetic electronic production."},
+      {"id": "neo_soul", "label": "Neo Soul", "prompt": "Neo soul with laid-back pocket, expressive soulful vocals, rich jazz-influenced harmony, organic R&B instrumentation and nuanced groove."},
+      {"id": "contemporary_rnb", "label": "Contemporary R&B", "prompt": "Contemporary R&B with smooth modern vocal production, groove-centered drums, polished bass, emotional harmony and modern pop-influenced R&B arrangement."},
+      {"id": "soul", "label": "Soul", "prompt": "Soul music with expressive vocals, gospel or blues-influenced harmony, organic rhythm section and emotionally direct melodic phrasing."},
+      {"id": "vietnamese_bolero", "label": "Vietnamese Bolero", "prompt": "Vietnamese bolero: slow sentimental Vietnamese popular music with gentle bolero-derived pulse, expressive lyrical melody, romantic vocal phrasing and often acoustic guitar or traditional-influenced ornamentation."},
+      {"id": "v_pop", "label": "V-Pop", "prompt": "Contemporary Vietnamese pop with modern pop production, Vietnamese melodic and vocal phrasing, polished hooks and current mainstream arrangement."},
+      {"id": "vietnamese_folk", "label": "Vietnamese Folk", "prompt": "Vietnamese folk music with traditional melodic contours, regional vocal phrasing, folk instruments or acoustic textures rooted in Vietnamese musical traditions."},
+      {"id": "country", "label": "Country", "prompt": "Country music with acoustic or electric guitar, roots rhythm section, narrative songwriting, country vocal phrasing and Americana-influenced harmony."},
+      {"id": "folk", "label": "Folk", "prompt": "Folk music centered on acoustic instrumentation, direct songwriting, organic performance and traditional or singer-songwriter melodic language."},
+      {"id": "alternative_rock", "label": "Alternative Rock", "prompt": "Alternative rock with guitar-led band instrumentation, energetic drums, non-mainstream rock textures and modern alternative songwriting."},
+      {"id": "indie_rock", "label": "Indie Rock", "prompt": "Indie rock with guitar, bass and drums, independent rock aesthetics, melodic songwriting and comparatively raw or distinctive production."},
+      {"id": "shoegaze", "label": "Shoegaze", "prompt": "Shoegaze with dense layers of distorted and reverberant guitars, hazy vocals, dreamlike texture and a wall-of-sound mix."},
+      {"id": "cinematic_score", "label": "Cinematic Score", "prompt": "Cinematic score music with orchestral or hybrid soundtrack writing, dramatic development, atmospheric tension and scene-oriented composition."}
+    ],
+    "tradition": [
+      {"id": "nhac_vang", "label": "Nhạc Vàng", "prompt": "Nhạc Vàng, the Vietnamese sentimental popular-song tradition associated with nostalgic melody, lyrical emotional delivery and pre-1975 or tradition-influenced Vietnamese popular music."},
+      {"id": "nhac_tru_tinh", "label": "Nhạc Trữ Tình", "prompt": "Nhạc Trữ Tình, Vietnamese sentimental lyrical music centered on tender expressive melody, romantic themes and emotionally direct vocal phrasing."},
+      {"id": "vietnamese_traditional", "label": "Vietnamese Traditional", "prompt": "Traditional Vietnamese musical language with culturally specific melodic contours, ornamentation, instruments or regional vocal phrasing."},
+      {"id": "contemporary_global", "label": "Contemporary / No Specific Tradition", "prompt": "Contemporary globally produced music without a strong identifiable regional traditional-music lineage."}
+    ],
+    "form": [
+      {"id": "sentimental_ballad", "label": "Sentimental Ballad", "prompt": "A slow or moderate sentimental ballad focused on emotional melody, lyrical vocal delivery and gradual song-form development."},
+      {"id": "pop_ballad", "label": "Pop Ballad", "prompt": "A modern pop ballad with clear verse-chorus songwriting, emotional vocal melody and polished pop production."},
+      {"id": "rap_song", "label": "Rap Song", "prompt": "A rap-centered song form dominated by verses, hooks and rhythmic vocal delivery over a beat."},
+      {"id": "club_track", "label": "Club / Dance Track", "prompt": "A dance or club track structured around repeated grooves, builds, hooks and electronic energy rather than narrative ballad form."},
+      {"id": "electronic_hybrid", "label": "Electronic Hybrid", "prompt": "A hybrid electronic song form combining vocal or rap sections with electronic production, contrast sections, breaks or drops."},
+      {"id": "instrumental_cinematic", "label": "Instrumental / Cinematic", "prompt": "An instrumental or cinematic form organized around musical development, atmosphere and sections rather than a conventional vocal verse-chorus song."},
+      {"id": "general_song", "label": "General Song Form", "prompt": "A general contemporary song form without a uniquely dominant ballad, rap, club or cinematic structural identity."}
+    ]
+  }
+}
