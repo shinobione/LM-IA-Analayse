@@ -4,7 +4,7 @@ import copy
 from typing import Any
 
 DIMENSIONS_VERSION = '3.2'
-COHERENCE_VERSION = '3.5.4'
+COHERENCE_VERSION = '3.5.5'
 
 TRADITION_LABELS = {
     'Nhạc Vàng': 'Nhạc Vàng',
@@ -49,10 +49,10 @@ REGIONAL_SEMANTIC_OVERRIDE_MIN_MARGIN = 0.18
 def attach_genre_dimensions(genre_analysis: dict[str, Any]) -> dict[str, Any]:
     """Attach additive semantic dimensions to an existing V3 analysis.
 
-    V3.5.4 aligns family aggregation with the same CLAP + Discogs ensemble rows
-    used by final style resolution. Raw CLAP rows remain the fallback only when
-    the expert ensemble is unavailable. This prevents dimensions from making a
-    family decision from a different evidence stage than the one shown to users.
+    V3.5.5 keeps family aggregation on the final CLAP + Discogs ensemble stage
+    and adds a narrow authority path for a same-family cultural-tradition primary
+    such as Nhạc Vàng. A form primary remains contextual and cannot manufacture a
+    Vietnamese Bolero style without stronger evidence.
     """
     result = copy.deepcopy(genre_analysis or {})
     rows = _evidence_rows(result)
@@ -146,7 +146,7 @@ def attach_genre_dimensions(genre_analysis: dict[str, Any]) -> dict[str, Any]:
         'unknown': primary_unknown,
         'note': (
             'V3.2 semantic dimensions separate style, tradition/cultural context, form and secondary influences. '
-            'V3.5.4 aggregates fragmented same-family evidence on the final CLAP + Discogs ensemble stage, with raw CLAP fallback only when the ensemble is unavailable. '
+            'V3.5.5 resolves an authoritative Vietnamese family from the final ensemble when its primary is a matching cultural tradition, while form-only context remains non-authoritative. '
             'Evidence scores remain model relevance, not absolute genre probabilities.'
         ),
     }
@@ -155,8 +155,8 @@ def attach_genre_dimensions(genre_analysis: dict[str, Any]) -> dict[str, Any]:
     result['version'] = DIMENSIONS_VERSION
     result.setdefault('studio_contract', {})['semantic_dimensions_additive'] = True
     result.setdefault('provenance', {})['dimensions'] = (
-        'role-aware semantic decomposition over the final CLAP + Discogs ensemble evidence with V3.5.4 family authority; '
-        'raw CLAP is fallback-only, declared metadata is not inference input, and specialist proxies remain supporting rather than geographic proof'
+        'role-aware semantic decomposition over the final CLAP + Discogs ensemble evidence with V3.5.5 family authority; '
+        'same-family tradition primaries may resolve an already-authoritative regional cluster, form primaries remain guarded, raw CLAP is fallback-only, and declared metadata is not inference input'
     )
     return result
 
@@ -291,15 +291,24 @@ def _pick_primary_style(
             specialist_anchor = any(_can_anchor_family_from_context(row) for row in cluster_rows)
             roles = {str(role) for role in cluster.get('roles') or []}
             labels = {str(label) for label in cluster.get('supporting_labels') or []}
+            required_roles = {'style', 'tradition', 'form'}
+            required_labels = {'Vietnamese Bolero', 'Nhạc Vàng', 'Vietnamese Pop Ballad'}
             semantic_anchor = bool(
                 primary_role == 'style'
                 and primary_family != cluster_family
-                and {'style', 'tradition', 'form'}.issubset(roles)
-                and {'Vietnamese Bolero', 'Nhạc Vàng', 'Vietnamese Pop Ballad'}.issubset(labels)
+                and required_roles.issubset(roles)
+                and required_labels.issubset(labels)
                 and float(cluster.get('score') or 0.0) >= REGIONAL_SEMANTIC_OVERRIDE_MIN_SCORE
                 and float(cluster.get('margin') or 0.0) >= REGIONAL_SEMANTIC_OVERRIDE_MIN_MARGIN
             )
-            cluster_can_override = specialist_anchor or semantic_anchor
+            tradition_anchor = bool(
+                primary_role == 'tradition'
+                and primary_family == cluster_family
+                and required_roles.issubset(roles)
+                and required_labels.issubset(labels)
+                and float(cluster.get('score') or 0.0) >= REGIONAL_SEMANTIC_OVERRIDE_MIN_SCORE
+            )
+            cluster_can_override = specialist_anchor or semantic_anchor or tradition_anchor
         elif cluster_family == primary_family:
             cluster_can_override = True
         elif primary_role in {'form', 'tradition'} or str(primary_candidate.get('label') or '') == 'Unknown / hybrid':
@@ -374,6 +383,22 @@ def _family_lock_status(
             'margin': cluster.get('margin'),
             'supporting_labels': copy.deepcopy(cluster.get('supporting_labels') or []),
             'reason': 'multiple same-family ensemble labels outweighed an isolated primary from another family',
+        }
+
+    if (
+        cluster.get('status') == 'authoritative'
+        and role == 'tradition'
+        and family
+        and family == cluster_family
+        and family == style_family
+    ):
+        return {
+            'status': 'contextual-tradition-cluster-authority',
+            'family': style_family,
+            'score': cluster.get('score'),
+            'margin': cluster.get('margin'),
+            'supporting_labels': copy.deepcopy(cluster.get('supporting_labels') or []),
+            'reason': 'the ensemble primary is a cultural tradition inside the same authoritative family, so the style is resolved from coherent same-family style evidence',
         }
 
     if role == 'style' and family == style_family:
