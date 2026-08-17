@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import subprocess
 import sys
 import time
@@ -16,8 +17,11 @@ BACKEND = ROOT / "backend"
 VENV_PYTHON = BACKEND / ".venv" / "Scripts" / "python.exe"
 LOGS = ROOT / "logs"
 RUNTIME_FILE = ROOT / ".lmn-runtime.json"
-API_URL = "http://127.0.0.1:8000"
-FRONTEND_URL = "http://127.0.0.1:8008"
+API_HOST = "127.0.0.1"
+API_PORT = 8000
+FRONTEND_PORT = 8008
+API_URL = f"http://{API_HOST}:{API_PORT}"
+FRONTEND_URL = f"http://{API_HOST}:{FRONTEND_PORT}"
 REQUIRED_API_SCHEMA = "2.2"
 
 
@@ -55,6 +59,72 @@ def _http_ok(url: str, timeout: float = 1.5) -> bool:
             return response.status == 200
     except (OSError, urllib.error.URLError):
         return False
+
+
+def _port_open(port: int, timeout: float = 0.35) -> bool:
+    try:
+        with socket.create_connection((API_HOST, int(port)), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+def _parse_windows_netstat_listeners(output: str, port: int) -> set[int]:
+    """Extract LISTENING PIDs for one local TCP port from Windows netstat output."""
+    pids: set[int] = set()
+    suffix = f":{int(port)}"
+    for raw_line in str(output or "").splitlines():
+        parts = raw_line.split()
+        if len(parts) < 5 or parts[0].upper() != "TCP":
+            continue
+        local_endpoint = parts[1]
+        state = parts[-2].upper()
+        if state != "LISTENING" or not local_endpoint.endswith(suffix):
+            continue
+        try:
+            pid = int(parts[-1])
+        except ValueError:
+            continue
+        if pid > 0:
+            pids.add(pid)
+    return pids
+
+
+def _listener_pids(port: int) -> set[int]:
+    if os.name == "nt":
+        try:
+            completed = subprocess.run(
+                ["netstat", "-ano", "-p", "tcp"],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=8,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return set()
+        return _parse_windows_netstat_listeners(completed.stdout, port)
+
+    # Best-effort support for developer machines outside Windows. The production
+    # desktop path is Windows; absence of lsof simply means tracked-PID cleanup.
+    try:
+        completed = subprocess.run(
+            ["lsof", "-tiTCP:%d" % int(port), "-sTCP:LISTEN"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return set()
+    pids: set[int] = set()
+    for line in completed.stdout.splitlines():
+        try:
+            pid = int(line.strip())
+        except ValueError:
+            continue
+        if pid > 0:
+            pids.add(pid)
+    return pids
 
 
 def api_live() -> dict[str, Any] | None:
@@ -143,7 +213,7 @@ def kill_pid(pid: Any) -> None:
         numeric_pid = int(pid)
     except (TypeError, ValueError):
         return
-    if numeric_pid <= 0:
+    if numeric_pid <= 0 or numeric_pid == os.getpid():
         return
     if os.name == "nt":
         subprocess.run(
@@ -159,6 +229,19 @@ def kill_pid(pid: Any) -> None:
             pass
 
 
+def _force_release_port(port: int) -> bool:
+    """Release a SonicTrace-owned fixed port even when runtime PID tracking is stale."""
+    if not _port_open(port):
+        return True
+    pids = _listener_pids(port)
+    if pids:
+        print(f"[runtime] Port {port} encore occupe; arret du/des listener(s) PID {', '.join(map(str, sorted(pids)))}...")
+        for pid in pids:
+            kill_pid(pid)
+        time.sleep(0.8)
+    return not _port_open(port)
+
+
 def stop_spawned(api_pid: int | None, frontend_pid: int | None) -> None:
     kill_pid(api_pid)
     kill_pid(frontend_pid)
@@ -169,8 +252,6 @@ def stop_previous_runtime_if_incompatible() -> None:
     if live and _schema_compatible(live.get("api_schema")):
         return
 
-    # A legacy app.main runtime can answer /api/health but has no /api/live.
-    # If anything is listening from a previous LMNotebook run, stop its tracked PID.
     legacy = api_health()
     if not legacy:
         return
@@ -182,6 +263,7 @@ def stop_previous_runtime_if_incompatible() -> None:
     runtime = read_runtime()
     kill_pid(runtime.get("api_pid"))
     time.sleep(1.0)
+    _force_release_port(API_PORT)
 
 
 def start() -> int:
@@ -201,7 +283,7 @@ def start() -> int:
     print(f"[runtime] Verification du backend V2 schema {REQUIRED_API_SCHEMA}+ (health leger)...")
     if api_ready():
         live = api_live() or {}
-        print(f"[OK] API V2 deja active sur 127.0.0.1:8000 (schema {live.get('api_schema') or '?'})")
+        print(f"[OK] API V2 deja active sur {API_HOST}:{API_PORT} (schema {live.get('api_schema') or '?'})")
     else:
         api_pid = spawn_process(
             [
@@ -210,9 +292,9 @@ def start() -> int:
                 "uvicorn",
                 "app.entrypoint:app",
                 "--host",
-                "127.0.0.1",
+                API_HOST,
                 "--port",
-                "8000",
+                str(API_PORT),
             ],
             BACKEND,
             api_log,
@@ -229,16 +311,16 @@ def start() -> int:
 
     print("[runtime] Verification du frontend local...")
     if frontend_ready():
-        print("[OK] Frontend deja actif sur 127.0.0.1:8008")
+        print(f"[OK] Frontend deja actif sur {API_HOST}:{FRONTEND_PORT}")
     else:
         frontend_pid = spawn_process(
             [
                 str(VENV_PYTHON),
                 "-m",
                 "http.server",
-                "8008",
+                str(FRONTEND_PORT),
                 "--bind",
-                "127.0.0.1",
+                API_HOST,
             ],
             ROOT,
             frontend_log,
@@ -280,11 +362,26 @@ def stop() -> int:
     print("Arret des processus LMNotebook geres...")
     kill_pid(runtime.get("api_pid"))
     kill_pid(runtime.get("frontend_pid"))
+    time.sleep(0.6)
+
+    api_released = _force_release_port(API_PORT)
+    frontend_released = _force_release_port(FRONTEND_PORT)
+
     try:
         RUNTIME_FILE.unlink(missing_ok=True)
     except OSError:
         pass
-    print("[OK] LMNotebook est arrete.")
+
+    if not api_released or not frontend_released:
+        blocked = []
+        if not api_released:
+            blocked.append(str(API_PORT))
+        if not frontend_released:
+            blocked.append(str(FRONTEND_PORT))
+        print(f"[ERREUR] Impossible de liberer le(s) port(s) {', '.join(blocked)}. Mise a jour/redemarrage annule.")
+        return 1
+
+    print("[OK] LMNotebook est arrete; ports 8000/8008 libres.")
     return 0
 
 
