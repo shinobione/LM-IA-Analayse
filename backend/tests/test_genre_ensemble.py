@@ -104,9 +104,6 @@ class GenreEnsembleTests(unittest.TestCase):
         self.assertLess(vietnamese_row['regional_coherence']['gate'], 1.0)
 
     def test_v35_multi_cue_neighborhood_can_resolve_dancehall_pop_over_neo_soul(self) -> None:
-        # Real-user failure shape: smooth/romantic vocals make CLAP lean Neo Soul,
-        # while the specialist hears a Dancehall + Europop + House neighborhood.
-        # TXT metadata is deliberately absent: this must be solved from audio evidence.
         clap = {
             'primary': {'label': 'Neo Soul', 'family': 'R&B / Soul / Funk', 'similarity': 0.44, 'score': 0.44},
             'styles': [
@@ -139,7 +136,7 @@ class GenreEnsembleTests(unittest.TestCase):
         self.assertEqual(result['primary']['label'], 'Dancehall Pop')
         self.assertEqual(result['dimensions']['style']['primary']['label'], 'Dancehall Pop')
         self.assertEqual(result['dimensions']['family']['label'], 'Pop')
-        self.assertEqual(result['ensemble']['style_calibration']['version'], '3.5')
+        self.assertEqual(result['ensemble']['style_calibration']['version'], '3.6')
         self.assertFalse(result['ensemble']['style_calibration']['declared_metadata_used_for_inference'])
         dancehall_pop = next(item for item in result['ensemble']['styles'] if item['label'] == 'Dancehall Pop')
         self.assertGreaterEqual(dancehall_pop['discogs_neighborhood_support'], 0.38)
@@ -166,6 +163,72 @@ class GenreEnsembleTests(unittest.TestCase):
         self.assertEqual(result['primary']['label'], 'Neo Soul')
         dancehall_pop = next(item for item in result['ensemble']['styles'] if item['label'] == 'Dancehall Pop')
         self.assertEqual(len(dancehall_pop['neighborhood_support_labels']), 1)
+
+    def test_v36_multi_cue_hard_hybrid_resolves_cyber_trap_over_generic_grime_proxy(self) -> None:
+        # THICK/Tachy-style failure shape: Grime wins a broad CLAP wording race,
+        # while the audio specialist independently hears Trap + Industrial + Glitch.
+        # No TXT or track name is present in the inference fixture.
+        clap = {
+            'primary': {'label': 'Grime', 'family': 'Hip-Hop / Rap', 'similarity': 0.62, 'score': 0.62},
+            'styles': [
+                {'label': 'Grime', 'family': 'Hip-Hop / Rap', 'similarity': 0.62, 'score': 0.62},
+                {'label': 'Cyber Trap', 'family': 'Hip-Hop / Rap', 'similarity': 0.59, 'score': 0.59},
+                {'label': 'Industrial Hip-Hop', 'family': 'Hip-Hop / Rap', 'similarity': 0.57, 'score': 0.57},
+                {'label': 'Glitch Hop', 'family': 'Hip-Hop / Rap', 'similarity': 0.55, 'score': 0.55},
+                {'label': 'Trap', 'family': 'Hip-Hop / Rap', 'similarity': 0.52, 'score': 0.52},
+                {'label': 'Neo Soul', 'family': 'R&B / Soul / Funk', 'similarity': 0.40, 'score': 0.40},
+            ],
+            'families': [{'label': 'Hip-Hop / Rap', 'score': 0.62}, {'label': 'R&B / Soul / Funk', 'score': 0.40}],
+            'confidence': {'score': 0.64, 'percent': 64.0, 'level': 'medium', 'is_unknown': False},
+            'consensus': {'primary_family': 'Hip-Hop / Rap'},
+        }
+        expert = expert_fixture(
+            [
+                ('Hip Hop---Trap', 'Hip-Hop / Rap', 0.72),
+                ('Electronic---Industrial', 'Electronic', 0.64),
+                ('Electronic---Glitch', 'Electronic', 0.58),
+                ('Electronic---Dubstep', 'Electronic', 0.20),
+                ('Hip Hop---Grime', 'Hip-Hop / Rap', 0.08),
+            ],
+            [('Hip-Hop / Rap', 0.35), ('Electronic', 0.33), ('R&B / Soul / Funk', 0.04)],
+        )
+        result = fuse_genre_analysis(clap, expert)
+        self.assertEqual(result['primary']['label'], 'Cyber Trap')
+        self.assertEqual(result['dimensions']['style']['primary']['label'], 'Cyber Trap')
+        self.assertEqual(result['dimensions']['family']['label'], 'Hip-Hop / Rap')
+        self.assertEqual(result['primary']['decision'], 'hard-hybrid-specificity-overrode-generic-rap-proxy')
+        cyber = next(item for item in result['ensemble']['styles'] if item['label'] == 'Cyber Trap')
+        self.assertGreaterEqual(cyber['discogs_neighborhood_support'], 0.40)
+        self.assertGreaterEqual(len(cyber['neighborhood_support_labels']), 2)
+
+    def test_v36_real_grime_direct_agreement_blocks_hard_hybrid_override(self) -> None:
+        clap = {
+            'primary': {'label': 'Grime', 'family': 'Hip-Hop / Rap', 'similarity': 0.62, 'score': 0.62},
+            'styles': [
+                {'label': 'Grime', 'family': 'Hip-Hop / Rap', 'similarity': 0.62, 'score': 0.62},
+                {'label': 'Cyber Trap', 'family': 'Hip-Hop / Rap', 'similarity': 0.60, 'score': 0.60},
+                {'label': 'Industrial Hip-Hop', 'family': 'Hip-Hop / Rap', 'similarity': 0.58, 'score': 0.58},
+                {'label': 'Trap', 'family': 'Hip-Hop / Rap', 'similarity': 0.55, 'score': 0.55},
+                {'label': 'Neo Soul', 'family': 'R&B / Soul / Funk', 'similarity': 0.40, 'score': 0.40},
+            ],
+            'families': [{'label': 'Hip-Hop / Rap', 'score': 0.62}],
+            'confidence': {'score': 0.64, 'percent': 64.0, 'level': 'medium', 'is_unknown': False},
+            'consensus': {'primary_family': 'Hip-Hop / Rap'},
+        }
+        expert = expert_fixture(
+            [
+                ('Hip Hop---Grime', 'Hip-Hop / Rap', 0.68),
+                ('Hip Hop---Trap', 'Hip-Hop / Rap', 0.60),
+                ('Electronic---Industrial', 'Electronic', 0.55),
+                ('Electronic---Glitch', 'Electronic', 0.45),
+            ],
+            [('Hip-Hop / Rap', 0.41), ('Electronic', 0.24)],
+        )
+        result = fuse_genre_analysis(clap, expert)
+        self.assertEqual(result['primary']['label'], 'Grime')
+        grime = next(item for item in result['ensemble']['styles'] if item['label'] == 'Grime')
+        self.assertGreaterEqual(grime['discogs_direct_match'], 0.30)
+        self.assertNotEqual(result['primary']['decision'], 'hard-hybrid-specificity-overrode-generic-rap-proxy')
 
     def test_direct_trap_agreement_boosts_confidence(self) -> None:
         clap = clap_fixture('Trap', 'Hip-Hop / Rap', 0.58)
