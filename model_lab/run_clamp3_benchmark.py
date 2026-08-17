@@ -138,6 +138,24 @@ def _clear_query_cache(clamp_dir: Path, audio: Path) -> None:
     cache_file.unlink(missing_ok=True)
 
 
+def _stage_audio_for_clamp3(runtime_dir: Path, audio: Path) -> Path:
+    """Copy one source track to a short ASCII/no-space filename for CLaMP3.
+
+    The upstream CLaMP3 helper builds a nested shell command from the generated
+    embedding filename without quoting that query path. Source stems containing
+    spaces or non-ASCII characters therefore break `clamp3_search.py` argument
+    parsing on Windows. Keep the original path only for benchmark matching and
+    reporting; inference receives a disposable safe staging filename.
+    """
+    stage_dir = runtime_dir / "staged_audio"
+    stage_dir.mkdir(parents=True, exist_ok=True)
+    token = hashlib.sha256(str(audio).encode("utf-8")).hexdigest()[:12]
+    suffix = audio.suffix.lower()
+    staged = stage_dir / f"track-{token}{suffix}"
+    shutil.copy2(audio, staged)
+    return staged
+
+
 def _parse_rankings(stdout: str, label_map: dict[str, str], top_k: int) -> list[dict[str, Any]]:
     rankings: list[dict[str, Any]] = []
     for raw_line in stdout.splitlines():
@@ -316,7 +334,8 @@ def main() -> int:
             continue
 
         print(f"--- {audio.name} ---")
-        _clear_query_cache(clamp_dir, audio)
+        staged_audio = _stage_audio_for_clamp3(runtime_dir, audio)
+        _clear_query_cache(clamp_dir, staged_audio)
         sampler = GPUSampler()
         sampler.start()
         started = time.perf_counter()
@@ -327,7 +346,7 @@ def main() -> int:
                 rankings, elapsed, _log = _classify_axis(
                     python=python,
                     clamp_dir=clamp_dir,
-                    audio=audio,
+                    audio=staged_audio,
                     refs_dir=runtime_dir / "refs" / axis,
                     label_map=label_maps[axis],
                     top_k=args.top_k,
@@ -338,6 +357,8 @@ def main() -> int:
                 print(f"{axis:10s}: " + " | ".join(f"{row['label']} {row['similarity']:.4f}" for row in rankings[:5]))
         finally:
             sampler.stop()
+            _clear_query_cache(clamp_dir, staged_audio)
+            staged_audio.unlink(missing_ok=True)
         elapsed_total = time.perf_counter() - started
         benchmark = _load_benchmark(args.benchmarks.resolve(), audio)
         evaluation = _evaluate(benchmark, axis_results)
