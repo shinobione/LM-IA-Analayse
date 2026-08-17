@@ -127,15 +127,25 @@ def main() -> int:
     assert '"weights_license": "CC-BY-NC-4.0"' in muq_runner
 
     # Candidate C: official Microsoft CLAP 2023 is kept in a third isolated venv.
-    # Its upstream wrapper randomly crops long files, so the Model Lab must first
-    # stage deterministic exact-duration 7s clips and only then call msclap.
-    # The checkpoint is MS-PL (not MIT like the code repo), and the runner must
-    # preserve that distinction instead of declaring an unconditional product pass.
+    # msclap 1.3.3's dependency resolution can otherwise combine its historical
+    # Torch/TorchVision stack with a much newer TorchAudio binary on Windows.
+    # The setup must therefore re-pin the complete CUDA 11.8 ABI-compatible trio
+    # after dependency resolution and import TorchAudio before ever declaring READY.
     assert 'set "VENV=%RUNTIME%\\msclap_venv"' in msclap_setup_cmd
     assert "msclap==1.3.3" in msclap_setup_cmd
     assert "transformers==4.46.3" in msclap_setup_cmd
-    assert "torch==2.4.1" in msclap_setup_cmd and "torchaudio==2.4.1" in msclap_setup_cmd
+    assert "torch==2.1.2" in msclap_setup_cmd
+    assert "torchvision==0.16.2" in msclap_setup_cmd
+    assert "torchaudio==2.1.2" in msclap_setup_cmd
+    assert "--reinstall" in msclap_setup_cmd
+    assert "https://download.pytorch.org/whl/cu118" in msclap_setup_cmd
+    assert "import importlib.metadata as m,torch,torchvision,torchaudio,transformers,numpy" in msclap_setup_cmd
+    assert "torch.__version__.startswith('2.1.2+cu118')" in msclap_setup_cmd
+    assert "torchvision.__version__.startswith('0.16.2+cu118')" in msclap_setup_cmd
+    assert "torchaudio.__version__.startswith('2.1.2+cu118')" in msclap_setup_cmd
+    assert "assert torch.version.cuda == '11.8'" in msclap_setup_cmd
     assert "from msclap import CLAP" in msclap_setup_cmd
+    assert "TorchAudio ABI active" in msclap_setup_cmd
     assert "e8a6467b87cd85716e20c6a008126150d9740be0" in msclap_setup_cmd
     assert "MIT" in msclap_setup_cmd and "MS-PL" in msclap_setup_cmd
     assert "DOES NOT MODIFY V3, CLAMP3, MUQ OR STUDIO" in msclap_setup_cmd
