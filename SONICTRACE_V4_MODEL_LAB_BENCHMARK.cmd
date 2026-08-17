@@ -25,8 +25,8 @@ if exist "%LIST%" del /q "%LIST%" >nul 2>&1
 echo.
 echo ============================================================
 echo  SONICTRACE V4 MODEL LAB - A/B AUDIO-ONLY
-necho  CLaMP3 SAAS + MERT-v1-95M - RTX CUDA
-necho ============================================================
+echo  CLaMP3 SAAS + MERT-v1-95M - RTX CUDA
+echo ============================================================
 echo.
 echo Choisis un ou plusieurs WAV/MP3 dans la fenetre qui s'ouvre.
 echo Pour notre premier round : THICK, Tachy Psychia,
@@ -34,7 +34,7 @@ echo Stick to You et Tinh Bolero Cho Tran sont parfaits.
 echo.
 
 powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
-  "Add-Type -AssemblyName System.Windows.Forms; $d=New-Object System.Windows.Forms.OpenFileDialog; $d.Title='SonicTrace V4 Model Lab - Choisir les morceaux'; $d.Filter='Audio (*.wav;*.mp3;*.flac;*.ogg)|*.wav;*.mp3;*.flac;*.ogg|Tous les fichiers (*.*)|*.*'; $d.Multiselect=$true; if($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK){[System.IO.File]::WriteAllLines($env:LIST,$d.FileNames)}"
+  "Add-Type -AssemblyName System.Windows.Forms; $d=New-Object System.Windows.Forms.OpenFileDialog; $d.Title='SonicTrace V4 Model Lab - Choisir les morceaux'; $d.Filter='Audio CLaMP3 (*.wav;*.mp3)|*.wav;*.mp3'; $d.Multiselect=$true; if($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK){[System.IO.File]::WriteAllLines($env:LIST,$d.FileNames)}"
 
 if not exist "%LIST%" (
   echo [INFO] Aucun fichier selectionne.
@@ -64,7 +64,7 @@ if not "%RC%"=="0" (
 echo.
 echo ============================================================
 echo  [OK] BENCHMARK TERMINE
-necho ============================================================
+echo ============================================================
 echo.
 start "" "%LAB%\results"
 pause
