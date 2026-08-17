@@ -164,7 +164,7 @@
   }
 
   const observer = new MutationObserver(() => {
-    if (latestPayload) scheduleRender();
+    if (latestPayload && !document.querySelector('[data-sonictrace-neural-diagnostic]')) scheduleRender();
   });
   observer.observe(document.documentElement, { childList: true, subtree: true });
 
