@@ -74,14 +74,14 @@ if errorlevel 1 goto :fail
 echo.
 echo ============================================================
 echo  [OK] V4 MODEL LAB PRET
-necho ============================================================
+echo ============================================================
 echo.
 echo Runtime : %RUNTIME%
 echo CLaMP3 : commit 9016d2b0c8d12d1aa79c2e0ab201e6822bdc83a8
 echo Audio encoder : m-a-p/MERT-v1-95M
 echo.
 echo IMPORTANT : le PREMIER benchmark telechargera encore les poids
-necho CLaMP3 SAAS ^(~2.57 Go^) et MERT depuis Hugging Face.
+echo CLaMP3 SAAS ^(~2.57 Go^) et MERT depuis Hugging Face.
 echo Les lancements suivants reutiliseront les caches locaux.
 echo.
 echo Ensuite double-clique :
@@ -102,7 +102,7 @@ exit /b 0
 echo.
 echo ============================================================
 echo  [ERREUR] V4 MODEL LAB SETUP A ECHOUE
-necho ============================================================
+echo ============================================================
 echo Aucun runtime SonicTrace V3 ou STUDIO n'a ete modifie.
 echo Envoie-moi un screenshot de cette fenetre.
 echo.
