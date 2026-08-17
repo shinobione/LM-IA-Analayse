@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
-TAXONOMY_VERSION = '3.5-shinobi-2026-08'
+TAXONOMY_VERSION = '3.6-shinobi-2026-08'
 
 
 @dataclass(frozen=True)
@@ -26,13 +26,66 @@ GENRE_CANDIDATES: tuple[GenreCandidate, ...] = (
     GenreCandidate('Trap', 'Hip-Hop / Rap', ('trap hip hop', 'modern trap rap with 808 drums')),
     GenreCandidate('Drill', 'Hip-Hop / Rap', ('drill rap', 'dark drill hip hop with sliding 808 bass')),
     GenreCandidate('Phonk', 'Hip-Hop / Rap', ('phonk music', 'dark Memphis-influenced phonk with cowbells')),
+    GenreCandidate(
+        'Drift Phonk',
+        'Hip-Hop / Rap',
+        (
+            'drift phonk',
+            'aggressive drift phonk with distorted cowbells and clipped 808 bass',
+            'high-energy modern phonk with Memphis vocal chops and distorted club drums',
+        ),
+    ),
+    GenreCandidate(
+        'Cyber Trap',
+        'Hip-Hop / Rap',
+        (
+            'cyber trap hip hop',
+            'futuristic industrial trap with distorted 808 bass and digital glitch textures',
+            'dark cyberpunk trap rap with mechanical electronic production',
+        ),
+    ),
+    GenreCandidate(
+        'Industrial Hip-Hop',
+        'Hip-Hop / Rap',
+        (
+            'industrial hip hop',
+            'abrasive industrial rap with mechanical percussion and distorted bass',
+            'dark experimental hip hop with harsh electronic noise and heavy low end',
+        ),
+    ),
+    GenreCandidate(
+        'Glitch Hop',
+        'Hip-Hop / Rap',
+        (
+            'glitch hop',
+            'hip hop groove with chopped digital glitches and syncopated electronic bass',
+            'glitch-heavy electronic hip hop with broken edits and punchy drums',
+        ),
+    ),
+    GenreCandidate(
+        'Electronic Drill',
+        'Hip-Hop / Rap',
+        (
+            'electronic drill rap',
+            'drill hip hop fused with harsh electronic synths and industrial sound design',
+            'dark futuristic drill with sliding 808 bass and mechanical electronic production',
+        ),
+    ),
     GenreCandidate('Memphis Rap', 'Hip-Hop / Rap', ('Memphis rap', '90s Memphis underground hip hop')),
     GenreCandidate('G-Funk', 'Hip-Hop / Rap', ('G-funk hip hop', 'West Coast G-funk with synth leads and deep bass')),
     GenreCandidate('Cloud Rap', 'Hip-Hop / Rap', ('cloud rap', 'atmospheric dreamy cloud rap')),
     GenreCandidate('Lo-Fi Hip-Hop', 'Hip-Hop / Rap', ('lo-fi hip hop', 'dusty relaxed lo-fi hip hop beats')),
     GenreCandidate('Jazzy Hip-Hop', 'Hip-Hop / Rap', ('jazzy hip hop', 'jazz-influenced hip hop')),
     GenreCandidate('Pop Rap', 'Hip-Hop / Rap', ('pop rap', 'melodic mainstream pop rap')),
-    GenreCandidate('Grime', 'Hip-Hop / Rap', ('UK grime music', 'grime rap with electronic beats')),
+    GenreCandidate(
+        'Grime',
+        'Hip-Hop / Rap',
+        (
+            'UK grime music',
+            'East London grime around 140 BPM with sparse syncopated electronic beats and square-wave synths',
+            'British grime MC music with cold minimal riddims and UK garage lineage',
+        ),
+    ),
     GenreCandidate('Horrorcore', 'Hip-Hop / Rap', ('horrorcore rap', 'dark horror-themed hip hop')),
     GenreCandidate('Alternative Hip-Hop', 'Hip-Hop / Rap', ('alternative hip hop', 'experimental alternative rap')),
 
