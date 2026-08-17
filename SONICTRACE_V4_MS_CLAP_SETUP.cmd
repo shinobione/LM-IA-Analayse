@@ -25,10 +25,10 @@ echo Checkpoint      : microsoft/msclap / CLAP_weights_2023.pth
 echo Audio regime    : 44.1 kHz - 7 second clips - CUDA
 echo Code license    : MIT
 echo Weights license : MS-PL ^(commercially eligible subject to license terms; review before shipping^)
-echo Runtime pins    : Torch 2.1.2 cu118 + TorchVision 0.16.2 cu118 + TorchAudio 2.1.2 cu118 + Transformers 4.46.3
+echo Runtime pins    : Torch 2.1.2 cu118 + TorchVision 0.16.2 cu118 + TorchAudio 2.1.2 cu118 + NumPy 1.26.4 + Transformers 4.46.3
 echo.
 
-echo [1/5] Verification uv...
+echo [1/6] Verification uv...
 call :resolve_uv
 if not defined UV (
   echo [..] Installation automatique de uv...
@@ -41,7 +41,7 @@ if not defined UV (
 if not defined UV goto :fail
 echo [OK] uv : %UV%
 
-echo [2/5] Creation environnement Python 3.10 ISOLE MS-CLAP...
+echo [2/6] Creation environnement Python 3.10 ISOLE MS-CLAP...
 if not exist "%VENV%\Scripts\python.exe" (
   if exist "%VENV%" rmdir /s /q "%VENV%"
   "%UV%" venv --python 3.10 "%VENV%"
@@ -50,7 +50,7 @@ if not exist "%VENV%\Scripts\python.exe" (
 "%VENV%\Scripts\python.exe" --version
 if errorlevel 1 goto :fail
 
-echo [3/5] Installation Microsoft CLAP officiel + deps benchmark...
+echo [3/6] Installation Microsoft CLAP officiel + deps benchmark...
 rem msclap 1.3.3 pulls torchvision 0.16.2 / torch 2.1.2 but leaves torchaudio
 rem broad enough for a modern resolver to select a newer binary. On Windows that
 rem can create an ABI-mismatched torch/torchaudio pair. Step 4 always repairs the
@@ -58,12 +58,19 @@ rem complete PyTorch family after dependency resolution.
 "%UV%" pip install --python "%VENV%\Scripts\python.exe" "msclap==1.3.3" "transformers==4.46.3" "librosa==0.10.2.post1" "soundfile==0.12.1" "numpy==1.26.4" "requests>=2.31,<3"
 if errorlevel 1 goto :fail
 
-echo [4/5] Verrouillage ABI PyTorch CUDA 11.8 coherent...
+echo [4/6] Verrouillage ABI PyTorch CUDA 11.8 coherent...
 "%UV%" pip install --python "%VENV%\Scripts\python.exe" --reinstall "torch==2.1.2" "torchvision==0.16.2" "torchaudio==2.1.2" --index-url https://download.pytorch.org/whl/cu118
 if errorlevel 1 goto :fail
 
-echo [5/5] Verification CUDA + ABI Torch/TorchAudio + package...
-"%VENV%\Scripts\python.exe" -c "import importlib.metadata as m,torch,torchvision,torchaudio,transformers,numpy; assert torch.cuda.is_available(); assert torch.__version__.startswith('2.1.2+cu118'), torch.__version__; assert torchvision.__version__.startswith('0.16.2+cu118'), torchvision.__version__; assert torchaudio.__version__.startswith('2.1.2+cu118'), torchaudio.__version__; assert torch.version.cuda == '11.8', torch.version.cuda; assert m.version('msclap') == '1.3.3'; assert transformers.__version__ == '4.46.3'; from msclap import CLAP; print('[OK] GPU:',torch.cuda.get_device_name(0)); print('[OK] Torch',torch.__version__,'TorchVision',torchvision.__version__,'TorchAudio',torchaudio.__version__,'CUDA',torch.version.cuda); print('[OK] Transformers',transformers.__version__,'NumPy',numpy.__version__); print('[OK] msclap',m.version('msclap'),'CLAP class import + TorchAudio ABI active')"
+echo [5/6] Re-verrouillage NumPy 1.x compatible avec Torch 2.1.2...
+rem The PyTorch reinstall resolves its broad NumPy dependency again and can
+rem silently upgrade the venv to NumPy 2.x. Torch 2.1.2 Windows wheels were built
+rem against NumPy 1.x, so pin NumPy AFTER the complete PyTorch family is settled.
+"%UV%" pip install --python "%VENV%\Scripts\python.exe" --reinstall "numpy==1.26.4"
+if errorlevel 1 goto :fail
+
+echo [6/6] Verification CUDA + ABI TorchAudio + pont Torch/NumPy + package...
+"%VENV%\Scripts\python.exe" -c "import importlib.metadata as m,torch,torchvision,torchaudio,transformers,numpy as np; assert torch.cuda.is_available(); assert torch.__version__.startswith('2.1.2+cu118'), torch.__version__; assert torchvision.__version__.startswith('0.16.2+cu118'), torchvision.__version__; assert torchaudio.__version__.startswith('2.1.2+cu118'), torchaudio.__version__; assert torch.version.cuda == '11.8', torch.version.cuda; assert np.__version__ == '1.26.4', np.__version__; assert m.version('msclap') == '1.3.3'; assert transformers.__version__ == '4.46.3'; probe=torch.arange(4,dtype=torch.float32); arr=probe.cpu().numpy(); assert arr.shape == (4,) and float(arr[3]) == 3.0; back=torch.from_numpy(np.asarray([1.0,2.0],dtype=np.float32)); assert back.dtype == torch.float32 and back.tolist() == [1.0,2.0]; from msclap import CLAP; print('[OK] GPU:',torch.cuda.get_device_name(0)); print('[OK] Torch',torch.__version__,'TorchVision',torchvision.__version__,'TorchAudio',torchaudio.__version__,'CUDA',torch.version.cuda); print('[OK] Transformers',transformers.__version__,'NumPy',np.__version__); print('[OK] msclap',m.version('msclap'),'CLAP class import + TorchAudio ABI + Torch/NumPy bridge active')"
 if errorlevel 1 goto :fail
 
 echo.
@@ -74,7 +81,7 @@ echo.
 echo Runtime : %VENV%
 echo Model   : microsoft/msclap / CLAP_weights_2023.pth
 echo Policy  : 44.1 kHz / 5 clips deterministes de 7s par morceau
-echo Stack   : Torch 2.1.2 cu118 / TorchVision 0.16.2 cu118 / TorchAudio 2.1.2 cu118
+echo Stack   : Torch 2.1.2 cu118 / TorchVision 0.16.2 cu118 / TorchAudio 2.1.2 cu118 / NumPy 1.26.4
 echo License : MIT code / MS-PL weights
 echo.
 echo IMPORTANT : le premier benchmark telechargera le checkpoint 2023
