@@ -62,7 +62,8 @@ class GenreDimensionsTests(unittest.TestCase):
         self.assertEqual(dims['form']['primary']['label'], 'Sentimental Ballad')
         self.assertEqual(dims['form']['primary']['source_label'], 'Vietnamese Pop Ballad')
         self.assertEqual(dims['region']['label'], 'Vietnam')
-        self.assertEqual(dims['coherence']['version'], '3.5.2')
+        self.assertEqual(dims['coherence']['version'], '3.5.4')
+        self.assertEqual(dims['coherence']['family_cluster']['source'], 'ensemble-style-evidence')
         self.assertTrue(dims['coherence']['family_cluster']['status'] in {'authoritative', 'insufficient'})
         self.assertTrue(result['studio_contract']['semantic_dimensions_additive'])
 
