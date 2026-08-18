@@ -1,94 +1,118 @@
-# SonicTrace V4 Model Lab — CLaMP3 / MERT + MuQ-MuLan + Microsoft CLAP
+# SonicTrace V4 Model Lab — neural challenger benchmark
 
 Status: **experimental parallel benchmark only**. This folder does **not** replace SonicTrace V3 and does **not** touch SHINOBIWAN STUDIO.
 
-Latest completed real benchmark decision record:
+Latest completed real benchmark decision records:
 
-`model_lab/BENCHMARK-VERDICT-2026-08-17.md`
+- `model_lab/BENCHMARK-VERDICT-2026-08-17.md` — CLaMP3 vs MuQ-MuLan
+- `model_lab/BENCHMARK-VERDICT-2026-08-18.md` — Microsoft CLAP Candidate C closeout
 
 ## Why this lab exists
 
 The V3 CLAP + Discogs pipeline reached a point where real tracks could receive obviously wrong raw zero-shot labels before any SonicTrace guard ran. V4 Model Lab tests whether a different musical/audio-language representation can reduce that upstream error instead of adding more track-specific rules.
 
-## Candidate A — CLaMP 3 SAAS
+The same four-track torture set and unchanged taxonomy are reused for every challenger. Artist TXT/reference metadata is loaded **only after inference** for benchmark scoring.
 
-Official project: `https://github.com/sanderwood/clamp3`
+## Current ranking
 
-Pinned source commit for this lab:
-
-`9016d2b0c8d12d1aa79c2e0ab201e6822bdc83a8`
-
-Official audio pipeline used by this lab:
-
-`audio -> MERT-v1-95M -> CLaMP 3 SAAS -> shared 768D music/text embedding -> cosine similarity`
-
-CLaMP3's official repository describes music-to-text retrieval as a zero-shot classification path and uses MERT features for audio. The lab deliberately uses the official model rather than reimplementing its neural network.
-
-Real four-track verdict: useful, but still too diffuse on THICK and Tachy Psychia to become the main V4 ear. It remains a preserved challenger / reference implementation.
-
-## Candidate B — MuQ-MuLan 700M
+### 1. Candidate B — MuQ-MuLan 700M
 
 Model: `OpenMuQ/MuQ-MuLan-large`
-
-Lab policy:
-
-- fp32
-- 24 kHz audio
-- five deterministic evenly-spaced 10-second clips per track
-- normalized clip embeddings, mean pooling, final renormalization
-- separate runtime: `model_lab/.runtime/muq_venv/`
-- weights treated as **non-commercial / lab-only** by this project
 
 Real four-track verdict on RTX 3060 12 GB:
 
 - Stick to You: **PASS** — `Pop` + `Dancehall Pop` #1
 - Tachy Psychia: **PASS** — `Hip-Hop / Rap` + `Drift Phonk` #1 + `Electronic Hybrid` #1
 - THICK: **PASS** — `Hip-Hop / Rap` + `Drift Phonk` #1; canonical Dancehall-Pop collapse removed
-- Tình Bolero Cho Trân: **FAIL on family only** — raw family remains `Pop`, while `Vietnamese Bolero` #1, `Nhạc Trữ Tình` #1 and `Sentimental Ballad` #1 are all correct/coherent
+- Tình Bolero Cho Trân: **FAIL on family only** — raw family remains `Pop`, while `Vietnamese Bolero` #1, `Nhạc Trữ Tình` #1 and `Sentimental Ballad` #1 are coherent
 
-MuQ-MuLan is therefore the **strongest raw neural challenger measured so far**, but it is **not promoted into product runtime**. The Bolero family failure remains real and the current non-commercial weight-license boundary prevents a SonicTrace/STUDIO product decision.
+MuQ-MuLan remains the **quality reference to beat**, but its current checkpoint weights are treated by this project as **CC-BY-NC-4.0 / lab-only**, so it is not promoted into SonicTrace/STUDIO product runtime.
 
-See `BENCHMARK-VERDICT-2026-08-17.md` for the exact captured scores, runtime/VRAM observations and next gate.
+Lab policy:
 
-## Candidate C — Microsoft CLAP 2023
+- fp32
+- 24 kHz
+- five deterministic evenly-spaced 10-second clips
+- normalized clip embeddings, mean pooling, final renormalization
+- isolated runtime: `model_lab/.runtime/muq_venv/`
 
-Official code: `microsoft/CLAP`, pinned for this lab to:
+### 2. Candidate A — CLaMP3 / MERT95M
+
+Official source pinned to:
+
+`9016d2b0c8d12d1aa79c2e0ab201e6822bdc83a8`
+
+Pipeline:
+
+`audio -> MERT-v1-95M -> CLaMP 3 SAAS -> shared 768D music/text embedding -> cosine similarity`
+
+Real verdict: useful and materially different from V3, but still too diffuse on THICK and Tachy Psychia to become the main V4 ear. Preserved as a reference challenger.
+
+### 3. Candidate C — Microsoft CLAP 2023 — rejected for quality
+
+Official code commit:
 
 `e8a6467b87cd85716e20c6a008126150d9740be0`
 
-Official Python package / checkpoint path:
+Checkpoint:
 
-- package: `msclap==1.3.3`
-- version: `2023`
-- checkpoint: `microsoft/msclap / CLAP_weights_2023.pth`
-- checkpoint SHA-256 recorded by the lab: `2cef4016d47d00eb28d153d522f397222057f95000e9bad6b9583c631284a1e6`
-- code license: MIT
-- checkpoint license: MS-PL
+`microsoft/msclap / CLAP_weights_2023.pth`
 
-The Microsoft checkpoint is **not** marked non-commercial. It is therefore a candidate for the product-license gate, subject to full compliance with MS-PL terms and a product legal review before any shipping decision. The Model Lab does not interpret that as unconditional legal clearance.
+Real four-track result: **0/4 PASS**.
 
-Microsoft CLAP 2023 uses 44.1 kHz audio and a 7-second model duration. The upstream wrapper normally random-trims audio longer than its duration. SonicTrace does **not** allow that randomness in the benchmark: Candidate C first decodes the source and creates five deterministic evenly-spaced **exact 7-second clips**. Only those clips are sent to the official `msclap` embedding API. Exact-duration clips take the wrapper's deterministic duration branch, so no truth-aware or random passage selection can occur.
+- Stick to You: `Dancehall Pop` style #1, but family incorrectly `R&B / Soul / Funk` and Vietnamese-tradition leakage
+- Tachy Psychia: **`Dancehall Pop` #1** despite `Drift Phonk` in Top-5
+- THICK: **`Dancehall Pop` #1**, recreating the canonical V3 failure
+- Tình Bolero Cho Trân: style/tradition/form strong, but family still wrong
 
-The same unchanged `family / style / tradition / form` taxonomy and the same four-track post-inference benchmark are used. No V3 rule, taxonomy weight or expected answer is modified to favor Candidate C.
+Operationally it is excellent on RTX 3060 (~0.4–0.5 s warmed, ~2.94 GiB peak VRAM, 1024D), but quality is not sufficient. It remains a fast/light reference only; no prompt or threshold tuning is performed to rescue it.
 
-Candidate C is intentionally a separate checkpoint/implementation from SonicTrace V3, whose current default neural model is LAION CLAP. Its purpose is to measure whether a commercially plausible audio-language checkpoint can approach MuQ quality before we look at any product integration.
+License boundary: MIT code / MS-PL checkpoint, with compliance/legal review required before any hypothetical product use.
+
+## Candidate D — LAION Larger CLAP Music — active benchmark
+
+Model:
+
+`laion/larger_clap_music`
+
+Pinned Model Lab revision:
+
+`a0b4534`
+
+Why Candidate D exists: SonicTrace V3 uses `laion/clap-htsat-unfused`; Candidate D instead tests LAION's **larger music-trained CLAP checkpoint** as a separate Model Lab ear. It is not wired into V3.
+
+Lab policy:
+
+- Apache-2.0 model/license boundary
+- 48 kHz audio
+- 512D shared audio/text embedding
+- five deterministic evenly-spaced **exact 10-second clips** per track
+- the processor's long-audio `rand_trunc` path is neutralized by supplying exact native-duration arrays
+- per-clip L2 normalization, mean pooling, final L2 normalization
+- same unchanged `family / style / tradition / form` taxonomy
+- benchmark truth loaded only after all four audio-only rankings are complete
+- isolated runtime: `model_lab/.runtime/larger_clap_venv/`
+
+Candidate D must beat or approach MuQ on the same four tracks **without** changing taxonomy prompts, benchmark expectations or thresholds.
 
 ## Isolation contract
 
-- runtime: `model_lab/.runtime/`
-- separate CLaMP3 Python 3.10 environment: `model_lab/.runtime/venv/`
-- separate MuQ environment: `model_lab/.runtime/muq_venv/`
-- separate Microsoft CLAP environment: `model_lab/.runtime/msclap_venv/`
-- separate CLaMP3 checkout: `model_lab/.runtime/clamp3/`
-- shared isolated Hugging Face cache: `model_lab/.runtime/huggingface/`
-- results: `model_lab/results/`
-- none of these local folders are committed
+- shared lab root: `model_lab/.runtime/`
+- CLaMP3 env: `model_lab/.runtime/venv/`
+- MuQ env: `model_lab/.runtime/muq_venv/`
+- Microsoft CLAP env: `model_lab/.runtime/msclap_venv/`
+- LAION Larger CLAP Music env: `model_lab/.runtime/larger_clap_venv/`
+- CLaMP3 checkout: `model_lab/.runtime/clamp3/`
+- shared Hugging Face cache: `model_lab/.runtime/huggingface/`
+- generated results: `model_lab/results/`
+- none of the local runtimes/results are committed
 - no SonicTrace V3 backend dependency is replaced
-- no STUDIO repository/file is touched
+- no catalogue migration occurs during the benchmark phase
+- no SHINOBIWAN STUDIO file is touched
 
 ## Inference contract
 
-**Audio only.** Track TXT metadata is never injected into challenger prompts and is never used to reorder inference results.
+**Audio only.** Track TXT metadata is never injected into challenger prompts and never reorders inference output.
 
 The taxonomy is split into independent axes:
 
@@ -97,84 +121,63 @@ The taxonomy is split into independent axes:
 3. `tradition`
 4. `form`
 
-This avoids forcing concepts such as `Nhạc Vàng` and `Vietnamese Bolero` to compete for one single label.
-
 `benchmarks.json` contains artist-declared/reference knowledge **only for post-inference evaluation**.
 
 ## Double-click workflow (Windows)
 
-### CLaMP3 — first time only
+### CLaMP3
 
-Double-click:
+- setup: `SONICTRACE_V4_MODEL_LAB_SETUP.cmd`
+- benchmark: `SONICTRACE_V4_MODEL_LAB_BENCHMARK.cmd`
 
-`SONICTRACE_V4_MODEL_LAB_SETUP.cmd`
+### MuQ-MuLan
 
-### CLaMP3 benchmark
+- setup/repair: `SONICTRACE_V4_MUQ_MULAN_SETUP.cmd`
+- benchmark: `SONICTRACE_V4_MUQ_MULAN_BENCHMARK.cmd`
 
-Double-click:
+### Microsoft CLAP 2023
 
-`SONICTRACE_V4_MODEL_LAB_BENCHMARK.cmd`
+- setup/repair: `SONICTRACE_V4_MS_CLAP_SETUP.cmd`
+- benchmark: `SONICTRACE_V4_MS_CLAP_BENCHMARK.cmd`
 
-### MuQ-MuLan — first time / runtime repair
+### Candidate D — LAION Larger CLAP Music
 
-Double-click:
+First setup:
 
-`SONICTRACE_V4_MUQ_MULAN_SETUP.cmd`
+`SONICTRACE_V4_LARGER_CLAP_MUSIC_SETUP.cmd`
 
-### MuQ-MuLan benchmark
+Benchmark:
 
-Double-click:
+`SONICTRACE_V4_LARGER_CLAP_MUSIC_BENCHMARK.cmd`
 
-`SONICTRACE_V4_MUQ_MULAN_BENCHMARK.cmd`
+Select the same four files together:
 
-### Microsoft CLAP 2023 — first time only
+- `THICK.wav`
+- `Tachy Psychia.wav`
+- `stick-to-you.wav`
+- `Tình Bolero Cho Trân.wav`
 
-Double-click:
+Candidate D writes:
 
-`SONICTRACE_V4_MS_CLAP_SETUP.cmd`
+- `model_lab/results/larger-clap-music-benchmark-YYYYMMDD-HHMMSS.json`
+- `model_lab/results/larger-clap-music-benchmark-YYYYMMDD-HHMMSS.txt`
+- `model_lab/results/larger-clap-music-last-run.log`
+- `model_lab/results/larger-clap-music-last-error.txt` on failure
 
-It creates `model_lab/.runtime/msclap_venv/`, pins the CUDA runtime used by this lab, installs `msclap==1.3.3`, and verifies CUDA plus the official `CLAP` class import. It does not instantiate or download the checkpoint until the benchmark.
-
-### Microsoft CLAP 2023 benchmark
-
-Double-click:
-
-`SONICTRACE_V4_MS_CLAP_BENCHMARK.cmd`
-
-Select the same WAV/MP3 torture set:
-
-- `THICK`
-- `Tachy Psychia`
-- `Stick to You`
-- `Tinh Bolero Cho Trân`
-
-For every track the lab records:
-
-- Top-10 per semantic axis
-- raw cosine similarities
-- benchmark `PASS / NEAR / FAIL`
-- total runtime
-- GPU name/driver
-- peak observed NVIDIA VRAM usage
-- exact model/runtime identity where applicable
-- explicit `declared_metadata_used_for_inference: false`
-
-Results are written as JSON and human-readable TXT under `model_lab/results/`.
+Every report records Top rankings, raw cosine similarities, benchmark status, runtime, GPU/VRAM, model identity and explicit `declared_metadata_used_for_inference: false`.
 
 ## Decision gate
 
-No challenger is allowed to replace V3 merely because one showcase track looks better.
+No challenger replaces V3 merely because one showcase track looks better.
 
-A future V4 integration candidate should demonstrate, on the same runtime and taxonomy:
+A future V4 integration candidate should demonstrate simultaneously:
 
-- THICK no longer collapsing into unrelated dance-pop/regional styles;
-- Tachy Psychia landing inside its hard hybrid neighborhood;
-- Stick to You remaining in a plausible Pop/Dancehall/Eurodance neighborhood;
-- Tinh Bolero Cho Trân remaining Vietnamese/Bolero without TXT forcing;
+- THICK no longer collapsing into unrelated Dancehall/Eurodance output;
+- Tachy Psychia landing inside its hard hybrid Phonk/Trap/Glitch/Drill neighborhood;
+- Stick to You remaining in a plausible Pop/Dancehall/Eurodance/Afropop neighborhood;
+- Tình Bolero Cho Trân remaining Vietnamese/Bolero without TXT forcing;
 - acceptable RTX 3060 runtime and VRAM;
-- no regression toward overconfident single-label behavior;
-- a production-compatible license for any checkpoint intended to ship with SonicTrace/STUDIO.
+- stable/reproducible deterministic inference;
+- a production-compatible model/license boundary.
 
-MuQ-MuLan currently leads the quality benchmark but does **not** clear the complete product gate. Candidate C now asks a narrower question: can Microsoft CLAP 2023, under a materially more product-compatible license boundary than MuQ's non-commercial weights, approach that quality on the exact same torture set?
-
-No catalogue embedding migration and no SonicTrace/STUDIO integration occurs during this benchmark phase.
+Until that gate is passed, MuQ-MuLan remains the raw quality reference, SonicTrace V3 remains intact, and STUDIO remains untouched.
