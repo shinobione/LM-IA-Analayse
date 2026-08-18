@@ -7,6 +7,7 @@ Latest completed real benchmark decision records:
 - `model_lab/BENCHMARK-VERDICT-2026-08-17.md` — CLaMP3 vs MuQ-MuLan
 - `model_lab/BENCHMARK-VERDICT-2026-08-18.md` — Microsoft CLAP Candidate C closeout
 - `model_lab/BENCHMARK-VERDICT-2026-08-18-CANDIDATE-D.md` — Hugging Face Larger CLAP Music conversion closeout
+- `model_lab/BENCHMARK-VERDICT-2026-08-18-CANDIDATE-E.md` — native LAION music checkpoint closeout
 
 ## Why this lab exists
 
@@ -49,7 +50,30 @@ Pipeline:
 
 Real verdict: useful and materially different from V3, but still too diffuse on THICK and Tachy Psychia to become the main V4 ear. Preserved as a reference challenger.
 
-### 3. Candidate C — Microsoft CLAP 2023 — rejected for quality
+### 3. Candidate E — Native LAION CLAP Music — rejected for quality
+
+Native identity:
+
+- package: `laion-clap==1.1.7`
+- audio model: `HTSAT-base`
+- fusion: disabled
+- checkpoint: `music_audioset_epoch_15_esc_90.14.pt`
+- checkpoint SHA-256: `fae3e9c087f2909c28a09dc31c8dfcdacbc42ba44c70e972b58c1bd1caf6dedd`
+- code license: Apache-2.0
+- checkpoint repository metadata: CC0-1.0
+
+Real four-track result: **0 PASS / 1 NEAR**.
+
+- Stick to You: **NEAR** — family `Pop`; intended Afropop / Dancehall Pop / Eurodance neighborhood is present, but `Synth-Pop` is primary
+- Tachy Psychia: **FAIL** — family `Pop`, style `Eurodance`; hard-hybrid Phonk/Trap/Glitch/Drill neighborhood is not recovered
+- THICK: **FAIL** — `Cyber Trap` appears #3, but `Pop` / `Eurodance` / `Euro-House` remain dominant
+- Tình Bolero Cho Trân: **FAIL** — `Nhạc Trữ Tình` and `Nhạc Vàng` plus `Sentimental Ballad` are strong, but family is `Country / Acoustic` and style is `Contemporary R&B`; `Vietnamese Bolero` is only #2
+
+Candidate E is a valid native-path benchmark — unlike Candidate D, its cosine scores are healthy and track rankings differ materially — but its quality is still below the SonicTrace gate. No prompt, threshold or rescue-rule tuning is performed to improve it.
+
+See `BENCHMARK-VERDICT-2026-08-18-CANDIDATE-E.md`.
+
+### 4. Candidate C — Microsoft CLAP 2023 — rejected for quality
 
 Official code commit:
 
@@ -82,38 +106,13 @@ This is **not treated as clean evidence against the original LAION music checkpo
 
 Candidate D is therefore preserved only as an **unreliable converted-path reference**. Do not tune SonicTrace prompts, thresholds, benchmark expectations, or rescue rules to improve it.
 
-See `BENCHMARK-VERDICT-2026-08-18-CANDIDATE-D.md` for the captured reasoning and upstream references.
+See `BENCHMARK-VERDICT-2026-08-18-CANDIDATE-D.md`.
 
-## Candidate E — Native LAION CLAP music checkpoint — active benchmark
+## Next research candidate
 
-Candidate E tests the original LAION music checkpoint through the native `laion_clap` implementation rather than the unreliable Hugging Face conversion.
+Do **not** spend more rounds on additional LAION CLAP variants. Candidate E showed that the native music checkpoint is healthier than the converted Hugging Face path, but it still does not solve the hard-hybrid or Bolero authority problems.
 
-Native identity:
-
-- package: `laion-clap==1.1.7`
-- audio model: `HTSAT-base`
-- fusion: disabled
-- checkpoint: `music_audioset_epoch_15_esc_90.14.pt`
-- checkpoint repository: `lukewys/laion_clap`
-- checkpoint SHA-256: `fae3e9c087f2909c28a09dc31c8dfcdacbc42ba44c70e972b58c1bd1caf6dedd`
-- code license: Apache-2.0
-- checkpoint repository metadata: CC0-1.0
-
-Lab policy:
-
-- 48 kHz audio
-- five deterministic evenly-spaced **exact 10-second clips** per track
-- exact duration prevents native long-audio random truncation from choosing benchmark passages
-- native `get_audio_embedding_from_data` + `get_text_embedding`
-- per-clip L2 normalization, mean pooling, final L2 normalization
-- same unchanged `family / style / tradition / form` taxonomy
-- benchmark truth loaded only after all four audio-only rankings are complete
-- isolated runtime: `model_lab/.runtime/native_laion_music_venv/`
-- local checkpoint: `model_lab/.runtime/native_laion_music/music_audioset_epoch_15_esc_90.14.pt`
-
-Candidate E asks one narrow question: can the **original native music checkpoint** approach MuQ-MuLan quality while keeping a materially more production-plausible license boundary?
-
-The setup is intentionally strict: it does not print READY until CUDA, the pinned ABI stack, the exact checkpoint SHA, an actual native HTSAT-base checkpoint load and a real text embedding have all succeeded.
+The next architecture worth researching is **M2D-CLAP 2025** (`nttcslab/m2d`), because it is a newer audio-language representation and its official repository provides zero-shot classification support. It is not yet an active SonicTrace candidate: the repository points to a custom `LICENSE.pdf`, so its product/commercial boundary must be reviewed explicitly before any promotion. If benchmarked, it must use the exact same unchanged audio-only torture set and no TXT forcing.
 
 ## Isolation contract
 
@@ -171,22 +170,12 @@ Preserved only for reproducibility; no further tuning is planned:
 
 ### Candidate E — native LAION CLAP Music
 
-First setup:
+Preserved as a completed native-path reference; no further tuning is planned:
 
-`SONICTRACE_V4_NATIVE_LAION_MUSIC_SETUP.cmd`
+- setup: `SONICTRACE_V4_NATIVE_LAION_MUSIC_SETUP.cmd`
+- benchmark: `SONICTRACE_V4_NATIVE_LAION_MUSIC_BENCHMARK.cmd`
 
-Benchmark:
-
-`SONICTRACE_V4_NATIVE_LAION_MUSIC_BENCHMARK.cmd`
-
-Select the same four files together:
-
-- `THICK.wav`
-- `Tachy Psychia.wav`
-- `stick-to-you.wav`
-- `Tình Bolero Cho Trân.wav`
-
-Candidate E writes:
+Candidate E reports:
 
 - `model_lab/results/native-laion-music-benchmark-YYYYMMDD-HHMMSS.json`
 - `model_lab/results/native-laion-music-benchmark-YYYYMMDD-HHMMSS.txt`
