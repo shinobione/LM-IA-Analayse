@@ -6,6 +6,7 @@ Latest completed real benchmark decision records:
 
 - `model_lab/BENCHMARK-VERDICT-2026-08-17.md` — CLaMP3 vs MuQ-MuLan
 - `model_lab/BENCHMARK-VERDICT-2026-08-18.md` — Microsoft CLAP Candidate C closeout
+- `model_lab/BENCHMARK-VERDICT-2026-08-18-CANDIDATE-D.md` — Hugging Face Larger CLAP Music conversion closeout
 
 ## Why this lab exists
 
@@ -69,31 +70,50 @@ Operationally it is excellent on RTX 3060 (~0.4–0.5 s warmed, ~2.94 GiB peak V
 
 License boundary: MIT code / MS-PL checkpoint, with compliance/legal review required before any hypothetical product use.
 
-## Candidate D — LAION Larger CLAP Music — active benchmark
+## Candidate D — Hugging Face Larger CLAP Music — benchmark invalidated
 
 Model:
 
-`laion/larger_clap_music`
+`laion/larger_clap_music @ a0b4534`
 
-Pinned Model Lab revision:
+The real RTX 3060 run completed technically but produced suspiciously collapsed semantic output: all four tracks failed, cosine similarities were mostly around `0.003–0.009`, and radically different songs received very similar rankings.
 
-`a0b4534`
+This is **not treated as clean evidence against the original LAION music checkpoint**. Upstream reports document a severe accuracy regression for the larger HTSAT-base checkpoints after conversion to Hugging Face Transformers, and the model's own Hugging Face discussion contains near-50/50 zero-shot outputs for obviously different candidate classes.
 
-Why Candidate D exists: SonicTrace V3 uses `laion/clap-htsat-unfused`; Candidate D instead tests LAION's **larger music-trained CLAP checkpoint** as a separate Model Lab ear. It is not wired into V3.
+Candidate D is therefore preserved only as an **unreliable converted-path reference**. Do not tune SonicTrace prompts, thresholds, benchmark expectations, or rescue rules to improve it.
+
+See `BENCHMARK-VERDICT-2026-08-18-CANDIDATE-D.md` for the captured reasoning and upstream references.
+
+## Candidate E — Native LAION CLAP music checkpoint — active benchmark
+
+Candidate E tests the original LAION music checkpoint through the native `laion_clap` implementation rather than the unreliable Hugging Face conversion.
+
+Native identity:
+
+- package: `laion-clap==1.1.7`
+- audio model: `HTSAT-base`
+- fusion: disabled
+- checkpoint: `music_audioset_epoch_15_esc_90.14.pt`
+- checkpoint repository: `lukewys/laion_clap`
+- checkpoint SHA-256: `fae3e9c087f2909c28a09dc31c8dfcdacbc42ba44c70e972b58c1bd1caf6dedd`
+- code license: Apache-2.0
+- checkpoint repository metadata: CC0-1.0
 
 Lab policy:
 
-- Apache-2.0 model/license boundary
 - 48 kHz audio
-- 512D shared audio/text embedding
 - five deterministic evenly-spaced **exact 10-second clips** per track
-- the processor's long-audio `rand_trunc` path is neutralized by supplying exact native-duration arrays
+- exact duration prevents native long-audio random truncation from choosing benchmark passages
+- native `get_audio_embedding_from_data` + `get_text_embedding`
 - per-clip L2 normalization, mean pooling, final L2 normalization
 - same unchanged `family / style / tradition / form` taxonomy
 - benchmark truth loaded only after all four audio-only rankings are complete
-- isolated runtime: `model_lab/.runtime/larger_clap_venv/`
+- isolated runtime: `model_lab/.runtime/native_laion_music_venv/`
+- local checkpoint: `model_lab/.runtime/native_laion_music/music_audioset_epoch_15_esc_90.14.pt`
 
-Candidate D must beat or approach MuQ on the same four tracks **without** changing taxonomy prompts, benchmark expectations or thresholds.
+Candidate E asks one narrow question: can the **original native music checkpoint** approach MuQ-MuLan quality while keeping a materially more production-plausible license boundary?
+
+The setup is intentionally strict: it does not print READY until CUDA, the pinned ABI stack, the exact checkpoint SHA, an actual native HTSAT-base checkpoint load and a real text embedding have all succeeded.
 
 ## Isolation contract
 
@@ -101,7 +121,9 @@ Candidate D must beat or approach MuQ on the same four tracks **without** changi
 - CLaMP3 env: `model_lab/.runtime/venv/`
 - MuQ env: `model_lab/.runtime/muq_venv/`
 - Microsoft CLAP env: `model_lab/.runtime/msclap_venv/`
-- LAION Larger CLAP Music env: `model_lab/.runtime/larger_clap_venv/`
+- converted Larger CLAP env: `model_lab/.runtime/larger_clap_venv/`
+- native LAION music env: `model_lab/.runtime/native_laion_music_venv/`
+- native LAION checkpoint: `model_lab/.runtime/native_laion_music/`
 - CLaMP3 checkout: `model_lab/.runtime/clamp3/`
 - shared Hugging Face cache: `model_lab/.runtime/huggingface/`
 - generated results: `model_lab/results/`
@@ -140,15 +162,22 @@ The taxonomy is split into independent axes:
 - setup/repair: `SONICTRACE_V4_MS_CLAP_SETUP.cmd`
 - benchmark: `SONICTRACE_V4_MS_CLAP_BENCHMARK.cmd`
 
-### Candidate D — LAION Larger CLAP Music
+### Candidate D — converted LAION Larger CLAP Music
+
+Preserved only for reproducibility; no further tuning is planned:
+
+- setup: `SONICTRACE_V4_LARGER_CLAP_MUSIC_SETUP.cmd`
+- benchmark: `SONICTRACE_V4_LARGER_CLAP_MUSIC_BENCHMARK.cmd`
+
+### Candidate E — native LAION CLAP Music
 
 First setup:
 
-`SONICTRACE_V4_LARGER_CLAP_MUSIC_SETUP.cmd`
+`SONICTRACE_V4_NATIVE_LAION_MUSIC_SETUP.cmd`
 
 Benchmark:
 
-`SONICTRACE_V4_LARGER_CLAP_MUSIC_BENCHMARK.cmd`
+`SONICTRACE_V4_NATIVE_LAION_MUSIC_BENCHMARK.cmd`
 
 Select the same four files together:
 
@@ -157,14 +186,14 @@ Select the same four files together:
 - `stick-to-you.wav`
 - `Tình Bolero Cho Trân.wav`
 
-Candidate D writes:
+Candidate E writes:
 
-- `model_lab/results/larger-clap-music-benchmark-YYYYMMDD-HHMMSS.json`
-- `model_lab/results/larger-clap-music-benchmark-YYYYMMDD-HHMMSS.txt`
-- `model_lab/results/larger-clap-music-last-run.log`
-- `model_lab/results/larger-clap-music-last-error.txt` on failure
+- `model_lab/results/native-laion-music-benchmark-YYYYMMDD-HHMMSS.json`
+- `model_lab/results/native-laion-music-benchmark-YYYYMMDD-HHMMSS.txt`
+- `model_lab/results/native-laion-music-last-run.log`
+- `model_lab/results/native-laion-music-last-error.txt` on failure
 
-Every report records Top rankings, raw cosine similarities, benchmark status, runtime, GPU/VRAM, model identity and explicit `declared_metadata_used_for_inference: false`.
+Every report records Top rankings, raw cosine similarities, benchmark status, runtime, GPU/VRAM, checkpoint identity/hash and explicit `declared_metadata_used_for_inference: false`.
 
 ## Decision gate
 
@@ -180,4 +209,4 @@ A future V4 integration candidate should demonstrate simultaneously:
 - stable/reproducible deterministic inference;
 - a production-compatible model/license boundary.
 
-Until that gate is passed, MuQ-MuLan remains the raw quality reference, SonicTrace V3 remains intact, and STUDIO remains untouched.
+Until that gate is passed, MuQ-MuLan remains the raw quality reference, SonicTrace V3 remains intact, no catalogue embedding migration occurs, and STUDIO remains untouched.
