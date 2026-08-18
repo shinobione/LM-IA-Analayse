@@ -22,6 +22,13 @@ PORTABLE_URL = (
     "https://raw.githubusercontent.com/nttcslab/m2d/"
     f"{UPSTREAM_COMMIT}/examples/portable_m2d.py"
 )
+EXPECTED_TORCH_PREFIX = "2.4.1+cu118"
+EXPECTED_CUDA = "11.8"
+EXPECTED_NUMPY = "1.26.4"
+EXPECTED_TRANSFORMERS = "4.46.3"
+EXPECTED_TIMM = "1.0.19"
+EXPECTED_NNAUDIO = "0.3.3"
+EXPECTED_EINOPS = "0.8.1"
 
 
 def _download(url: str, destination: Path) -> None:
@@ -62,6 +69,25 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _extract_release(archive: Path, asset_root: Path) -> None:
+    try:
+        with zipfile.ZipFile(archive, "r") as zipped:
+            bad_member = zipped.testzip()
+            if bad_member:
+                raise zipfile.BadZipFile(f"corrupt member: {bad_member}")
+            print(f"[EXTRACT] {archive.name}")
+            zipped.extractall(asset_root)
+    except zipfile.BadZipFile:
+        print("[WARN] Cached release archive is corrupt; downloading it once again...")
+        archive.unlink(missing_ok=True)
+        _download(RELEASE_URL, archive)
+        with zipfile.ZipFile(archive, "r") as zipped:
+            bad_member = zipped.testzip()
+            if bad_member:
+                raise RuntimeError(f"Corrupt M2D-CLAP release archive member after retry: {bad_member}")
+            zipped.extractall(asset_root)
+
+
 def _prepare_assets(runtime: Path) -> tuple[Path, Path, str]:
     asset_root = runtime / "m2d_clap_2025"
     source_root = runtime / "m2d_clap_2025_src"
@@ -73,9 +99,10 @@ def _prepare_assets(runtime: Path) -> tuple[Path, Path, str]:
     asset_root.mkdir(parents=True, exist_ok=True)
     source_root.mkdir(parents=True, exist_ok=True)
 
-    # The source URL includes the exact upstream commit, so refreshing this tiny
-    # file makes the runtime reproducible without cloning the entire repository.
-    _download(PORTABLE_URL, portable)
+    # The source URL includes the exact upstream commit. Once cached and
+    # validated, the immutable source file is reused on repair runs.
+    if not portable.exists():
+        _download(PORTABLE_URL, portable)
     text = portable.read_text(encoding="utf-8")
     if "class PortableM2D" not in text or "def encode_clap_audio" not in text or "def encode_clap_text" not in text:
         raise RuntimeError("Pinned portable_m2d.py does not expose the expected M2D-CLAP runtime API.")
@@ -83,15 +110,7 @@ def _prepare_assets(runtime: Path) -> tuple[Path, Path, str]:
     if not checkpoint.exists():
         if not archive.exists():
             _download(RELEASE_URL, archive)
-        try:
-            with zipfile.ZipFile(archive, "r") as zipped:
-                bad_member = zipped.testzip()
-                if bad_member:
-                    raise RuntimeError(f"Corrupt M2D-CLAP release archive member: {bad_member}")
-                print(f"[EXTRACT] {archive.name}")
-                zipped.extractall(asset_root)
-        except zipfile.BadZipFile as exc:
-            raise RuntimeError(f"Invalid M2D-CLAP release archive: {archive}") from exc
+        _extract_release(archive, asset_root)
 
     if not checkpoint.exists():
         matches = [p for p in asset_root.rglob(CHECKPOINT_FILE) if p.is_file()]
@@ -112,6 +131,8 @@ def _prepare_assets(runtime: Path) -> tuple[Path, Path, str]:
     else:
         lock.write_text(checkpoint_hash + "\n", encoding="ascii")
 
+    # Avoid keeping a second multi-hundred-MB/GB copy after successful extract.
+    archive.unlink(missing_ok=True)
     print(f"[OK] Checkpoint: {checkpoint}")
     print(f"[OK] Checkpoint SHA-256 (local lock): {checkpoint_hash}")
     print(f"[OK] Portable source: upstream {UPSTREAM_COMMIT}")
@@ -135,6 +156,26 @@ def _verify_runtime(checkpoint: Path, portable: Path) -> None:
 
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is not available. Candidate F requires an NVIDIA CUDA GPU.")
+
+    versions = {
+        "timm": importlib.metadata.version("timm"),
+        "nnAudio": importlib.metadata.version("nnAudio"),
+        "einops": importlib.metadata.version("einops"),
+    }
+    if not torch.__version__.startswith(EXPECTED_TORCH_PREFIX):
+        raise RuntimeError(f"Unexpected Torch build: {torch.__version__}")
+    if torch.version.cuda != EXPECTED_CUDA:
+        raise RuntimeError(f"Unexpected CUDA runtime: {torch.version.cuda}")
+    if np.__version__ != EXPECTED_NUMPY:
+        raise RuntimeError(f"Unexpected NumPy: {np.__version__}")
+    if transformers.__version__ != EXPECTED_TRANSFORMERS:
+        raise RuntimeError(f"Unexpected Transformers: {transformers.__version__}")
+    if versions["timm"] != EXPECTED_TIMM:
+        raise RuntimeError(f"Unexpected timm: {versions['timm']}")
+    if versions["nnAudio"] != EXPECTED_NNAUDIO:
+        raise RuntimeError(f"Unexpected nnAudio: {versions['nnAudio']}")
+    if versions["einops"] != EXPECTED_EINOPS:
+        raise RuntimeError(f"Unexpected einops: {versions['einops']}")
 
     module = _load_portable(portable)
     device = torch.device("cuda:0")
@@ -162,16 +203,12 @@ def _verify_runtime(checkpoint: Path, portable: Path) -> None:
     if float(torch.linalg.vector_norm(text_emb[0]).item()) <= 1e-8:
         raise RuntimeError("M2D-CLAP produced a zero-norm text embedding.")
 
-    try:
-        timm_version = importlib.metadata.version("timm")
-        nnaudio_version = importlib.metadata.version("nnAudio")
-        einops_version = importlib.metadata.version("einops")
-    except importlib.metadata.PackageNotFoundError as exc:
-        raise RuntimeError(f"Missing pinned M2D-CLAP dependency: {exc}") from exc
-
     print(f"[OK] GPU: {torch.cuda.get_device_name(0)}")
     print(f"[OK] Torch {torch.__version__} CUDA {torch.version.cuda} NumPy {np.__version__}")
-    print(f"[OK] Transformers {transformers.__version__} timm {timm_version} nnAudio {nnaudio_version} einops {einops_version}")
+    print(
+        f"[OK] Transformers {transformers.__version__} timm {versions['timm']} "
+        f"nnAudio {versions['nnAudio']} einops {versions['einops']}"
+    )
     print(f"[OK] Real M2D-CLAP audio/text embeddings active: {tuple(audio_emb.shape)} / {tuple(text_emb.shape)}")
 
 
