@@ -70,8 +70,11 @@ jobs:
       - name: V4 Candidate E Native LAION Music contract
         run: python model_lab/test_native_laion_music_contract.py
 
+      - name: V4 Candidate F M2D-CLAP 2025 contract
+        run: python model_lab/test_m2d_clap_2025_contract.py
+
       - name: Python syntax
-        run: python -m py_compile tools/runtime_manager.py tools/test_runtime_manager.py backend/app/studio_contract.py backend/app/entrypoint.py backend/app/neural.py backend/app/neural_taxonomy.py backend/app/music_expert.py backend/app/genre_ensemble.py backend/app/genre_dimensions.py backend/app/analysis_benchmark.py backend/tests/test_genre_dimensions_v352_runtime.py backend/tests/smoke_music_expert.py model_lab/setup_clamp3.py model_lab/prepare_refs.py model_lab/run_clamp3_benchmark.py model_lab/run_muq_mulan_benchmark.py model_lab/run_ms_clap_benchmark.py model_lab/run_larger_clap_music_benchmark.py model_lab/run_native_laion_music_benchmark.py model_lab/launch_benchmark.py model_lab/test_model_lab_contract.py model_lab/test_larger_clap_music_contract.py model_lab/test_native_laion_music_contract.py
+        run: python -m py_compile tools/runtime_manager.py tools/test_runtime_manager.py backend/app/studio_contract.py backend/app/entrypoint.py backend/app/neural.py backend/app/neural_taxonomy.py backend/app/music_expert.py backend/app/genre_ensemble.py backend/app/genre_dimensions.py backend/app/analysis_benchmark.py backend/tests/test_genre_dimensions_v352_runtime.py backend/tests/smoke_music_expert.py model_lab/setup_clamp3.py model_lab/prepare_refs.py model_lab/run_clamp3_benchmark.py model_lab/run_muq_mulan_benchmark.py model_lab/run_ms_clap_benchmark.py model_lab/run_larger_clap_music_benchmark.py model_lab/run_native_laion_music_benchmark.py model_lab/setup_m2d_clap_2025.py model_lab/run_m2d_clap_2025_benchmark.py model_lab/launch_benchmark.py model_lab/test_model_lab_contract.py model_lab/test_larger_clap_music_contract.py model_lab/test_native_laion_music_contract.py model_lab/test_m2d_clap_2025_contract.py
 
       - name: Semantic V3.2 genre and arrangement regression
         run: node --check js/semantic-v32.js && node --check js/semantic-bootstrap.js && node --check js/semantic-client.js && node scripts/test-semantic-genre-context.mjs
