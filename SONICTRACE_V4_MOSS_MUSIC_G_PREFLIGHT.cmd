@@ -9,11 +9,9 @@ set "RESULTS=%LAB%\results"
 set "PATH=%LOCALAPPDATA%\Microsoft\WinGet\Links;%USERPROFILE%\.local\bin;%PATH%"
 
 if not exist "%RESULTS%" mkdir "%RESULTS%" >nul 2>&1
-
-for /f "tokens=1-4 delims=/-. " %%a in ("%date%") do set "DATEPART=%%d%%c%%b"
-for /f "tokens=1-3 delims=:,. " %%a in ("%time%") do set "TIMEPART=%%a%%b%%c"
-set "TIMEPART=%TIMEPART: =0%"
-set "REPORT=%RESULTS%\moss-music-g0-preflight-%DATEPART%-%TIMEPART%.txt"
+for /f "usebackq delims=" %%S in (`powershell -NoProfile -ExecutionPolicy Bypass -Command "(Get-Date).ToString('yyyyMMdd-HHmmss')"`) do set "STAMP=%%S"
+if not defined STAMP set "STAMP=unknown"
+set "REPORT=%RESULTS%\moss-music-g0-preflight-%STAMP%.txt"
 
 set "GPU_NAME=UNKNOWN"
 set "VRAM_TOTAL=0"
@@ -29,15 +27,15 @@ set "G0_STATUS=BLOCKED"
 echo.
 echo ============================================================
 echo  SONICTRACE V4 MODEL LAB - CANDIDATE G0 PREFLIGHT
- echo  MOSS-Music-8B-Instruct - ZERO MODEL DOWNLOAD
- echo ============================================================
+echo  MOSS-Music-8B-Instruct - ZERO MODEL DOWNLOAD
+echo ============================================================
 echo.
 echo Ce script :
 echo   - ne telecharge AUCUN modele
 echo   - n'installe AUCUN package
 echo   - ne modifie PAS SonicTrace V3 / Catalogue / STUDIO
 echo   - mesure uniquement la faisabilite locale RTX 3060 / disque / WSL
- echo.
+echo.
 
 where nvidia-smi.exe >nul 2>&1
 if errorlevel 1 (
@@ -95,7 +93,7 @@ if defined UV (
 echo.
 echo ----- NVIDIA-SMI -----
 where nvidia-smi.exe >nul 2>&1 && nvidia-smi.exe
- echo ----------------------
+echo ----------------------
 echo.
 
 if /I "!GPU_STATUS!"=="BORDERLINE_12GB" if /I "!DISK_STATUS!"=="OK" set "G0_STATUS=READY_FOR_QUANTIZED_PROOF_ONLY"
@@ -129,7 +127,7 @@ if /I "!GPU_STATUS!"=="BORDERLINE_12GB" if /I "!DISK_STATUS!"=="OK" set "G0_STAT
 
 echo ============================================================
 echo  G0 RESULTAT : !G0_STATUS!
- echo ============================================================
+echo ============================================================
 echo.
 if /I "!G0_STATUS!"=="READY_FOR_QUANTIZED_PROOF_ONLY" (
   echo [OK] La machine peut passer a une ETUDE G1 4-bit isolee.
