@@ -108,11 +108,40 @@ Candidate D is therefore preserved only as an **unreliable converted-path refere
 
 See `BENCHMARK-VERDICT-2026-08-18-CANDIDATE-D.md`.
 
-## Next research candidate
+## Candidate F — M2D-CLAP 2025 — active benchmark
 
-Do **not** spend more rounds on additional LAION CLAP variants. Candidate E showed that the native music checkpoint is healthier than the converted Hugging Face path, but it still does not solve the hard-hybrid or Bolero authority problems.
+Upstream repository: `nttcslab/m2d`
 
-The next architecture worth researching is **M2D-CLAP 2025** (`nttcslab/m2d`), because it is a newer audio-language representation and its official repository provides zero-shot classification support. It is not yet an active SonicTrace candidate: the repository points to a custom `LICENSE.pdf`, so its product/commercial boundary must be reviewed explicitly before any promotion. If benchmarked, it must use the exact same unchanged audio-only torture set and no TXT forcing.
+Pinned source commit:
+
+`3d0c4de9447c404a8d3f9f37e04f53bc902e09b3`
+
+Official 2025 model path:
+
+- release: `v0.5.0`
+- model: `m2d_clap_vit_base-80x1001p16x16p16kpBpTI-2025`
+- checkpoint: `checkpoint-30.pth`
+- runtime API: pinned official `examples/portable_m2d.py`
+- audio sample rate: 16 kHz
+- native model window: exact 10 seconds
+- shared CLAP audio/text embedding: 768D
+- embedded text path: BERT-base configuration from the 2025 checkpoint
+
+The upstream project documents M2D-CLAP 2025 as its recommended general-purpose audio-language model and exposes the exact `encode_clap_audio` / `encode_clap_text` path used by this candidate.
+
+Candidate F protocol:
+
+- five deterministic evenly-spaced exact 10-second clips per track;
+- each clip is L2-normalized after official M2D-CLAP audio encoding;
+- normalized clips are mean-pooled and normalized again;
+- the same unchanged `family / style / tradition / form` taxonomy is embedded with the official M2D-CLAP text path;
+- all selected tracks finish audio inference and all four rankings **before** `benchmarks.json` is opened;
+- local checkpoint gets a persistent SHA-256 lock on first successful official release download;
+- setup does not print READY until the real checkpoint is loaded on CUDA and both real 768D audio + text embeddings succeed.
+
+License boundary: upstream points to a custom `LICENSE.pdf`. SonicTrace does **not** classify Candidate F as product/commercial-safe. It is **LAB ONLY** until that license is explicitly reviewed.
+
+Candidate F must approach or beat MuQ on the same four tracks without taxonomy changes, threshold tuning, TXT forcing or rescue rules.
 
 ## Isolation contract
 
@@ -122,7 +151,9 @@ The next architecture worth researching is **M2D-CLAP 2025** (`nttcslab/m2d`), b
 - Microsoft CLAP env: `model_lab/.runtime/msclap_venv/`
 - converted Larger CLAP env: `model_lab/.runtime/larger_clap_venv/`
 - native LAION music env: `model_lab/.runtime/native_laion_music_venv/`
-- native LAION checkpoint: `model_lab/.runtime/native_laion_music/`
+- M2D-CLAP 2025 env: `model_lab/.runtime/m2d_clap_2025_venv/`
+- M2D-CLAP 2025 assets: `model_lab/.runtime/m2d_clap_2025/`
+- M2D-CLAP pinned portable source: `model_lab/.runtime/m2d_clap_2025_src/`
 - CLaMP3 checkout: `model_lab/.runtime/clamp3/`
 - shared Hugging Face cache: `model_lab/.runtime/huggingface/`
 - generated results: `model_lab/results/`
@@ -175,14 +206,31 @@ Preserved as a completed native-path reference; no further tuning is planned:
 - setup: `SONICTRACE_V4_NATIVE_LAION_MUSIC_SETUP.cmd`
 - benchmark: `SONICTRACE_V4_NATIVE_LAION_MUSIC_BENCHMARK.cmd`
 
-Candidate E reports:
+### Candidate F — M2D-CLAP 2025
 
-- `model_lab/results/native-laion-music-benchmark-YYYYMMDD-HHMMSS.json`
-- `model_lab/results/native-laion-music-benchmark-YYYYMMDD-HHMMSS.txt`
-- `model_lab/results/native-laion-music-last-run.log`
-- `model_lab/results/native-laion-music-last-error.txt` on failure
+First setup / repair:
 
-Every report records Top rankings, raw cosine similarities, benchmark status, runtime, GPU/VRAM, checkpoint identity/hash and explicit `declared_metadata_used_for_inference: false`.
+`SONICTRACE_V4_M2D_CLAP_2025_SETUP.cmd`
+
+Benchmark:
+
+`SONICTRACE_V4_M2D_CLAP_2025_BENCHMARK.cmd`
+
+Select the same four files together:
+
+- `THICK.wav`
+- `Tachy Psychia.wav`
+- `stick-to-you.wav`
+- `Tình Bolero Cho Trân.wav`
+
+Candidate F writes:
+
+- `model_lab/results/m2d-clap-2025-benchmark-YYYYMMDD-HHMMSS.json`
+- `model_lab/results/m2d-clap-2025-benchmark-YYYYMMDD-HHMMSS.txt`
+- `model_lab/results/m2d-clap-2025-last-run.log`
+- `model_lab/results/m2d-clap-2025-last-error.txt` on failure
+
+Every report records Top rankings, raw cosine similarities, benchmark status, runtime, GPU/VRAM, upstream source/checkpoint identity, local checkpoint hash and explicit `declared_metadata_used_for_inference: false`.
 
 ## Decision gate
 
