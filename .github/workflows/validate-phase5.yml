@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [codex/phase5-sonictrace, agent/neural-accuracy-v3-foundation, agent/neural-v3-music-expert, agent/semantic-v31-genre-authority-fix, agent/neural-v32-semantic-taxonomy, agent/neural-v321-bootstrap-hardening, agent/neural-v33-structure-intelligence, agent/v331-runtime-cache-catalog, agent/neural-v34-generalization]
+    branches: [codex/phase5-sonictrace, agent/neural-accuracy-v3-foundation, agent/neural-v3-music-expert, agent/semantic-v31-genre-authority-fix, agent/neural-v32-semantic-taxonomy, agent/neural-v321-bootstrap-hardening, agent/neural-v33-structure-intelligence, agent/v331-runtime-cache-catalog, agent/neural-v34-generalization, agent/core-model-prefetch-hardening]
 
 permissions:
   contents: read
@@ -52,6 +52,9 @@ jobs:
           PYTHONPATH: backend
         run: python backend/tests/test_genre_dimensions_v352_runtime.py
 
+      - name: Core production model prefetch contract
+        run: python backend/tests/test_core_model_prefetch_contract.py
+
       - name: Windows stale runtime listener parser regression
         working-directory: tools
         run: python test_runtime_manager.py
@@ -77,7 +80,7 @@ jobs:
         run: python model_lab/test_model_lab_maintenance_contract.py
 
       - name: Python syntax
-        run: python -m py_compile tools/runtime_manager.py tools/test_runtime_manager.py backend/app/studio_contract.py backend/app/entrypoint.py backend/app/neural.py backend/app/neural_taxonomy.py backend/app/music_expert.py backend/app/genre_ensemble.py backend/app/genre_dimensions.py backend/app/analysis_benchmark.py backend/tests/test_genre_dimensions_v352_runtime.py backend/tests/smoke_music_expert.py model_lab/setup_clamp3.py model_lab/prepare_refs.py model_lab/run_clamp3_benchmark.py model_lab/run_muq_mulan_benchmark.py model_lab/run_ms_clap_benchmark.py model_lab/run_larger_clap_music_benchmark.py model_lab/run_native_laion_music_benchmark.py model_lab/setup_m2d_clap_2025.py model_lab/run_m2d_clap_2025_benchmark.py model_lab/launch_benchmark.py model_lab/test_model_lab_contract.py model_lab/test_larger_clap_music_contract.py model_lab/test_native_laion_music_contract.py model_lab/test_m2d_clap_2025_contract.py model_lab/test_model_lab_maintenance_contract.py
+        run: python -m py_compile tools/runtime_manager.py tools/test_runtime_manager.py backend/prefetch_core_models.py backend/app/studio_contract.py backend/app/entrypoint.py backend/app/neural.py backend/app/neural_taxonomy.py backend/app/music_expert.py backend/app/genre_ensemble.py backend/app/genre_dimensions.py backend/app/analysis_benchmark.py backend/tests/test_core_model_prefetch_contract.py backend/tests/test_genre_dimensions_v352_runtime.py backend/tests/smoke_music_expert.py model_lab/setup_clamp3.py model_lab/prepare_refs.py model_lab/run_clamp3_benchmark.py model_lab/run_muq_mulan_benchmark.py model_lab/run_ms_clap_benchmark.py model_lab/run_larger_clap_music_benchmark.py model_lab/run_native_laion_music_benchmark.py model_lab/setup_m2d_clap_2025.py model_lab/run_m2d_clap_2025_benchmark.py model_lab/launch_benchmark.py model_lab/test_model_lab_contract.py model_lab/test_larger_clap_music_contract.py model_lab/test_native_laion_music_contract.py model_lab/test_m2d_clap_2025_contract.py model_lab/test_model_lab_maintenance_contract.py
 
       - name: Semantic V3.2 genre and arrangement regression
         run: node --check js/semantic-v32.js && node --check js/semantic-bootstrap.js && node --check js/semantic-client.js && node scripts/test-semantic-genre-context.mjs

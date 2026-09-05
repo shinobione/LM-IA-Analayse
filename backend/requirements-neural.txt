@@ -5,6 +5,8 @@
 #
 # CLAP integration is pinned to the Transformers API used by backend/app/neural.py.
 # Transformers 4.56.x requires the pre-1.0 Hugging Face Hub API.
+# hf-xet keeps large Hugging Face model transfers on the supported Xet path
+# instead of silently falling back to the less reliable regular HTTP path.
 #
 # Discogs-EffNet runs through ONNX Runtime. Keep ORT below 1.27 because current
 # PyPI 1.27+ GPU packages default to CUDA 13, while SonicTrace's PyTorch runtime
@@ -16,4 +18,5 @@ numpy>=1.26,<3
 soundfile>=0.12,<1
 safetensors>=0.6,<1
 huggingface-hub>=0.34,<1.0
+hf-xet>=1.1,<2
 onnxruntime-gpu>=1.22,<1.27

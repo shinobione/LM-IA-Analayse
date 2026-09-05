@@ -10,6 +10,9 @@ set "STEMS_VENV=%~dp0backend\.venv-stems"
 set "ANATOMY_VENV=%~dp0backend\.venv-anatomy"
 set "ANATOMY_MARKER=%~dp0backend\.v2c-ready"
 set "HF_HOME=%~dp0backend\models\huggingface"
+set "HF_HUB_DOWNLOAD_TIMEOUT=300"
+set "HF_HUB_ETAG_TIMEOUT=30"
+set "HF_HUB_DISABLE_SYMLINKS_WARNING=1"
 set "PATH=%LOCALAPPDATA%\Microsoft\WinGet\Links;%USERPROFILE%\.local\bin;%PATH%"
 if not exist "%HF_HOME%" mkdir "%HF_HOME%" >nul 2>&1
 if not exist "%ROOT%logs" mkdir "%ROOT%logs" >nul 2>&1
@@ -70,8 +73,19 @@ if errorlevel 1 goto :neural_warning
 if errorlevel 1 goto :neural_warning
 "%VENV%\Scripts\python.exe" -c "import torch,transformers; from transformers import ClapModel,ClapProcessor; assert torch.cuda.is_available(); assert torch.__version__.startswith('2.11.0'); print('[OK] V2-B READY |',torch.cuda.get_device_name(0),'| Torch',torch.__version__,'| Transformers',transformers.__version__)"
 if errorlevel 1 goto :neural_warning
+
+echo [4b/7] Prefetch / validation des modeles de production SonicTrace...
+"%VENV%\Scripts\python.exe" "%BACKEND%\prefetch_core_models.py"
+if errorlevel 1 goto :model_assets_fail
 set "NEURAL_READY=1"
 goto :stems_setup
+
+:model_assets_fail
+set "NEURAL_READY=0"
+echo [ERREUR] Les modeles de production CLAP / Discogs ne sont pas entierement disponibles.
+echo SonicTrace ne sera pas declare pret avec un cache froid ou incomplet.
+echo Lance SONICTRACE_REPAIR_MODELS.cmd pour retenter le prefetch avec reprise.
+goto :fail
 
 :neural_warning
 set "NEURAL_READY=0"
@@ -126,7 +140,7 @@ echo [7/7] Demarrage verifie de LMNotebook...
 "%VENV%\Scripts\python.exe" "%ROOT%tools\runtime_manager.py" start
 if errorlevel 1 goto :fail
 echo.
-if "%NEURAL_READY%"=="1" echo [OK] V2-B Neural CUDA PRETE.
+if "%NEURAL_READY%"=="1" echo [OK] V2-B Neural CUDA + MODELS PRETS.
 if "%ANATOMY_READY%"=="1" echo [OK] V2-C Song Anatomy ISOLE PRET.
 if "%STEMS_READY%"=="1" echo [OK] V2-D Demucs ISOLE PRET.
 echo [OK] LMNotebook V2 lance.
