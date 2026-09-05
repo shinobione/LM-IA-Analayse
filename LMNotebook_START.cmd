@@ -23,7 +23,7 @@ echo  LMNotebook Neural Audio Analyzer - SAFE RUNTIME
 echo ============================================================
 echo.
 echo V2-B Neural, V2-C Song Anatomy et V2-D Demucs utilisent
-decho des environnements Python separes. Une couche ne peut plus
+echo des environnements Python separes. Une couche ne peut plus
 echo remplacer les dependances d'une autre.
 echo.
 
