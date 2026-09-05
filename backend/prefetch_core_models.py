@@ -42,25 +42,21 @@ def _retry(label: str, action: Callable[[], T]) -> T:
 
 
 def _prefetch_clap() -> dict[str, object]:
+    from huggingface_hub import snapshot_download
     from transformers import ClapModel, ClapProcessor
 
     HF_HOME.mkdir(parents=True, exist_ok=True)
 
-    # First pass may download/resume. Transformers delegates cache integrity to
-    # huggingface_hub and hf_xet when available.
-    processor = _retry(
-        "CLAP processor download/cache",
-        lambda: ClapProcessor.from_pretrained(CLAP_MODEL_ID),
+    # Download/resume the repository first without constructing the model. This
+    # keeps a cold-cache transfer out of Studio's POST /api/studio/analyze path.
+    snapshot = _retry(
+        "CLAP repository download/cache",
+        lambda: snapshot_download(repo_id=CLAP_MODEL_ID),
     )
-    model = _retry(
-        "CLAP model download/cache",
-        lambda: ClapModel.from_pretrained(CLAP_MODEL_ID),
-    )
-    del processor, model
-    gc.collect()
 
-    # Second pass is deliberately offline-only. If this fails, the cache cannot
-    # satisfy a real analysis and SonicTrace must not advertise itself as ready.
+    # The only model construction is deliberately offline-only. If this fails,
+    # the local cache cannot satisfy a real analysis and SonicTrace must not start
+    # as READY. On a warm cache this also avoids any network dependency.
     print("[..] Validating CLAP from local cache only...")
     processor = ClapProcessor.from_pretrained(CLAP_MODEL_ID, local_files_only=True)
     model = ClapModel.from_pretrained(CLAP_MODEL_ID, local_files_only=True)
@@ -73,6 +69,7 @@ def _prefetch_clap() -> dict[str, object]:
         "model_id": CLAP_MODEL_ID,
         "parameter_count": parameter_count,
         "hf_home": str(HF_HOME),
+        "snapshot": str(snapshot),
     }
 
 
