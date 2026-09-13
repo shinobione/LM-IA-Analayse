@@ -1,0 +1,22 @@
+// Distribution generation is owned by SonicTrace. Invoke with a Studio checkout path.
+import fs from 'node:fs';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { sourceCommit, sourceCommitPath, extractKernel } from './build107-source.mjs';
+assert.ok(process.argv[2], 'Usage: node scripts/vendor-build107-kernel.mjs <Studio checkout>');
+const root = fileURLToPath(new URL('../',import.meta.url));
+const sourcePath = 'js/catalog-projection-kernel.mjs';
+const bytes = fs.readFileSync(path.join(root,sourcePath));
+const pinned = execFileSync('git',['-c','safe.directory=*','-C',root,'show',`${sourceCommit}:${sourceCommitPath}`],{encoding:'utf8'});
+assert.equal(bytes.toString('utf8'),extractKernel(pinned),'Build107 permits only the exact pinned extraction');
+const targetRoot = path.resolve(process.argv[2]);
+assert.equal(JSON.parse(fs.readFileSync(path.join(targetRoot,'package.json'))).name,'shinobiwan-studio');
+const target = path.join(targetRoot,'src/vendor');
+fs.mkdirSync(target,{recursive:true});
+fs.writeFileSync(path.join(target,'catalog-projection-kernel.mjs'),bytes);
+fs.writeFileSync(path.join(target,'catalog-projection-kernel.d.mts'),'// Types for the generated SonicTrace distribution. No independent implementation.\nexport function normalize(vector: number[]): number[];\nexport function dot(a: number[], b: number[]): number;\nexport function powerComponent(rows: number[][], orthogonalTo: number[] | null): number[];\n');
+fs.writeFileSync(path.join(target,'catalog-projection-kernel.origin.json'),JSON.stringify({sourceRepository:'https://github.com/shinobione/LM-IA-Analayse',sourcePath,sourceCommit,sourceCommitPath,sourceState:'uncommitted-extraction-from-pinned-source',sha256:createHash('sha256').update(bytes).digest('hex')},null,2)+'\n');
+console.log('Generated Studio distribution from pinned SonicTrace extraction.');

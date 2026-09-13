@@ -131,6 +131,7 @@ function loadCatalogIntelligenceAssets() {
     }
     const script = document.createElement('script');
     script.src = src; script.async = false;
+    if (name === 'similarity') script.type = 'module';
     script.setAttribute(attrName, '1');
     script.addEventListener('load', () => { script.dataset.loaded = '1'; loadNext(index + 1); }, { once:true });
     script.addEventListener('error', () => console.error(`[SonicTrace] Catalog asset failed to load: ${src}`), { once:true });

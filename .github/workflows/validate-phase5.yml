@@ -16,6 +16,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Build107 catalog numerical kernel
+        run: node scripts/test-build107-kernel.mjs && node scripts/test-build107-loader.mjs
 
       - name: Setup Python
         uses: actions/setup-python@v5
