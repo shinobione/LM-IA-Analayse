@@ -1,3 +1,5 @@
+import { normalize, dot, powerComponent } from './catalog-projection-kernel.mjs';
+
 (() => {
   'use strict';
 
@@ -100,29 +102,6 @@
       y: pc2.some(v => Math.abs(v) > 1e-9) ? dot(row, pc2) : index - (tracks.length - 1) / 2,
     }));
     return normalizeProjection(raw);
-  }
-
-  function powerComponent(rows, orthogonalTo) {
-    if (!rows.length || !rows[0]?.length) return [];
-    const dimension = rows[0].length;
-    let v = Array.from({ length: dimension }, (_, i) => ((i * 37 + 11) % 101) / 101 - 0.5);
-    v = normalize(v);
-
-    for (let iter = 0; iter < 42; iter++) {
-      const next = Array(dimension).fill(0);
-      for (const row of rows) {
-        const scale = dot(row, v);
-        for (let i = 0; i < dimension; i++) next[i] += row[i] * scale;
-      }
-      if (orthogonalTo?.length) {
-        const projection = dot(next, orthogonalTo);
-        for (let i = 0; i < dimension; i++) next[i] -= projection * orthogonalTo[i];
-      }
-      const normalized = normalize(next);
-      if (!normalized.some(n => Math.abs(n) > 1e-12)) break;
-      v = normalized;
-    }
-    return v;
   }
 
   function clusterProjection(tracks, projection) {
@@ -587,12 +566,6 @@
     return normalize(clean);
   }
 
-  function normalize(vector) {
-    const norm = Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0));
-    if (!norm) return vector.map(() => 0);
-    return vector.map(value => value / norm);
-  }
-
   function normalizeProjection(points) {
     const xs = points.map(p => p.x);
     const ys = points.map(p => p.y);
@@ -661,12 +634,6 @@
       hash = Math.imul(hash, 16777619);
     }
     return hash >>> 0;
-  }
-
-  function dot(a, b) {
-    let sum = 0;
-    for (let i = 0; i < Math.min(a.length, b.length); i++) sum += a[i] * b[i];
-    return sum;
   }
 
   function avg(values) {
