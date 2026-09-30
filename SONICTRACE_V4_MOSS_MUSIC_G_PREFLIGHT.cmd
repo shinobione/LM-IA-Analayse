@@ -18,7 +18,8 @@ set "VRAM_TOTAL=0"
 set "VRAM_FREE=0"
 set "DRIVER=UNKNOWN"
 set "DISK_FREE_GIB=0"
-set "WSL_STATUS=NOT_FOUND"
+set "WSL_STATUS=BINARY_MISSING"
+set "REBOOT_STATUS=NO_KNOWN_PENDING_REBOOT"
 set "UV_STATUS=NOT_FOUND"
 set "GPU_STATUS=FAIL"
 set "DISK_STATUS=FAIL"
@@ -33,8 +34,10 @@ echo.
 echo Ce script :
 echo   - ne telecharge AUCUN modele
 echo   - n'installe AUCUN package
+echo   - n'active AUCUNE fonctionnalite Windows
+echo   - n'invoque PAS WSL ^(evite l'installation automatique Windows^)
 echo   - ne modifie PAS SonicTrace V3 / Catalogue / STUDIO
-echo   - mesure uniquement la faisabilite locale RTX 3060 / disque / WSL
+echo   - mesure uniquement la faisabilite locale RTX 3060 / disque
 echo.
 
 where nvidia-smi.exe >nul 2>&1
@@ -70,16 +73,31 @@ if errorlevel 1 (
   echo [OK] Marge disque >= 30 GiB.
 )
 
+rem IMPORTANT: do not invoke wsl.exe here. On Windows 11 a present stub can launch
+rem an interactive WSL install/provisioning path, which violates a read-only preflight.
 where wsl.exe >nul 2>&1
 if errorlevel 1 (
-  echo [WARN] WSL introuvable. Le chemin SGLang officiel n'est pas disponible tel quel.
+  echo [INFO] Binaire WSL introuvable. Aucun probleme pour G0 : WSL n'est pas un gate.
 ) else (
-  set "WSL_STATUS=AVAILABLE"
-  echo [OK] WSL present.
-  echo ----- WSL VERSION / STATUS -----
-  wsl.exe --version 2>nul
-  if errorlevel 1 wsl.exe --status 2>nul
-  echo -------------------------------
+  set "WSL_STATUS=BINARY_PRESENT_UNPROBED"
+  echo [INFO] wsl.exe est present, mais G0 ne l'invoque volontairement PAS.
+  reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Lxss" >nul 2>&1
+  if not errorlevel 1 (
+    set "WSL_STATUS=USER_STATE_PRESENT_UNPROBED"
+    echo [INFO] Un etat utilisateur WSL existe dans le registre ^(lecture seule^).
+  )
+)
+
+rem Conservative, read-only reboot detection. A pending reboot can come from WSL
+rem provisioning or any other Windows servicing operation; G1 must wait until after it.
+reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending" >nul 2>&1
+if not errorlevel 1 set "REBOOT_STATUS=REQUIRED"
+reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired" >nul 2>&1
+if not errorlevel 1 set "REBOOT_STATUS=REQUIRED"
+if /I "!REBOOT_STATUS!"=="REQUIRED" (
+  echo [WARN] Un redemarrage Windows est en attente. G1 doit attendre le reboot.
+) else (
+  echo [OK] Aucun indicateur standard de reboot Windows en attente.
 )
 
 call :resolve_uv
@@ -97,13 +115,14 @@ echo ----------------------
 echo.
 
 if /I "!GPU_STATUS!"=="BORDERLINE_12GB" if /I "!DISK_STATUS!"=="OK" set "G0_STATUS=READY_FOR_QUANTIZED_PROOF_ONLY"
+if /I "!G0_STATUS!"=="READY_FOR_QUANTIZED_PROOF_ONLY" if /I "!REBOOT_STATUS!"=="REQUIRED" set "G0_STATUS=READY_FOR_QUANTIZED_PROOF_ONLY_AFTER_REBOOT"
 
 (
   echo SONICTRACE V4 MODEL LAB - MOSS-MUSIC CANDIDATE G0 PREFLIGHT
   echo ============================================================
   echo Generated: %date% %time%
   echo Upstream target: OpenMOSS-Team/MOSS-Music-8B-Instruct
-  echo Policy: ZERO MODEL DOWNLOAD / ZERO PACKAGE INSTALL
+  echo Policy: ZERO MODEL DOWNLOAD / ZERO PACKAGE INSTALL / ZERO OS FEATURE INSTALL
   echo.
   echo GPU_NAME=!GPU_NAME!
   echo VRAM_TOTAL_MIB=!VRAM_TOTAL!
@@ -113,6 +132,7 @@ if /I "!GPU_STATUS!"=="BORDERLINE_12GB" if /I "!DISK_STATUS!"=="OK" set "G0_STAT
   echo DISK_FREE_GIB=!DISK_FREE_GIB!
   echo DISK_GATE=!DISK_STATUS!
   echo WSL=!WSL_STATUS!
+  echo REBOOT=!REBOOT_STATUS!
   echo UV=!UV_STATUS!
   echo.
   echo G0_STATUS=!G0_STATUS!
@@ -122,6 +142,8 @@ if /I "!GPU_STATUS!"=="BORDERLINE_12GB" if /I "!DISK_STATUS!"=="OK" set "G0_STAT
   echo - 8-bit is not considered safe enough for this card.
   echo - Only an isolated 4-bit/quantized proof is eligible for G1.
   echo - G1 must still prove real audio-conditioned inference before READY.
+  echo - If REBOOT=REQUIRED, restart Windows before any G1 action.
+  echo - WSL is not invoked and is not a G0 pass/fail gate.
   echo - No SonicTrace V3, Catalogue or STUDIO integration is authorized here.
 ) > "%REPORT%"
 
@@ -132,6 +154,9 @@ echo.
 if /I "!G0_STATUS!"=="READY_FOR_QUANTIZED_PROOF_ONLY" (
   echo [OK] La machine peut passer a une ETUDE G1 4-bit isolee.
   echo [IMPORTANT] Cela ne signifie PAS que MOSS-Music tiendra reellement en VRAM.
+) else if /I "!G0_STATUS!"=="READY_FOR_QUANTIZED_PROOF_ONLY_AFTER_REBOOT" (
+  echo [OK] Le gate materiel G0 passe, MAIS Windows demande un redemarrage.
+  echo [ACTION] Redemarre le PC avant toute tentative G1.
 ) else (
   echo [STOP] Ne pas telecharger MOSS-Music pour l'instant.
 )

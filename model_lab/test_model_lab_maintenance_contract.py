@@ -47,15 +47,24 @@ def main() -> int:
     assert 'call :remove_dir "%RUNTIME%"' in wipe
     assert "NE supprimera PAS model_lab\\results" in wipe
 
-    # Candidate G0 is intentionally zero-download. It may inspect the machine,
-    # but it must not install packages or load/download MOSS-Music weights.
+    # Candidate G0 is intentionally read-only. The first real Windows run showed
+    # that merely invoking wsl.exe can trigger Windows' interactive WSL install
+    # path even when the binary exists. G0 must therefore never execute WSL,
+    # install packages, enable Windows features, or load/download MOSS weights.
     assert "MOSS-Music-8B-Instruct" in preflight
     assert "ZERO MODEL DOWNLOAD" in preflight
+    assert "ZERO OS FEATURE INSTALL" in preflight
     assert "nvidia-smi" in preflight
     assert "DISK_FREE_GIB" in preflight
-    assert "wsl.exe" in preflight
+    assert "BINARY_PRESENT_UNPROBED" in preflight
+    assert "REBOOT_STATUS" in preflight
     assert "READY_FOR_QUANTIZED_PROOF_ONLY" in preflight
     assert "moss-music-g0-preflight-" in preflight
+    assert "wsl.exe --version" not in preflight.lower()
+    assert "wsl.exe --status" not in preflight.lower()
+    assert "wsl.exe --install" not in preflight.lower()
+    assert "enable-windowsoptionalfeature" not in preflight.lower()
+    assert "dism /online /enable-feature" not in preflight.lower()
     assert "hf download" not in preflight.lower()
     assert "huggingface-cli download" not in preflight.lower()
     assert "pip install" not in preflight.lower()
